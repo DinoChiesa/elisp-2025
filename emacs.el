@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2024-December-29 00:57:31>
+;; Last saved: <2024-December-29 13:53:59>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -396,15 +396,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sh-mode
-(setcar (alist-get 'shfmt apheleia-formatters)
+
+(when (boundp 'apheleia-formatters)
+  (setcar (alist-get 'shfmt apheleia-formatters)
         "~/go/bin/shfmt")
-(push '(sh-mode . shfmt) apheleia-mode-alist)
+  (push '(sh-mode . shfmt) apheleia-mode-alist))
 
 (defun dino-sh-mode-fn ()
   (display-line-numbers-mode)
   (setq sh-basic-offset 2)
   (sh-electric-here-document-mode)
-  (apheleia-mode)
+  (when (boundp 'apheleia-formatters)
+    (apheleia-mode))
   )
 (add-hook 'sh-mode-hook 'dino-sh-mode-fn)
 
@@ -454,9 +457,10 @@
               (display-line-numbers-mode)
 
               ;; 20230918-1015
-              (apheleia-mode)
-              (setq apheleia-log-debug-info t)
-              (setq apheleia-remote-algorithm 'local)
+              (when (boundp 'apheleia-formatters)
+                (apheleia-mode)
+                (setq apheleia-log-debug-info t)
+                (setq apheleia-remote-algorithm 'local))
 
               ;; still need this? 20241203-0215
               (require 'goflycheck)
@@ -794,24 +798,32 @@
 
 ;; initial frame size and position
 ;; 20241227-0355
-;; Setting  initial-frame-alist is ineffectual here. Supposedly it must be placed
-;; in the early init file, which is evaluated before the first frame is created.
-;; But in my experience on gLinux chromebook, it was also ineffectual there.
+;;
+;; Supposedly, setting `initial-frame-alist' is ineffectual here, and it must be placed in
+;; the ~/.emacs.d/early-init.el file, which is evaluated before the first frame is created.
+;; Where did I read this?  The documentation states that "Emacs creates the initial frame
+;; before it reads your init file. After reading that file, Emacs checks
+;; initial-frame-alist, and applies the parameter settings in the altered value to the
+;; already created initial frame."
+;; https://www.gnu.org/software/emacs/manual/html_node/elisp/Initial-Parameters.html
+;;
+;; So I think someone's claim that setting i-f-a here, is wrong. In my experience,
+;; - on Windows NT, setting `initial-frame-alist' here works just fine.
+;; - on gLinux chromebook, setting `initial-frame-alist' in either place was ineffectual.
 (if (eq system-type 'windows-nt)
     (progn
-      ;; (setq initial-frame-alist
-      ;;       '( (top . 100) (left . 640)
-      ;;          (width . 228) (height . 64)
-      ;;          ))
-      ;; Dino 20241226-1755
+      (setq initial-frame-alist
+            '( (top . 100) (left . 640)
+               (width . 228) (height . 64)
+               ))
       (set-frame-font "Consolas 11" nil t))
   (progn
     ;; glinux
-    ;; (setq initial-frame-alist
-    ;;       '( (top . 10) (left . 10)
-    ;;          (width . 148) (height . 42)
-    ;;          )
-    ;;       )
+    (setq initial-frame-alist
+          '( (top . 10) (left . 10)
+             (width . 148) (height . 42)
+             )
+          )
     (set-frame-font "Noto Mono 10" nil t))
   )
 
@@ -1232,9 +1244,7 @@ With a prefix argument, makes a private paste."
 
             ;; Overwrite existing scss-stylelint checker to not use --syntax
             (flycheck-define-checker scss-stylelint
-              "A SCSS syntax and style checker using stylelint.
-
- See URL `http://stylelint.io/'."
+              "A SCSS syntax and style checker using stylelint. See URL `http://stylelint.io/'."
               :command ("stylelint"
                         (eval flycheck-stylelint-args)
                         ;; "--syntax" "scss"
@@ -1251,7 +1261,8 @@ With a prefix argument, makes a private paste."
             ;;
             ;; (push '(css-mode . prettier-css-dino) apheleia-mode-alist)
 
-            (setf (alist-get 'css-mode apheleia-mode-alist) 'prettier-css)
+            (when (boundp 'apheleia-mode-alist)
+              (setf (alist-get 'css-mode apheleia-mode-alist) 'prettier-css))
 
             (defun dino-css-mode-fn ()
               "My hook for CSS mode"
@@ -2163,10 +2174,11 @@ again, I haven't see that as a problem."
         hs-special-modes-alist))
 
 
-(push '(csharpier .
+(when (boundp 'apheleia-formatters)
+  (push '(csharpier .
                   ("/home/dchiesa/.dotnet/tools/dotnet-csharpier"))
       apheleia-formatters)
-(push '(csharp-mode . csharpier) apheleia-mode-alist)
+  (push '(csharp-mode . csharpier) apheleia-mode-alist))
 
 (defun dino-csharp-mode-fn ()
   "function that runs when csharp-mode is initialized for a buffer."
@@ -2596,13 +2608,14 @@ Does not consider word syntax tables.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; XML (nxml-mode)
 ;;
-(push '(dino-xmlpretty .
+(when (boundp 'apheleia-formatters)
+  (push '(dino-xmlpretty .
                        ("java" "-jar"
                         "/Users/dchiesa/dev/java/XmlPretty/target/com.google.dchiesa-xml-prettifier-20230725.jar"
                         "-"))
       apheleia-formatters)
 
-(push '(xml-prettier .
+  (push '(xml-prettier .
                      ("/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"
                       "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
                       "--stdin-filepath" "foo.xml"))
@@ -2617,12 +2630,13 @@ Does not consider word syntax tables.
 
 ;; to specify an apheleia plugin for a mode that is not currently in the list:
 ;;(push '(nxml-mode . dino-xmlpretty) apheleia-mode-alist)
-(push '(nxml-mode . xml-prettier) apheleia-mode-alist)
+  (push '(nxml-mode . xml-prettier) apheleia-mode-alist)
 
 ;; ;; to switch between previously set plugin for a mode:
 ;; (setf (alist-get 'nxml-mode apheleia-mode-alist) 'xml-prettier)
 ;; ;;(setf (alist-get 'nxml-mode apheleia-mode-alist) 'dino-xmlpretty)
 
+)
 
 (defun dino-xml-mode-fn ()
   (turn-on-auto-revert-mode)
@@ -2973,7 +2987,8 @@ color ready for next time.
 ;;          "--stdin-filepath" filepath "--parser=babel-flow"
 ;;          (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))
 
-(push '(js-mode . prettier-javascript) apheleia-mode-alist)
+(when (boundp 'apheleia-mode-alist)
+  (push '(js-mode . prettier-javascript) apheleia-mode-alist))
 
 (defun dino-js-mode-fn ()
   ;; https://stackoverflow.com/a/15239704/48082
@@ -3073,10 +3088,11 @@ color ready for next time.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Java
 
-;; change the existing google-java-format in the builtin aphelia-formatters
-(setf (alist-get 'google-java-format apheleia-formatters)
-      `("java" "-jar"
-        ,(concat (getenv "HOME") "/bin/google-java-format-1.17.0-all-deps.jar") "-"))
+(when (boundp 'apheleia-formatters)
+  ;; change the existing google-java-format in the builtin aphelia-formatters
+  (setf (alist-get 'google-java-format apheleia-formatters)
+        `("java" "-jar"
+          ,(concat (getenv "HOME") "/bin/google-java-format-1.17.0-all-deps.jar") "-")))
 
 (defun dino-java-mode-fn ()
   (if c-buffer-is-cc-mode
@@ -3117,7 +3133,6 @@ color ready for next time.
   ;; But it does not work on windows.
   (local-set-key "\C-c\C-g"  'dcjava-gformat-buffer)
   (dino-enable-delete-trailing-whitespace)
-  ;;(linum-on) ;; marked obsolete in 29.1
   (display-line-numbers-mode)
   )
 
@@ -3534,17 +3549,17 @@ color ready for next time.
 ;; To make this happen automatically, read the registry before
 ;; each URL retrieval, and set the proxy appropriately.
 ;;
-(if (eq system-type 'windows-nt)
-    (eval-after-load "url"
-      '(progn
-         (require 'w32-registry)
-         (defadvice url-http-create-request (before
-                                             dino-set-proxy-dynamically
-                                             activate)
-           "Before retrieving a URL, query the IE Proxy settings, and use them."
-           (let ((proxy (w32reg-get-ie-proxy-config)))
-             (setq url-using-proxy proxy
-                   url-proxy-services proxy))))))
+;;(if (eq system-type 'windows-nt)
+;;    (eval-after-load "url"
+;;      '(progn
+;;         (require 'w32-registry)
+;;         (defadvice url-http-create-request (before
+;;                                             dino-set-proxy-dynamically
+;;                                             activate)
+;;          "Before retrieving a URL, query the IE Proxy settings, and use them."
+;;           (let ((proxy (w32reg-get-ie-proxy-config)))
+;;             (setq url-using-proxy proxy
+;;                   url-proxy-services proxy))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -3577,6 +3592,7 @@ color ready for next time.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; configure external utilities
 
+;; TODO: search path for unzip
 (if (eq system-type 'windows-nt)
     (if (file-exists-p "c:/Users/dpchi/bin/unzip.exe")
         (progn
