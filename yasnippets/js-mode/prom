@@ -1,0 +1,6 @@
+# key : prom
+# name : new Promise
+# --
+new Promise((resolve,reject) => {
+  $0
+});

@@ -1,0 +1,6 @@
+# key : proto
+# name : prototype fn
+# --
+${1:Type}.prototype.${2:fnName} = function () {
+  $3
+}

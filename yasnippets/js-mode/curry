@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# key : curry
+# name : curry(fn, arg1) ... { ... }
+# --
+// return a curried function with the left-most argument filled
+const curry = (fn, arg1) =>
+   (...arguments) => fn.apply(this,[arg1].concat(arguments));
+

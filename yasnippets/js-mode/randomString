@@ -1,0 +1,9 @@
+# key : randomString
+# name : randomString
+# --
+function randomString(L){
+  L = L || 18;
+  let s = '';
+  do {s += Math.random().toString(36).substring(2, 15); } while (s.length < L);
+  return s.substring(0,L);
+}

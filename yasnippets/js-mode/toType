@@ -1,0 +1,10 @@
+# key : toType
+# name : function toType(x) {...}
+# --
+function toType(obj) {
+  if (obj === null) { return "null";}
+  return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
+}
+
+
+
