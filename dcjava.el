@@ -11,7 +11,7 @@
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
-;; Last-saved : <2024-December-06 01:20:03>
+;; Last-saved : <2024-December-30 10:45:33>
 ;;
 ;;; Commentary:
 ;;
@@ -97,8 +97,8 @@
 (defcustom dcjava-location-of-gformat-jar
   ;;"~/dev/java/lib/google-java-format-1.7-all-deps.jar"
   ;;"~/dev/java/lib/google-java-format-1.17.0-all-deps.jar"
-  "~/bin/google-java-format-1.17.0-all-deps.jar"
-  "Path to the google-java-format jar."
+  "~/bin"
+  "Path (not full filename) containingthe google-java-format jar."
   :group 'dcjava)
 
 (defvar dcjava--load-path (or load-file-name "~/elisp/dcjava.el")
@@ -144,7 +144,6 @@
   "returns true if the string appears to be formed like a java class name"
   (let ((case-fold-search nil))
     (string-match dcjava--classname-regex str)))
-
 
 (defun dcjava-reload-classlist ()
   "loads the list of known classes into memory"
@@ -622,8 +621,6 @@ at the top of the source file."
           (newline)
           ))))
 
-
-
 (defun dcjava-shell-command-on-buffer (command)
   (let ((output-goes-to-current-buffer t)
         (output-replaces-current-content t))
@@ -633,14 +630,42 @@ at the top of the source file."
                              output-goes-to-current-buffer
                              output-replaces-current-content)))
 
+(defun dcjava-latest-gformat-jar ()
+  "Finds the latest jar for google-java-format. This works
+under Windows and Linux.
+
+It looks for any file like google-java-format-*.jar and
+returns the \"last\" one according to lexicographic sort.
+
+The jar name changes as new ones are released. This fn just finds
+and uses the latest one. Just drop the updated jar into ~/bin,
+delete the old jar (or not), and everything will keep working.
+"
+  (if (and
+       dcjava-location-of-gformat-jar
+       (file-directory-p dcjava-location-of-gformat-jar))
+      (let* ((regex
+              (dino-escape-braces-in-regex "google-java-format-[0-9].+\\.jar$"))
+             (filter-fn
+              (lambda (candidate)
+                (and
+                 (string-match regex (file-name-nondirectory candidate))
+                 (file-exists-p candidate))))
+             (matching-candidates
+              (cl-remove-if-not filter-fn (directory-files dcjava-location-of-gformat-jar t))))
+        (if (null matching-candidates)
+            nil
+          (let ((sorted-candidates (sort matching-candidates #'string<)))
+            (car (last sorted-candidates)))))))
+
 (defun dcjava-gformat-buffer ()
   "runs google-java-format on the current buffer"
   (interactive)
-  (let ((command (concat "java -jar " dcjava-location-of-gformat-jar " -")))
-    (dcjava-shell-command-on-buffer command))
-  ;; (let ((command (concat "google-java-format -")))
-  ;;   (dcjava-shell-command-on-buffer command))
-  )
+  (let ((command
+         (and (dcjava-latest-gformat-jar)
+              (concat "java -jar " (dcjava-latest-gformat-jar) " -"))))
+    (when command
+    (dcjava-shell-command-on-buffer command))))
 
 (provide 'dcjava)
 
