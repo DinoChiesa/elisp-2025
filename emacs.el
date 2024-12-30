@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2024-December-29 20:28:36>
+;; Last saved: <2024-December-30 18:05:16>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -104,6 +104,8 @@
 ;; csharpier, shfmt and more - need exec-path AND/or environment PATH to be set.
 (dolist (path `(,(dino-find-latest-nvm-version-bin-dir)
                 ,(concat (getenv "HOME") "/.dotnet/tools")
+                ,(concat (getenv "HOME") "/bin")
+                ,(concat (getenv "HOME") "/go/bin")
                 "/usr/local/bin"
                 "/usr/bin"
                 "/usr/lib/google-golang/bin"

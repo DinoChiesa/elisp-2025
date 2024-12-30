@@ -1490,16 +1490,12 @@ The first line is indented with INDENT-STRING."
   "read globals from jshintrc file"
   (let ((jshintrc (dino-jshintrc-find)))
     (if jshintrc
-        ;; The let* is required because otherwise the call to json-read-file
-        ;; will not see the previously bound values as let sets them in
-        ;; parallel...
         (let ((json-object-type 'alist)
                (json-array-type 'list)
                (json-key-type 'string))
           (let* ((json (json-read-file jshintrc))
                  (globals (assoc "globals" json)))
             (mapcar 'car (cdr globals))
-            ;;(mapcar 'car globals)
             )))))
 
 
@@ -1519,18 +1515,33 @@ The first line is indented with INDENT-STRING."
 ;; ====================================================================
 ;; For tools like apheleia and flycheck, other tools that might invoke shell
 ;; commands (like csslint, csharpier, etc), We need to set the path
-;; properly. The following functions help with that.
+;; properly. The following functions help with that. I had some problems
+;; understanding what this was doing, so it now verbosely logs everything.
 
 (defun dino-maybe-add-to-exec-path (path)
   "Add PATH to exec-path and PATH environment if it exists and is not already present."
-  (when (file-directory-p path)
-    (when (not (member path exec-path))
-      (add-to-list 'exec-path path))
-    (let ((paths (split-string (getenv "PATH") ":")))
-      (when (not (member path paths))
-        (add-to-list 'paths path)
-        (setenv "PATH"  (mapconcat 'identity paths ":"))
-        ))))
+  (let (exec-path-was-modified path-was-modified)
+    (when (and path (file-directory-p path))
+      (message (format "examining path %s for inclusion in exec-path and PATH" path))
+      (when (not (member path exec-path))
+        (message "  adding to exec-path")
+        (add-to-list 'exec-path path)
+        (setq exec-path-was-modified t)
+        )
+      (let ((paths (split-string (getenv "PATH") ":")))
+        (when (not (member path paths))
+          (message "  adding to PATH")
+          (add-to-list 'paths path)
+          (setenv "PATH"  (mapconcat 'identity paths ":"))
+          (setq path-was-modified t)
+          ))
+      (when path-was-modified
+        (message (format "updated PATH %s" (getenv "PATH"))))
+      (when exec-path-was-modified
+        (message (format "updated exec-path %s" (prin1-to-string exec-path))))
+      )
+    )
+  )
 
 (defun dino-escape-braces-in-regex (str)
   "Replaces { with \\{ and } with \\} in STR."
@@ -1546,8 +1557,9 @@ Compare to `file-exists-p' which returns t or nil."
 
 (defun dino-get-or-guess-nvm-dir ()
   "gets the NVM home directory based on either environment variables, or
-guessing a directory based on platform. on Windows, the environment var is
-likely to suffice, but on Linux that might not be the case."
+guessing a directory. The env vars and guessing is different,
+based on platform. On Windows, the (system) environment variable
+is likely to suffice, but on Linux that might not be the case."
   (cond
    ((eq system-type 'windows-nt)
     (or
@@ -1560,7 +1572,7 @@ likely to suffice, but on Linux that might not be the case."
           (concat (getenv "NVM_DIR") "/versions/node"))
      (and (and (getenv "HOME") (dino-filename-if-exists (getenv "HOME")))
           (dino-filename-if-exists
-           (concat (getenv "HOME") "/.config/nvm")))))))
+           (concat (getenv "HOME") "/.config/nvm/versions/node")))))))
 
 (defun dino-find-latest-nvm-version-bin-dir ()
   "Finds the latest bin directory under management by nvm. This works
