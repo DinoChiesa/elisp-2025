@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2024-December-29 13:53:59>
+;; Last saved: <2024-December-29 20:28:36>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -75,7 +75,7 @@
 
 (dino-ensure-package-installed
  'company         ;; COMPlete ANYthing
- 'company-box     ;; i guess this makes the popup a little nicer?
+ ;; 'company-box     ;; i guess this makes the popup a little nicer?
  'auto-complete   ;; i should probably convert to company. I think this is legacy now.
  ;; 'company-go
  'dash
@@ -129,6 +129,10 @@
   :config (setq apheleia-log-debug-info t))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(use-package company-box
+   :hook (company-mode . company-box-mode))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package indent-bars
   :ensure t)
 
@@ -145,9 +149,12 @@
 ;; treesit
 (use-package treesit
   :config
-     ;;(tree-sitter-require 'c-sharp) ;; this is the old (pre v29, not integrated) tree-sitter package
-     (message (concat "csharp TS lang available ?: " (prin1-to-string
-                                       (treesit-language-available-p 'c-sharp)))))
+  ;;(tree-sitter-require 'c-sharp) ;; this is the old (pre v29, not integrated) tree-sitter package
+  ;; 20241229 - There is a grammar for c# at https://github.com/tree-sitter/tree-sitter-c-sharp
+  ;; but the Makefile there says that "Windows is not supported."  Wow!
+  (message (concat "csharp TS lang available ?: "
+                      (prin1-to-string
+                       (treesit-language-available-p 'c-sharp)))))
 
 
 ;; (require 'treesit)
@@ -801,13 +808,16 @@
 ;;
 ;; Supposedly, setting `initial-frame-alist' is ineffectual here, and it must be placed in
 ;; the ~/.emacs.d/early-init.el file, which is evaluated before the first frame is created.
-;; Where did I read this?  The documentation states that "Emacs creates the initial frame
+;; https://emacs.stackexchange.com/a/62051/3856
+;;
+;; But, the emacs documentation states that "Emacs creates the initial frame
 ;; before it reads your init file. After reading that file, Emacs checks
 ;; initial-frame-alist, and applies the parameter settings in the altered value to the
 ;; already created initial frame."
 ;; https://www.gnu.org/software/emacs/manual/html_node/elisp/Initial-Parameters.html
 ;;
-;; So I think someone's claim that setting i-f-a here, is wrong. In my experience,
+;; So I think I misinterpreted the SO answer. Setting i-f-a here, is fine.
+;; But there are quirks. In my experience,
 ;; - on Windows NT, setting `initial-frame-alist' here works just fine.
 ;; - on gLinux chromebook, setting `initial-frame-alist' in either place was ineffectual.
 (if (eq system-type 'windows-nt)
@@ -2298,39 +2308,45 @@ again, I haven't see that as a problem."
 (defun dino-csharp-ts-mode-fn ()
   "function that runs when csharp-ts-mode is initialized for a buffer."
   (cond (window-system
-         (turn-on-font-lock)
-         (setq c-basic-offset 2) ;; width of one indent level
+         ;;(turn-on-font-lock) ;; apparently no longer needed with TS
+         (setq c-basic-offset 4) ;; width of one indent level
+         (setq tab-width 4) ;; this variable is used by `eglot-format'
          (message "setting local key bindings....")
 
          (local-set-key "\M-\C-R"  'indent-region)
          (local-set-key "\M-#" 'dino-indent-buffer)
          (local-set-key "\C-c\C-w" 'compare-windows)
 
-         ;; TODO: consider relying on electric-pair
-         (local-set-key (kbd "<") 'skeleton-pair-insert-maybe)
-         (local-set-key (kbd "(") 'skeleton-pair-insert-maybe)
-         (local-set-key (kbd "[") 'skeleton-pair-insert-maybe)
+         ;; trying electric-pair mode
+         ;; ;; TODO: consider relying on electric-pair
+         ;; (local-set-key (kbd "<") 'skeleton-pair-insert-maybe)
+         ;; (local-set-key (kbd "(") 'skeleton-pair-insert-maybe)
+         ;; (local-set-key (kbd "[") 'skeleton-pair-insert-maybe)
+         ;;
+         ;; ;; TODO: determine if I still need this, or can electric-pair
+         ;; ;; or skeleton-pair work for me?
+         ;; (local-set-key (kbd "\"") 'dino-insert-paired-quotes)
+         ;; (local-set-key (kbd "\'") 'dino-insert-paired-quotes)
+         ;;
+         ;; ;; these allow typeover of matching brackets
+         ;; ;; (local-set-key (kbd "\"") 'dino-skeleton-pair-end)
+         ;; (local-set-key (kbd ">") 'dino-skeleton-pair-end)
+         ;; (local-set-key (kbd ")") 'dino-skeleton-pair-end)
+         ;; (local-set-key (kbd "]") 'dino-skeleton-pair-end)
+         ;;
+         ;; ;; for skeleton stuff
+         ;; (set (make-local-variable 'skeleton-pair) t)
 
-         ;; TODO: determine if I still need this, or can electric-pair
-         ;; or skeleton-pair work for me?
-         (local-set-key (kbd "\"") 'dino-insert-paired-quotes)
-         (local-set-key (kbd "\'") 'dino-insert-paired-quotes)
-
-         ;; these allow typeover of matching brackets
-         ;; (local-set-key (kbd "\"") 'dino-skeleton-pair-end)
-         (local-set-key (kbd ">") 'dino-skeleton-pair-end)
-         (local-set-key (kbd ")") 'dino-skeleton-pair-end)
-         (local-set-key (kbd "]") 'dino-skeleton-pair-end)
-
-         ;; for skeleton stuff
-         (set (make-local-variable 'skeleton-pair) t)
+         ;; 20241229-1756
+         (electric-pair-local-mode 1)
 
          (yas-minor-mode-on)
          (show-paren-mode 1)
          (hl-line-mode 1)
+         (company-mode)
 
          ;; 20241228-0619
-         ;; I think csharp-ts-mode relies on flyMAKE, not flycheck.
+         ;; Like all TS modes, csharp-ts-mode relies on flyMAKE, not flycheck.
          ;; So I think I should disable this for now.
          ;; (require 'flycheck)
          ;; (flycheck-mode)
@@ -2366,6 +2382,43 @@ again, I haven't see that as a problem."
      (add-hook  'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn t)
      ))
 
+(use-package eglot
+  :commands (eglot eglot-ensure)
+  :hook ((csharp-mode . eglot-ensure))
+  :config
+  (setq flymake-show-diagnostics-at-end-of-line t)
+
+  ;; NOTE: you still must invoke M-x eglot to start the server.
+  ;;
+
+  ;; eglot things to explore:
+  ;; eglot-find-[declaration,implementation,typeDefinition]
+
+  ;; 20241229-1957
+  ;; `eglot-format-buffer' is injecting ^M into my c# buffers, seemingly
+  ;; at random. This advice is an attempt to fix that. It works to
+  ;; remove those ^M characters.
+  ;;
+  ;; But eglot-format-buffer can get confused, and overwrite code.
+  ;; In my experience it can result in lost data. Avoid!
+
+  ;; Really I should be making advice to block eglot-format-buffer
+  ;; from executing at all.
+
+  (defun dpc/strip-cr (&rest _args)
+    "Strips ^M from text which sometimes appears after `eglot-format-buffer'"
+    (save-excursion
+      (goto-char (point-min))
+      (while (search-forward "\u000D" nil t)
+        (backward-char)
+        (delete-char 1))))
+
+  (advice-add 'eglot--apply-text-edits :after #'dpc/strip-cr)
+
+  ;; 20241229-1647 - in my experience, this is not necessary
+  ;;(add-to-list 'eglot-server-programs
+  ;;         '(csharp-mode . ("csharp-ls")))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Compile
@@ -3140,7 +3193,7 @@ color ready for next time.
 ;;(remove-hook 'java-ts-mode-hook 'dino-java-mode-fn)
 
 ;; 20230828-1658
-;; treesitter mode for Java with emacs 29.1.
+;; treesitter mode for Java with emacs 29.x.
 ;; It provides better, more reliable syntax analysis, and better highlighting.
 ;;
 ;; As a one-time setup thing, need to do this:
