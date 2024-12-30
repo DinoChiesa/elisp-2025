@@ -11,7 +11,7 @@
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
-;; Last-saved : <2024-December-30 10:45:33>
+;; Last-saved : <2024-December-30 18:51:57>
 ;;
 ;;; Commentary:
 ;;
@@ -95,10 +95,8 @@
 (require 'dash) ;; magnars' functional lib
 
 (defcustom dcjava-location-of-gformat-jar
-  ;;"~/dev/java/lib/google-java-format-1.7-all-deps.jar"
-  ;;"~/dev/java/lib/google-java-format-1.17.0-all-deps.jar"
   "~/bin"
-  "Path (not full filename) containingthe google-java-format jar."
+  "Path of the directory containing the google-java-format all-deps jar."
   :group 'dcjava)
 
 (defvar dcjava--load-path (or load-file-name "~/elisp/dcjava.el")
@@ -664,8 +662,10 @@ delete the old jar (or not), and everything will keep working.
   (let ((command
          (and (dcjava-latest-gformat-jar)
               (concat "java -jar " (dcjava-latest-gformat-jar) " -"))))
-    (when command
-    (dcjava-shell-command-on-buffer command))))
+    (if command
+        (dcjava-shell-command-on-buffer command)
+      (message "no google-java-format jar found in %s" (or dcjava-location-of-gformat-jar "-unset-")))))
+
 
 (provide 'dcjava)
 
