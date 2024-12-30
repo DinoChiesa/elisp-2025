@@ -3533,6 +3533,18 @@ color ready for next time.
   ;; https://www.gnu.org/software/tramp/#Using-ssh-connection-sharing-1
   (setq tramp-use-connection-share nil)
 
+  ;; ;; 20241229-0343
+  ;; ;; despite the above, which I think is supposed to tell emacs to use ~/.ssh/config ,
+  ;; ;; emacs/tramp uses ControlPersist=no. Not sure why.
+  ;; ;; https://www.gnu.org/software/emacs/manual/html_node/tramp/Ssh-setup.html
+  ;; ;;
+  ;; ;; In theory I could try to over-ride that behavior with this incantation:
+  ;; (setq tramp-ssh-controlmaster-options
+  ;;       (concat
+  ;;        "-o ControlPath=/tmp/ssh-ControlPath-%%r@%%h:%%p "
+  ;;        "-o ControlMaster=auto -o ControlPersist=yes"))
+
+
   ;; https://www.gnu.org/software/tramp/#Improving-performance-of-asynchronous-remote-processes-1
   (connection-local-set-profile-variables
    'remote-direct-async-process
