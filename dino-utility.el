@@ -1536,6 +1536,32 @@ The first line is indented with INDENT-STRING."
   "Replaces { with \\{ and } with \\} in STR."
   (replace-regexp-in-string "\\(\u007b\\|\u007d\\)" "\\\\\\1" str nil nil))
 
+
+(defun dino-filename-if-exists (file-or-dir-name)
+  "returns FILE-OR-DIR-NAME if it exists, otherwise nil.
+Compare to `file-exists-p' which returns t or nil."
+  (and file-or-dir-name
+       (file-exists-p file-or-dir-name)
+       file-or-dir-name))
+
+(defun dino-get-or-guess-nvm-dir ()
+  "gets the NVM home directory based on either environment variables, or
+guessing a directory based on platform. on Windows, the environment var is
+likely to suffice, but on Linux that might not be the case."
+  (cond
+   ((eq system-type 'windows-nt)
+    (or
+     (getenv "NVM_HOME")
+     (dino-filename-if-exists "c:/ProgramData/nvm")
+     (dino-filename-if-exists (concat (getenv "HOME") "\\AppData\\Roaming\\nvm"))))
+   (t
+    (or
+     (and (getenv "NVM_DIR")
+          (concat (getenv "NVM_DIR") "/versions/node"))
+     (and (and (getenv "HOME") (dino-filename-if-exists (getenv "HOME")))
+          (dino-filename-if-exists
+           (concat (getenv "HOME") "/.config/nvm")))))))
+
 (defun dino-find-latest-nvm-version-bin-dir ()
   "Finds the latest bin directory under management by nvm. This works
 under Windows and Linux.
@@ -1553,6 +1579,7 @@ it as a shell command. (Result: \"nvm: command not found\")
 ...and within there, directories named like vxx.yy.z for v22.11.0 , etc.
 
 On Windows, NVM_HOME holds something like
+  /ProgramData/nvm
   /Users/dpchi/AppData/Roaming/nvm
 
 and within there, directories named like vxx.yy.z for v22.11.0 , etc.
@@ -1562,28 +1589,26 @@ the last item found. It returns the fully qualified path of the bin directory of
 latest version of node under management by nvm, or nil if none is found.
 
 "
-  (let ((starting-dir (if (eq system-type 'windows-nt)
-                           (getenv "NVM_HOME")
-                         (concat (getenv "NVM_DIR") "/versions/node")))
-         (regex
-          (dino-escape-braces-in-regex "v[0-9]{2}\\.[0-9]{2}\\.[0-9]+"))
-         (map-fn
-          (lambda (dir)
-            (cond
-             ((eq system-type 'windows-nt)
-              dir)
-             (t
-              (concat dir "/bin"))))))
+  (let ((starting-dir (dino-get-or-guess-nvm-dir))
+        (regex
+         (dino-escape-braces-in-regex "v[0-9]{2}\\.[0-9]{2}\\.[0-9]+"))
+        (map-fn
+         (cond
+          ((eq system-type 'windows-nt)
+           (lambda (dir) dir))
+          (t
+           (lambda (dir) (concat dir "/bin"))))))
     (let* ((filter-fn
-           (lambda (dir)
-             (string-match regex (file-name-nondirectory dir))))
-          (matching-dirs
-           (cl-remove-if-not 'file-exists-p
-                          (mapcar map-fn (cl-remove-if-not filter-fn (directory-files starting-dir t))))))
+            (lambda (dir) (string-match regex (file-name-nondirectory dir))))
+           (matching-dirs
+            (cl-remove-if-not 'file-exists-p
+                              (mapcar map-fn
+                                      (cl-remove-if-not filter-fn (directory-files starting-dir t))))))
       (if (null matching-dirs)
           nil
         (let ((sorted-dirs (sort matching-dirs #'string<)))
           (car (last sorted-dirs)))))))
+
 ;; ====================================================================
 
 
