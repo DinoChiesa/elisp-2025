@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2024-December-30 18:05:16>
+;; Last saved: <2024-December-30 10:43:39>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -3184,8 +3184,9 @@ color ready for next time.
   (local-set-key "\C-c\C-r"  'dcjava-reload-classlist)
   (local-set-key "\C-c\C-s"  'dcjava-sort-import-statements)
 
-  ;; 20230828 With apheleia-mode, the manual gformat is unnecessary. just save.
-  ;; But it does not work on windows.
+  ;; 20241230 With apheleia-mode, the manual google-java-format is unnecessary. Apheleia does
+  ;; the work every time the file is saved.  But apheleia does not work on windows, so having
+  ;; the ability to manually invoke google-java-format is a good idea.
   (local-set-key "\C-c\C-g"  'dcjava-gformat-buffer)
   (dino-enable-delete-trailing-whitespace)
   (display-line-numbers-mode)
