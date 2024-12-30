@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2024-December-30 10:43:39>
+;; Last saved: <2024-December-30 19:44:47>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -417,8 +417,45 @@
   (sh-electric-here-document-mode)
   (when (boundp 'apheleia-formatters)
     (apheleia-mode))
+  (local-set-key "\C-c\C-g"  'dino-shfmt-buffer)
+  (local-set-key "\C-c\C-c"  'comment-region)
   )
 (add-hook 'sh-mode-hook 'dino-sh-mode-fn)
+
+(defun dino-shfmt-buffer ()
+  "run shfmt on the current buffer."
+  (interactive)
+  (let ((shfmt-cmd "~/go/bin/shfmt"))
+    (when (file-exists-p shfmt-cmd)
+      (let ((orig-point (point))
+            (command
+             (mapconcat 'identity
+                        `( ,shfmt-cmd
+                           "--filename" ,(buffer-file-name) "-ln"
+                           ,(cl-case
+                                (bound-and-true-p sh-shell)
+                              (sh "posix")
+                              (t "bash"))
+                           "-i"
+                           ,(number-to-string
+                             (cond
+                              ((boundp 'sh-basic-offset)
+                               sh-basic-offset)
+                              (t 4)))
+                           "-")
+                        " "))
+            (output-goes-to-current-buffer t)
+            (output-replaces-current-content t))
+
+        (message "shfmt-buffer command: %s" command)
+        (save-excursion
+          (shell-command-on-region (point-min)
+                                   (point-max)
+                                   command
+                                   output-goes-to-current-buffer
+                                   output-replaces-current-content))
+        (goto-char orig-point)))))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -434,7 +471,9 @@
             ;;(require 'go-mode-autoloads) ;; editing mode
             (load "go-mode-autoloads") ;; editing mode; there is no provide statement!
             ;; for flycheck or compile support, I need the go binary on the path
-            (setenv "GOPATH" (concat (getenv "HOME") "/dev/go"))
+
+            ;; GOPATH is no longer a thing, in favor of go modules
+            ;;(setenv "GOPATH" (concat (getenv "HOME") "/dev/go"))
 
             (defun dino-go-mode-fn ()
               ;;(setq-default)
