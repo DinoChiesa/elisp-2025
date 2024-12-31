@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2024-December-30 19:44:47>
+;; Last saved: <2024-December-31 01:53:28>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -29,17 +29,6 @@
      (defadvice tetris-end-game (around zap-scores activate)
        (save-window-excursion ad-do-it)))
 
-
-;; To change the coding system of a visited file,
-;; `C-x RET r utf-8-with-signature RET'.
-;;
-;; Try  M-x list-coding-systems   ... to see a list
-;;
-(if (boundp 'utf-8-auto)
-    (prefer-coding-system 'utf-8-auto)) ;; unicode
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; global modes?
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; directory to load additional libraries from :
@@ -255,8 +244,6 @@
 (use-package electric-operator
   :ensure t)
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; WSD mode - fontifications for editing websequence diagrams
 ;;
@@ -277,8 +264,6 @@
               (if (not magit-git-executable)
                   (error "git executable is not set")))))
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; flycheck
 ;;
@@ -291,6 +276,79 @@
             ;; I am certain this is no longer viable. But I don't use PHP much these days, so, NBD.
             (setq flycheck-phpcs-standard "/usr/local/share/pear/PHP/CodeSniffer/src/Standards/DinoChiesa")
             ))
+
+;; for diagnosing flycheck checks (any mode)
+(defun dpc/flycheck-command-logger (lst)
+  "logs the LST, then returns the LST"
+  (message "FLYCHECK check: %s" (prin1-to-string lst))
+  lst)
+
+(setq flycheck-command-wrapper-function #'dpc/flycheck-command-logger)
+
+;; default is identity
+;;(setq flycheck-command-wrapper-function #'identity)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; jsonnet
+;;
+
+(defun dino-jsonnet-mode-fn ()
+  ;; I think eglot on jsonnet is .. not helpful at this time.
+  ;; I haven't figured out how to pass arguments to the Lang server for jsonnet,
+  ;; to tell it where the include directories are. The authors hadn't thought of that.
+  ;;(dino-start-eglot-unless-remote)
+  (flycheck-mode 1)
+  (display-line-numbers-mode)
+  (setq enable-local-variables t)   ;; make sure emacs allows file-local variables
+  )
+
+(use-package jsonnet-mode
+  :ensure t
+  :config
+  (if (boundp 'eglot-server-programs)
+      (add-to-list 'eglot-server-programs
+               '(jsonnet-mode . ("jsonnet-lsp" "lsp"))))
+  :mode (
+         ("\\.libjsonnet\\'" . jsonnet-mode)
+         ("\\.jsonnet\\'" . jsonnet-mode)
+         ("\\.jsonnet.TEMPLATE\\'" . jsonnet-mode)
+         )
+  :hook ((jsonnet-mode . dino-jsonnet-mode-fn)))
+
+;;(add-hook 'jsonnet-mode-hook #'dino-untabify-maybe)
+
+;; 20241230-2227
+;;
+;; flycheck does jsonnet checks. By default it just passes the file to the
+;; jsonnet command.  Scripts that import libraries from a different directory
+;; will cause the jsonnet command to barf. To fix that, must pass the -J option
+;; to specify locations of jsonnet include libraries. There may be other command
+;; options, for example specifying external variables. (Not sure that is
+;; required for flycheck though). This modified checker command allows
+;; specification of those things.  I filed a PR https://github.com/flycheck/flycheck/pull/2105
+;; but who knows if it will be merged. In the meantime, this will work.
+
+(setf (flycheck-checker-get 'jsonnet 'command)
+      `("jsonnet"
+        (option-list "-J" flycheck-jsonnet-include-paths)
+        (eval flycheck-jsonnet-command-args)
+        source-inplace))
+
+;; These variables can be set as file-local variables with a block like so:
+;;
+;; /* Local Variables:                                  */
+;; /* jsonnet-library-search-directories: ("./lib")     */
+;; /* jsonnet-command-options:   ("--ext-str" "xy=ab")  */
+;;
+;; /* flycheck-jsonnet-include-paths:  ("./lib")        */
+;; /* flycheck-jsonnet-command-args: ()              */
+;; /* End:                                              */
+
+;; There are actually two sets of variables carrying the same information; one
+;; for jsonnet-mode (used when evaluating the buffer), the other for flycheck.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 
 
@@ -338,12 +396,6 @@
 ;;   </rule>
 ;; </ruleset>
 
-
-;; for all modes
-(setq electric-pair-pairs '(
-                            (?\" . ?\")
-                            (?\{ . ?\})
-                            ) )
 ;; TODO: relocate this
 (global-set-key (kbd "C-c d") 'delete-trailing-whitespace)
 
@@ -674,108 +726,6 @@
 (autoload 'word-count-mode "word-count"
   "Minor mode to count words." t nil)
 
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Global key bindings
-
-;; To determine key-chords for strange keys (for example it is not possible to
-;; refer to C-, within a double-quoted string), you can define a binding
-;; manually, then C-x ESC ESC to get the command that would "redo" what you just
-;; did.  Kill, then yank. This works but it results in an obscure keycode,
-;; impossible to reverse engineer. So.
-;;
-;; https://lists.gnu.org/archive/html/help-gnu-emacs/2012-02/msg00254.html
-;;(global-set-key [67108908] 'embark-act) ;; "\C-,"
-
-;; 20241228-0137
-;; `global-set-key' is a legacy function. Should use
-;; (keymap-global-set KEY COMMAND) instead.
-
-;; ;; to unbind/ remove unwanted bindings
-;; ;;(keymap-global-unset (kbd "C-;") t) ;; for some reason this didn't work; (kbd "C-;") is no good
-;;
-;; ;; (keymap-global-unset [?\C-\;] t) ;; also no
-;; ;; (key-valid-p (kbd "C-;")) ;; says those key things are invalid. Not keys.  WTF emacs.
-;; ;;(keymap-global-unset [67108923] 1) ;; also did not work
-;;
-;; (keymap-global-unset (kbd "C-;") 1) ;; not a valid key definition. so frustrating.
-;; (keymap-global-set (kbd "C-;") 'embark-collect 1) ;; works. gawd emacs you suck.
-;;
-;; (keymap-set global-map (kbd "C-;") nil) ;; gemini suggested, does not work.
-;;
-;; (define-key global-map (kbd "C-;") nil) ;; works to unset a key
-
-
-;; TODO: relocate these to near the bottom of this file
-;; TODO: convert these to define-key?
-(global-set-key [?\C-,] 'embark-act) ;; "\C-,"
-(global-set-key [(control x)(control r)] 'recentf-open-files-compl)
-(global-set-key "\C-xw" 'dino-fixup-linefeeds)
-(global-set-key "\C-cg" 'httpget)
-(global-set-key "\C-cu" 'dino-insert-uuid)
-(global-set-key "\C-cf" 'dino-insert-filename)
-(global-set-key "\C-cl" 'lorem-ipsum)
-(global-set-key "\C-cb" 'dino-base64-insert-file)
-(global-set-key "\C-c1" 'just-one-space)
-(global-set-key "\C-x|"     'align-regexp)
-(global-set-key "\C-x?"     'describe-text-properties)
-(global-set-key "\M-\C-^"   'describe-variable)
-(global-set-key "\M-+"      'word-count-mode)
-(global-set-key "\C-^"      'describe-key-briefly)
-(global-set-key "\C-x\C-d"  'delete-window)
-(global-set-key "\C-xd"     'dino-ediff-buffer-against-file)
-(global-set-key "\C-x\C-r"  'dino-resize-big)
-(global-set-key "\C-x&"     'dino-encode-uri-component-in-region)
-(global-set-key "\C-xx"     'copy-to-register)
-(global-set-key "\C-xg"     'insert-register)
-(global-set-key "\C-xp"     'previous-window)
-(global-set-key "\C-x\C-p"  'previous-window)
-(global-set-key "\C-c\C-x\C-c"  'calendar)
-(global-set-key "\C-xn"     'other-window)
-(global-set-key "\C-x\C-e"  'smarter-compile)
-(global-set-key "\C-xE"     'smarter-compile-run)
-(global-set-key "\C-x\C-g"  'auto-fill-mode)
-(global-set-key "\C-x\C-n"  'next-error)
-                                        ;(global-set-key "\C-xt"     'dino-toggle-truncation)
-(global-set-key "\M-\C-y"   'yank-pop)
-(global-set-key "\M-g"      'goto-line)
-(global-set-key "\M- "      'set-mark-command)
-(global-set-key "\M-\C-h"   'backward-kill-word)
-(global-set-key "\C-c\C-c"  'center-paragraph)  ; good for text mode
-(global-set-key "\C-ck"     'global-set-key)
-(global-set-key "\C-cs"     'search-forward-regexp)
-(global-set-key "\C-cy"     'display-line-numbers-mode)
-;;(global-set-key "\C-c\C-p"  'dino-copy-value-from-key-into-killring)
-;;(global-set-key "\C-cm"     'dino-gtm-url)
-(global-set-key "\C-cq"     'query-replace)
-(global-set-key "\C-cc"     'goto-char)
-(global-set-key "\C-cr"     'replace-regexp)
-(global-set-key "\C-xt"     'dino-insert-timeofday)
-;;(global-set-key "\C-c\C-t"  'dino-insert-timestamp)
-;;(global-set-key "\C-c\C-t"  'dino-toggle-frame-split)
-(global-set-key "\C-cw"     'where-is)
-(global-set-key "\C-c\C-w"  'compare-windows)
-(global-set-key "\C-c~"     'revert-buffer-unconditionally)
-(global-set-key "\C-x~"     'dino-toggle-buffer-modified)
-(global-set-key (kbd "C-<") 'beginning-of-defun)
-(global-set-key (kbd "C->") 'end-of-defun)
-
-
-;; unicode helpers
-(define-key key-translation-map (kbd "\C-x 8 i") (kbd "∞")) ;; infinity
-(define-key key-translation-map (kbd "\C-x 8 y") (kbd "λ")) ;; lambda
-(define-key key-translation-map (kbd "\C-x 8 a") (kbd "α")) ;; alpha
-(define-key key-translation-map (kbd "\C-x 8 b") (kbd "β")) ;; beta
-(define-key key-translation-map (kbd "\C-x 8 d") (kbd "Δ")) ;; delta
-(define-key key-translation-map (kbd "\C-x 8 m") (kbd "µ")) ;; mu / micro
-(define-key key-translation-map (kbd "\C-x 8 e") (kbd "ε")) ;; epsilon
-(define-key key-translation-map (kbd "\C-x 8 p") (kbd "π")) ;; pi
-
-
-;;the help key is assigned to Ctrl-\, or Esc-Ctrl-\
-(global-set-key "\M-\C-\\"   'help-for-help)
-(global-set-key "\C-\\"      'help-for-help)
 
 (require 'skeleton)
 
@@ -2423,13 +2373,18 @@ again, I haven't see that as a problem."
      (add-hook  'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn t)
      ))
 
+(defun dino-start-eglot-unless-remote ()
+  (unless (file-remote-p default-directory)
+    (eglot-ensure)))
+
 (use-package eglot
   :commands (eglot eglot-ensure)
-  :hook ((csharp-mode . eglot-ensure))
+  :hook ((csharp-mode . dino-start-eglot-unless-remote))
   :config
   (setq flymake-show-diagnostics-at-end-of-line t)
 
-  ;; NOTE: you still must invoke M-x eglot to start the server.
+  ;; NOTE: you still must invoke M-x eglot to start the server. or eglot-ensure
+  ;; in the mode hook.
   ;;
 
   ;; eglot things to explore:
@@ -3792,6 +3747,126 @@ color ready for next time.
 ;; ;; (load-file
 ;; ;;  "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs/google.el")
 ;; (require 'google-java-format)
+
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; settings that apply for all modes
+
+;; To change the coding system of a visited file,
+;; `C-x RET r utf-8-with-signature RET'.
+;;
+;; Try  M-x list-coding-systems   ... to see a list
+;;
+(if (boundp 'utf-8-auto)
+    (prefer-coding-system 'utf-8-auto)) ;; unicode
+
+(setq electric-pair-pairs '(
+                            (?\" . ?\")
+                            (?\{ . ?\})
+                            ) )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Global key bindings
+
+;; To determine key-chords for strange keys (for example it is not possible to
+;; refer to C-, within a double-quoted string), you can define a binding
+;; manually, then C-x ESC ESC to get the command that would "redo" what you just
+;; did.  Kill, then yank. This works but it results in an obscure keycode,
+;; impossible to reverse engineer. So.
+;;
+;; https://lists.gnu.org/archive/html/help-gnu-emacs/2012-02/msg00254.html
+;;(global-set-key [67108908] 'embark-act) ;; "\C-,"
+
+;; 20241228-0137
+;; `global-set-key' is a legacy function. Should use
+;; (keymap-global-set KEY COMMAND) instead.
+
+;; ;; to unbind/ remove unwanted bindings
+;; ;;(keymap-global-unset (kbd "C-;") t) ;; for some reason this didn't work; (kbd "C-;") is no good
+;;
+;; ;; (keymap-global-unset [?\C-\;] t) ;; also no
+;; ;; (key-valid-p (kbd "C-;")) ;; says those key things are invalid. Not keys.  WTF emacs.
+;; ;;(keymap-global-unset [67108923] 1) ;; also did not work
+;;
+;; (keymap-global-unset (kbd "C-;") 1) ;; not a valid key definition. so frustrating.
+;; (keymap-global-set (kbd "C-;") 'embark-collect 1) ;; works. gawd emacs you suck.
+;;
+;; (keymap-set global-map (kbd "C-;") nil) ;; gemini suggested, does not work.
+;;
+;; (define-key global-map (kbd "C-;") nil) ;; works to unset a key
+
+
+
+
+;; TODO: relocate these to near the bottom of this file
+;; TODO: convert these to define-key?
+(global-set-key [?\C-,] 'embark-act) ;; "\C-,"
+(global-set-key [(control x)(control r)] 'recentf-open-files-compl)
+(global-set-key "\C-xw" 'dino-fixup-linefeeds)
+(global-set-key "\C-cg" 'httpget)
+(global-set-key "\C-cu" 'dino-insert-uuid)
+(global-set-key "\C-cf" 'dino-insert-filename)
+(global-set-key "\C-cl" 'lorem-ipsum)
+(global-set-key "\C-cb" 'dino-base64-insert-file)
+(global-set-key "\C-c1" 'just-one-space)
+(global-set-key "\C-x|"     'align-regexp)
+(global-set-key "\C-x?"     'describe-text-properties)
+(global-set-key "\M-\C-^"   'describe-variable)
+(global-set-key "\M-+"      'word-count-mode)
+(global-set-key "\C-^"      'describe-key-briefly)
+(global-set-key "\C-x\C-d"  'delete-window)
+(global-set-key "\C-xd"     'dino-ediff-buffer-against-file)
+(global-set-key "\C-x\C-r"  'dino-resize-big)
+(global-set-key "\C-x&"     'dino-encode-uri-component-in-region)
+(global-set-key "\C-xx"     'copy-to-register)
+(global-set-key "\C-xg"     'insert-register)
+(global-set-key "\C-xp"     'previous-window)
+(global-set-key "\C-x\C-p"  'previous-window)
+(global-set-key "\C-c\C-x\C-c"  'calendar)
+(global-set-key "\C-xn"     'other-window)
+(global-set-key "\C-x\C-e"  'smarter-compile)
+(global-set-key "\C-xE"     'smarter-compile-run)
+(global-set-key "\C-x\C-g"  'auto-fill-mode)
+(global-set-key "\C-x\C-n"  'next-error)
+                                        ;(global-set-key "\C-xt"     'dino-toggle-truncation)
+(global-set-key "\M-\C-y"   'yank-pop)
+(global-set-key "\M-g"      'goto-line)
+(global-set-key "\M- "      'set-mark-command)
+(global-set-key "\M-\C-h"   'backward-kill-word)
+(global-set-key "\C-c\C-c"  'center-paragraph)  ; good for text mode
+(global-set-key "\C-ck"     'global-set-key)
+(global-set-key "\C-cs"     'search-forward-regexp)
+(global-set-key "\C-cy"     'display-line-numbers-mode)
+;;(global-set-key "\C-c\C-p"  'dino-copy-value-from-key-into-killring)
+;;(global-set-key "\C-cm"     'dino-gtm-url)
+(global-set-key "\C-cq"     'query-replace)
+(global-set-key "\C-cc"     'goto-char)
+(global-set-key "\C-cr"     'replace-regexp)
+(global-set-key "\C-xt"     'dino-insert-timeofday)
+;;(global-set-key "\C-c\C-t"  'dino-insert-timestamp)
+;;(global-set-key "\C-c\C-t"  'dino-toggle-frame-split)
+(global-set-key "\C-cw"     'where-is)
+(global-set-key "\C-c\C-w"  'compare-windows)
+(global-set-key "\C-c~"     'revert-buffer-unconditionally)
+(global-set-key "\C-x~"     'dino-toggle-buffer-modified)
+(global-set-key (kbd "C-<") 'beginning-of-defun)
+(global-set-key (kbd "C->") 'end-of-defun)
+
+
+;; unicode helpers
+(define-key key-translation-map (kbd "\C-x 8 i") (kbd "∞")) ;; infinity
+(define-key key-translation-map (kbd "\C-x 8 y") (kbd "λ")) ;; lambda
+(define-key key-translation-map (kbd "\C-x 8 a") (kbd "α")) ;; alpha
+(define-key key-translation-map (kbd "\C-x 8 b") (kbd "β")) ;; beta
+(define-key key-translation-map (kbd "\C-x 8 d") (kbd "Δ")) ;; delta
+(define-key key-translation-map (kbd "\C-x 8 m") (kbd "µ")) ;; mu / micro
+(define-key key-translation-map (kbd "\C-x 8 e") (kbd "ε")) ;; epsilon
+(define-key key-translation-map (kbd "\C-x 8 p") (kbd "π")) ;; pi
+
+
+;;the help key is assigned to Ctrl-\, or Esc-Ctrl-\
+(global-set-key "\M-\C-\\"   'help-for-help)
+(global-set-key "\C-\\"      'help-for-help)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
