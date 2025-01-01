@@ -1,6 +1,6 @@
 ;;; dpc-gemini.el --- invoke the Gemini API from emacs
 ;;
-;; Author: Dino Chiesa,
+;; Author: Dino Chiesa
 ;; Created: Monday, 23 December 2024, 20:53
 ;; Package-Requires: (url.el)
 ;; URL:
