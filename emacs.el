@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2024-December-31 01:53:28>
+;; Last saved: <2025-January-01 02:54:32>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -271,22 +271,23 @@
   :config (progn
             (add-hook 'after-init-hook #'global-flycheck-mode)
             (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
-            ;; (setq flycheck-phpcs-standard "Drupal") ;; DinoChiesa
 
-            ;; I am certain this is no longer viable. But I don't use PHP much these days, so, NBD.
+            ;; The following is irrelevant because I've switched machines seevral times
+            ;; since this last worked.  and I don't use PHP much these days. But in the
+            ;; future I might want to start again, so I am leaving this here.
+            ;; (setq flycheck-phpcs-standard "Drupal") ;; DinoChiesa
             (setq flycheck-phpcs-standard "/usr/local/share/pear/PHP/CodeSniffer/src/Standards/DinoChiesa")
             ))
 
-;; for diagnosing flycheck checks (any mode)
-(defun dpc/flycheck-command-logger (lst)
-  "logs the LST, then returns the LST"
-  (message "FLYCHECK check: %s" (prin1-to-string lst))
-  lst)
+;; ;; for diagnosing flycheck checks (any mode)
+;; (defun dpc/flycheck-command-logger (lst)
+;;   "logs the LST, then returns the LST"
+;;   (message "FLYCHECK check: %s" (prin1-to-string lst))
+;;   lst)
+;; (setq flycheck-command-wrapper-function #'dpc/flycheck-command-logger)
 
-(setq flycheck-command-wrapper-function #'dpc/flycheck-command-logger)
-
-;; default is identity
-;;(setq flycheck-command-wrapper-function #'identity)
+;; to reset it to the default (identity), do this:
+;; (setq flycheck-command-wrapper-function #'identity)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -294,14 +295,31 @@
 ;;
 
 (defun dino-jsonnet-mode-fn ()
-  ;; I think eglot on jsonnet is .. not helpful at this time.
-  ;; I haven't figured out how to pass arguments to the Lang server for jsonnet,
-  ;; to tell it where the include directories are. The authors hadn't thought of that.
+  ;; 20241231 - I think eglot on jsonnet is not helpful at this time.  I haven't figured out
+  ;; how to pass arguments to the Lang server for jsonnet, to tell it where the include
+  ;; directories are. The authors hadn't thought of that.  So, the result is, a simple
+  ;; jsonnet will be processed just fine by the lang server, or any .jsonnet with imports
+  ;; only from the local dir. But if there is an import that references a library in
+  ;; different directory, that will fail.
+  ;;
   ;;(dino-start-eglot-unless-remote)
-  (flycheck-mode 1)
-  (display-line-numbers-mode)
-  (setq enable-local-variables t)   ;; make sure emacs allows file-local variables
-  )
+
+  ;; make the eval-buffer work also over TRAMP
+  (require 'dpc-jsonnet-mode-fixups)
+
+  ;; 20241231 - Surprisingly, flycheck does not yet work for remote files.
+  ;; https://github.com/flycheck/flycheck/pull/1922
+  (when (not (file-remote-p default-directory))
+    (flycheck-mode 1)
+
+    ;; the following two variables are used by flycheck for syntax checking
+    (setq-local flycheck-jsonnet-include-paths nil)
+    (setq-local flycheck-jsonnet-command-args nil)
+    ;; Make sure emacs allows file-local variables, in case I want to set the above
+    ;; from a file-local variables decl.
+    (setq enable-local-variables t))
+
+  (display-line-numbers-mode))
 
 (use-package jsonnet-mode
   :ensure t
@@ -321,12 +339,12 @@
 ;; 20241230-2227
 ;;
 ;; flycheck does jsonnet checks. By default it just passes the file to the
-;; jsonnet command.  Scripts that import libraries from a different directory
+;; jsonnet command. Scripts that import libraries from a different directory
 ;; will cause the jsonnet command to barf. To fix that, must pass the -J option
 ;; to specify locations of jsonnet include libraries. There may be other command
 ;; options, for example specifying external variables. (Not sure that is
 ;; required for flycheck though). This modified checker command allows
-;; specification of those things.  I filed a PR https://github.com/flycheck/flycheck/pull/2105
+;; specification of those things. I filed a PR https://github.com/flycheck/flycheck/pull/2105
 ;; but who knows if it will be merged. In the meantime, this will work.
 
 (setf (flycheck-checker-get 'jsonnet 'command)
@@ -3628,23 +3646,24 @@ color ready for next time.
 
 
 ;; ------------------------------------------------------------------
-;;
-;; use C-x C-r to open "Recent files"
+;; recentf - to open recent files.
+;; Near the bottom there is a key binding for `recentf-open'.
 ;;
 ;; ------------------------------------------------------------------
 (require 'recentf)
 (recentf-mode 1)
-(defun recentf-open-files-compl ()
-  (interactive)
-  (let* ((all-files recentf-list)
-         (tocpl (mapcar (function
-                         (lambda (x) (cons (file-name-nondirectory x) x)))
-                        all-files))
-         (prompt (append '("File name: ") tocpl))
-         (fname (completing-read (car prompt) (cdr prompt) nil nil)))
-    (find-file (cdr (assoc-string fname tocpl)))))
-;; TODO: relocate this lower, to where all key binding are set
-(global-set-key [(control x)(control r)] 'recentf-open-files-compl)
+
+;; ;; I think I created this to get completion when opening recent files.
+;; ;; But with icomplete-vertical, `recentf-open' offers completion without this.
+;; (defun dino-recentf-open-files-compl ()
+;;   (interactive)
+;;   (let* ((all-files recentf-list)
+;;          (tocpl (mapcar (function
+;;                          (lambda (x) (cons (file-name-nondirectory x) x)))
+;;                         all-files))
+;;          (prompt (append '("File name: ") tocpl))
+;;          (fname (completing-read (car prompt) (cdr prompt) nil nil)))
+;;     (find-file (cdr (assoc-string fname tocpl)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3778,8 +3797,9 @@ color ready for next time.
 ;;(global-set-key [67108908] 'embark-act) ;; "\C-,"
 
 ;; 20241228-0137
-;; `global-set-key' is a legacy function. Should use
-;; (keymap-global-set KEY COMMAND) instead.
+
+;; I have seen an error message stating that `global-set-key' is a legacy
+;; function. and that I should use (keymap-global-set KEY COMMAND) instead.
 
 ;; ;; to unbind/ remove unwanted bindings
 ;; ;;(keymap-global-unset (kbd "C-;") t) ;; for some reason this didn't work; (kbd "C-;") is no good
@@ -3796,12 +3816,11 @@ color ready for next time.
 ;; (define-key global-map (kbd "C-;") nil) ;; works to unset a key
 
 
-
-
-;; TODO: relocate these to near the bottom of this file
-;; TODO: convert these to define-key?
+;; TODO: should I convert these to define-key?
 (global-set-key [?\C-,] 'embark-act) ;; "\C-,"
-(global-set-key [(control x)(control r)] 'recentf-open-files-compl)
+(global-set-key [(control x)(control r)] 'recentf-open)
+;;(global-set-key [(control x)(control r)] 'dino-recentf-open-files-compl)
+;;(global-set-key "\C-x\C-r"  'dino-resize-big)
 (global-set-key "\C-xw" 'dino-fixup-linefeeds)
 (global-set-key "\C-cg" 'httpget)
 (global-set-key "\C-cu" 'dino-insert-uuid)
@@ -3816,7 +3835,6 @@ color ready for next time.
 (global-set-key "\C-^"      'describe-key-briefly)
 (global-set-key "\C-x\C-d"  'delete-window)
 (global-set-key "\C-xd"     'dino-ediff-buffer-against-file)
-(global-set-key "\C-x\C-r"  'dino-resize-big)
 (global-set-key "\C-x&"     'dino-encode-uri-component-in-region)
 (global-set-key "\C-xx"     'copy-to-register)
 (global-set-key "\C-xg"     'insert-register)

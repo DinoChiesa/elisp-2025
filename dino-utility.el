@@ -1190,7 +1190,7 @@ Eg,
     and moving to line 14, col 10."
   (save-match-data
     (let* ((path (nth 0 args))
-           (match (string-match "^\\(.*?\\):\\([0-9]+\\):?\\([0-9]*\\)$" path))
+           (match (and path (string-match "^\\(.*?\\):\\([0-9]+\\):?\\([0-9]*\\)$" path)))
            (line-no (and match
                          (match-string 2 path)
                          (string-to-number (match-string 2 path))))
@@ -1213,6 +1213,7 @@ Eg,
             (forward-char (1- col-no))))
 
         result))))
+
 
 
 (advice-add 'find-file :around #'dino-find-file-with-line-number)
