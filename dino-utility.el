@@ -552,9 +552,10 @@ Point is placed at the beginning of the newly inserted timestamp.
     (insert (substring thing 0 -1)))) ;; remove newline
 
 
+;;"c:/users/dpchi/bin/uuidgen.exe"
 (defvar dino-uuidgen-prog
   (if (eq system-type 'windows-nt)
-      "c:/users/dpchi/bin/uuidgen.exe"
+      "pwsh.exe -command \"& {[guid]::NewGuid().ToString()}\""
     "/usr/bin/uuidgen")
   "Program to generate one uuid and emit it to stdout.")
 
