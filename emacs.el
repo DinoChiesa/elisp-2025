@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-02 23:57:41>
+;; Last saved: <2025-January-03 20:10:57>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -312,6 +312,9 @@
   (when (not (file-remote-p default-directory))
     (flycheck-mode 1)
 
+    (when (boundp 'apheleia-formatters)
+      (apheleia-mode))
+
     ;; the following two variables are used by flycheck for syntax checking
     (setq-local flycheck-jsonnet-include-paths nil)
     (setq-local flycheck-jsonnet-command-args nil)
@@ -321,9 +324,21 @@
 
   (display-line-numbers-mode))
 
+;; ;; fixup
+;; (let ((jsonnetfmt-cmd '("jsonnetfmt" "--max-blank-lines" "1" "-")))
+;;   (if (alist-get 'jsonnetfmt apheleia-formatters)
+;;       (setf (alist-get 'jsonnetfmt apheleia-formatters) jsonnetfmt-cmd)
+;;     (push `(jsonnetfmt . ,jsonnetfmt-cmd) apheleia-formatters)))
+
 (use-package jsonnet-mode
   :ensure t
   :config
+  (when (boundp 'apheleia-formatters)
+    (let ((jsonnetfmt-cmd '("jsonnetfmt" "--max-blank-lines" "1" "-")))
+      (if (alist-get 'jsonnetfmt apheleia-formatters)
+          (setf (alist-get 'jsonnetfmt apheleia-formatters) jsonnetfmt-cmd)
+        (push `(jsonnetfmt . ,jsonnetfmt-cmd) apheleia-formatters)))
+    (push '(jsonnet-mode . jsonnetfmt) apheleia-mode-alist))
   (if (boundp 'eglot-server-programs)
       (add-to-list 'eglot-server-programs
                '(jsonnet-mode . ("jsonnet-lsp" "lsp"))))
