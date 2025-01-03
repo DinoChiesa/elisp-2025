@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-01 02:54:32>
+;; Last saved: <2025-January-02 23:57:41>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -1431,6 +1431,15 @@ With a prefix argument, makes a private paste."
 (use-package dpc-gemini
   :ensure nil
   :config (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey"))
+
+
+(use-package chatgpt-shell
+  :ensure t
+  :config
+  (setq chatgpt-shell-google-key
+      (with-temp-buffer
+        (insert-file-contents "~/elisp/.google-gemini-apikey")
+                (buffer-substring-no-properties (point-min) (point-max)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
