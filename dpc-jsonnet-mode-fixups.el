@@ -57,6 +57,37 @@ remote files accessed over TRAMP."
 
 (define-key jsonnet-mode-map (kbd "C-c C-c") 'dino/jsonnet-eval-buffer)
 
+
+(defun dpc/jsonnet-lsp (&optional interactive)
+  "Computes the command to use for the jsonnet-language-server
+for eglot. `eglot-server-programs' stores an alist of
+(MAJOR-MODE . CONTACT) pairs. CONTACT can be a function of a
+single argument - non-nil if the connection was requested
+interactively (e.g. from the ‘eglot’ command), and nil if it
+wasn’t (e.g. from ‘eglot-ensure’), and it should return one of
+the forms of CONTACT defined by that alist. The most common case
+is to return a list of strings (PROGRAM [ARGS...]) . For lsp,
+PROGRAM is called with ARGS and is expected to serve LSP requests
+over the standard input/output channels.
+
+This function dynamically sets the jpath for
+jsonnet-language-server based the value of
+`jsonnet-library-search-directories', which specifies a list of
+search dirs.
+
+This variable can be set in any way, including via .dir-locals.el.
+"
+  (let ((search-dirs jsonnet-library-search-directories)
+        (cmd "jsonnet-language-server"))
+    (if (and search-dirs (> (length search-dirs) 0))
+        (append (list cmd)
+                (cl-loop for dir in search-dirs
+                         collect "-J"
+                         collect dir)
+                nil)
+      (list cmd))))
+
+
 (provide 'dpc-jsonnet-mode-fixups)
 
 ;;; dpc-jsonnet-mode-fixups.el ends here

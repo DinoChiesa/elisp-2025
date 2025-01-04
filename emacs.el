@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-03 20:10:57>
+;; Last saved: <2025-January-04 03:21:09>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -91,16 +91,17 @@
 
 ;; 20241122-1947 - various tools and packages - apheleia, csslint, magit,
 ;; csharpier, shfmt and more - need exec-path AND/or environment PATH to be set.
-(dolist (path `(,(dino-find-latest-nvm-version-bin-dir)
-                ,(concat (getenv "HOME") "/.dotnet/tools")
-                ,(concat (getenv "HOME") "/bin")
-                ,(concat (getenv "HOME") "/go/bin")
-                "/usr/local/bin"
-                "/usr/bin"
-                "/usr/lib/google-golang/bin"
-                "/usr/local/git/current/bin"
-                ))
-  (dino-maybe-add-to-exec-path path))
+(dino-maybe-add-to-exec-path
+ (list (dino-find-latest-nvm-version-bin-dir)
+       (concat (getenv "HOME") "/.dotnet/tools")
+       (concat (getenv "HOME") "/bin")
+       (concat (getenv "HOME") "/go/bin")
+       "/usr/local/bin"
+       "/usr/bin"
+       "/usr/lib/google-golang/bin"
+       "/usr/local/git/current/bin"
+       ))
+
 
 
 
@@ -202,7 +203,14 @@
   :custom
   ;; For info: C-h v completion-styles-alist
   (completion-styles '(flex partial-completion substring)) ;; flex initials basic
-  (completion-category-overrides '((file (styles basic substring))))
+  (completion-category-overrides
+      '((buffer
+         (styles initials flex)
+         (cycle . 10)) ;; not sure what this does. maybe it's the # of options to show.
+        (file
+         (styles basic substring))
+        (symbol-help
+         (styles basic shorthand substring))))
   (read-file-name-completion-ignore-case t)
   (icomplete-vertical-prospects-height 10) ;; 10 is the default
   (read-buffer-completion-ignore-case t)
@@ -269,8 +277,8 @@
 ;;
 (use-package flycheck
   :config (progn
-            (add-hook 'after-init-hook #'global-flycheck-mode)
-            (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
+            ;;(add-hook 'after-init-hook #'global-flycheck-mode)
+            (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc jsonnet))
 
             ;; The following is irrelevant because I've switched machines seevral times
             ;; since this last worked.  and I don't use PHP much these days. But in the
@@ -289,28 +297,89 @@
 ;; to reset it to the default (identity), do this:
 ;; (setq flycheck-command-wrapper-function #'identity)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; eglot
+;;
+
+(defun dino-start-eglot-unless-remote ()
+  (unless (file-remote-p default-directory)
+    (eglot-ensure)))
+
+(use-package eglot
+  :demand t
+  :commands (eglot eglot-ensure)
+  ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
+  :config  (setq flymake-show-diagnostics-at-end-of-line t)
+
+  ;; NOTE: you still must invoke M-x eglot to start the server. or eglot-ensure
+  ;; in the mode hook.
+  ;;
+
+  ;; eglot things to explore:
+  ;; eglot-find-[declaration,implementation,typeDefinition]
+
+  ;; 20241229-1957
+  ;; `eglot-format-buffer' is injecting ^M into my c# buffers, seemingly
+  ;; at random. This advice is an attempt to fix that. It works to
+  ;; remove those ^M characters.
+  ;;
+  ;; But eglot-format-buffer can get confused, and overwrite code.
+  ;; In my experience it can result in lost data. Avoid!
+
+  ;; Really I should be making advice to block eglot-format-buffer
+  ;; from executing at all.
+
+  (defun dpc/strip-cr (&rest _args)
+    "Strips ^M from text which sometimes appears after `eglot-format-buffer'"
+    (save-excursion
+      (goto-char (point-min))
+      (while (search-forward "\u000D" nil t)
+        (backward-char)
+        (delete-char 1))))
+
+  (advice-add 'eglot--apply-text-edits :after #'dpc/strip-cr)
+
+  ;; 20241229-1647 - in my experience, this is not necessary
+  ;;(add-to-list 'eglot-server-programs
+  ;;         '(csharp-mode . ("csharp-ls")))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jsonnet
 ;;
 
+(use-package dpc-jsonnet-mode-fixups
+  :pin manual)
+
 (defun dino-jsonnet-mode-fn ()
-  ;; 20241231 - I think eglot on jsonnet is not helpful at this time.  I haven't figured out
-  ;; how to pass arguments to the Lang server for jsonnet, to tell it where the include
-  ;; directories are. The authors hadn't thought of that.  So, the result is, a simple
-  ;; jsonnet will be processed just fine by the lang server, or any .jsonnet with imports
-  ;; only from the local dir. But if there is an import that references a library in
-  ;; different directory, that will fail.
+  ;; 20241231 - eglot on jsonnet is helpful. Autocomplete ("code assist") works nicely.
+  ;;
+  ;; The jsonnet-language-server from Grafana, available at
+  ;; https://github.com/grafana/jsonnet-language-server/releases , seems solid,
+  ;; reliable, and appears to be in wide use.  It must be installed separately
+  ;; and available on the `exec-path'.  The `dpc/jsonnet-lsp' function, set into
+  ;; `eglot-server-programs', sets the right args for the language server on
+  ;; startup. It reads from `jsonnet-library-search-directories' to set the
+  ;; search directories.
+  ;;
   ;;
   ;;(dino-start-eglot-unless-remote)
 
-  ;; make the eval-buffer work also over TRAMP
-  (require 'dpc-jsonnet-mode-fixups)
-
-  ;; 20241231 - Surprisingly, flycheck does not yet work for remote files.
-  ;; https://github.com/flycheck/flycheck/pull/1922
+  ;; I am pretty sure eglot will work only locally.
   (when (not (file-remote-p default-directory))
-    (flycheck-mode 1)
+    (eglot-ensure)
+    (company-mode)
+    (local-set-key (kbd "<C-tab>") 'company-complete)
+    )
+
+  ;; ;; 20241231 - Surprisingly, flycheck does not yet work for remote files.
+  ;; ;; https://github.com/flycheck/flycheck/pull/1922
+  ;;
+    ;; ;; Also I am not sure I like flycheck in an eglot buffer. Too many
+    ;; ;; cooks in the kitchen. Too much feedback when I'm trying to do completion.
+  (flycheck-mode -1)
+  (when (not (file-remote-p default-directory))
+    ;;  (flycheck-mode 1)
 
     (when (boundp 'apheleia-formatters)
       (apheleia-mode))
@@ -324,30 +393,62 @@
 
   (display-line-numbers-mode))
 
-;; ;; fixup
+;; What follows is a fixup scratchpad for jsonnetfmt and jsonnet lang server. For the
+;; latter there are two options, and this will allow switching between them at runtime
+;; while sorting out which is preferred.
+;;
 ;; (let ((jsonnetfmt-cmd '("jsonnetfmt" "--max-blank-lines" "1" "-")))
 ;;   (if (alist-get 'jsonnetfmt apheleia-formatters)
 ;;       (setf (alist-get 'jsonnetfmt apheleia-formatters) jsonnetfmt-cmd)
 ;;     (push `(jsonnetfmt . ,jsonnetfmt-cmd) apheleia-formatters)))
+;;
+;;
+;; ;; LSP option 1 - jsonnet-language-server from Grafana, seems good.
+;; (setf
+;;   (alist-get 'jsonnet-mode eglot-server-programs)
+;;   '("jsonnet-language-server"))
+;;
+;; ;; LSP option 2 - jsonnet-lsp from some hacker, seems flaky
+;; (setf
+;;   (alist-get 'jsonnet-mode eglot-server-programs)
+;;   '("jsonnet-lsp" "lsp"))
 
-(use-package jsonnet-mode
-  :ensure t
-  :config
+
+(defun dino-jsonnet-package-config ()
+  "one-time configuration stuff for jsonnet-mode package."
+
+  ;; Get some functions to help with (a) eval-buffer over TRAMP (provided with
+  ;; jsonnet-mode directly), and (b) the arguments to the language server (via
+  ;; eglot).
+  ;; (require 'eglot) ;; should be unnecessary if it is in :after  in use-package?
+  ;; (require 'dpc-jsonnet-mode-fixups)
+
   (when (boundp 'apheleia-formatters)
     (let ((jsonnetfmt-cmd '("jsonnetfmt" "--max-blank-lines" "1" "-")))
       (if (alist-get 'jsonnetfmt apheleia-formatters)
           (setf (alist-get 'jsonnetfmt apheleia-formatters) jsonnetfmt-cmd)
         (push `(jsonnetfmt . ,jsonnetfmt-cmd) apheleia-formatters)))
-    (push '(jsonnet-mode . jsonnetfmt) apheleia-mode-alist))
-  (if (boundp 'eglot-server-programs)
+    (when (not (alist-get 'jsonnet-mode apheleia-mode-alist))
+      (push '(jsonnet-mode . jsonnetfmt) apheleia-mode-alist)))
+
+  (when (boundp 'eglot-server-programs)
+    (if (alist-get 'jsonnet-mode eglot-server-programs)
+        (setf (alist-get 'jsonnet-mode eglot-server-programs) #'dpc/jsonnet-lsp)
       (add-to-list 'eglot-server-programs
-               '(jsonnet-mode . ("jsonnet-lsp" "lsp"))))
+                   `(jsonnet-mode . dpc/jsonnet-lsp)))))
+
+
+(use-package jsonnet-mode
+  :ensure t
+  :after (eglot dpc-jsonnet-mode-fixups)
+  :config (dino-jsonnet-package-config)
   :mode (
          ("\\.libjsonnet\\'" . jsonnet-mode)
          ("\\.jsonnet\\'" . jsonnet-mode)
          ("\\.jsonnet.TEMPLATE\\'" . jsonnet-mode)
          )
-  :hook ((jsonnet-mode . dino-jsonnet-mode-fn)))
+  :hook (jsonnet-mode . dino-jsonnet-mode-fn))
+
 
 ;;(add-hook 'jsonnet-mode-hook #'dino-untabify-maybe)
 
@@ -1454,7 +1555,10 @@ With a prefix argument, makes a private paste."
   (setq chatgpt-shell-google-key
       (with-temp-buffer
         (insert-file-contents "~/elisp/.google-gemini-apikey")
-                (buffer-substring-no-properties (point-min) (point-max)))))
+        (buffer-substring-no-properties (point-min) (point-max))))
+ :catch
+ (lambda (keyword err)
+   (message (format "chatgpt-shell init: %s" (error-message-string err)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2415,53 +2519,10 @@ again, I haven't see that as a problem."
      (add-hook  'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn t)
      ))
 
-(defun dino-start-eglot-unless-remote ()
-  (unless (file-remote-p default-directory)
-    (eglot-ensure)))
-
-(use-package eglot
-  :commands (eglot eglot-ensure)
-  :hook ((csharp-mode . dino-start-eglot-unless-remote))
-  :config
-  (setq flymake-show-diagnostics-at-end-of-line t)
-
-  ;; NOTE: you still must invoke M-x eglot to start the server. or eglot-ensure
-  ;; in the mode hook.
-  ;;
-
-  ;; eglot things to explore:
-  ;; eglot-find-[declaration,implementation,typeDefinition]
-
-  ;; 20241229-1957
-  ;; `eglot-format-buffer' is injecting ^M into my c# buffers, seemingly
-  ;; at random. This advice is an attempt to fix that. It works to
-  ;; remove those ^M characters.
-  ;;
-  ;; But eglot-format-buffer can get confused, and overwrite code.
-  ;; In my experience it can result in lost data. Avoid!
-
-  ;; Really I should be making advice to block eglot-format-buffer
-  ;; from executing at all.
-
-  (defun dpc/strip-cr (&rest _args)
-    "Strips ^M from text which sometimes appears after `eglot-format-buffer'"
-    (save-excursion
-      (goto-char (point-min))
-      (while (search-forward "\u000D" nil t)
-        (backward-char)
-        (delete-char 1))))
-
-  (advice-add 'eglot--apply-text-edits :after #'dpc/strip-cr)
-
-  ;; 20241229-1647 - in my experience, this is not necessary
-  ;;(add-to-list 'eglot-server-programs
-  ;;         '(csharp-mode . ("csharp-ls")))
-  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Compile
 ;;
-
 
 ;;  (progn
 ;;    (add-to-list
@@ -2470,8 +2531,6 @@ again, I haven't see that as a problem."
 ;;    (add-to-list
 ;;     'compilation-error-regexp-alist
 ;;     'ms-resx)))
-
-
 
 (eval-after-load "compile"
   '(progn

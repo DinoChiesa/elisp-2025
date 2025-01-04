@@ -1520,30 +1520,31 @@ The first line is indented with INDENT-STRING."
 ;; properly. The following functions help with that. I had some problems
 ;; understanding what this was doing, so it now verbosely logs everything.
 
-(defun dino-maybe-add-to-exec-path (path)
-  "Add PATH to exec-path and PATH environment if it exists and is not already present."
+(defun dino-maybe-add-to-exec-path (paths)
+  "Add each item from PATHS to exec-path and PATH environment if the
+item exists as a directory, and is not already present."
   (let (exec-path-was-modified path-was-modified)
-    (when (and path (file-directory-p path))
-      (message (format "examining path %s for inclusion in exec-path and PATH" path))
-      (when (not (member path exec-path))
-        (message "  adding to exec-path")
-        (add-to-list 'exec-path path)
-        (setq exec-path-was-modified t)
-        )
-      (let ((paths (split-string (getenv "PATH") ":")))
-        (when (not (member path paths))
-          (message "  adding to PATH")
-          (add-to-list 'paths path)
-          (setenv "PATH"  (mapconcat 'identity paths ":"))
-          (setq path-was-modified t)
-          ))
-      (when path-was-modified
-        (message (format "updated PATH %s" (getenv "PATH"))))
-      (when exec-path-was-modified
-        (message (format "updated exec-path %s" (prin1-to-string exec-path))))
-      )
-    )
-  )
+    (dolist (path paths)
+      (when (and path (file-directory-p path))
+        ;;(message (format "examining path %s for inclusion in exec-path and PATH" path))
+        (when (not (member path exec-path))
+          (message (format "  adding %s to exec-path" path))
+          (add-to-list 'exec-path path)
+          (setq exec-path-was-modified t)
+          )
+        (let ((paths (split-string (getenv "PATH") ":")))
+          (when (not (member path paths))
+            (message (format "  adding %s to PATH" path))
+            (add-to-list 'paths path)
+            (setenv "PATH"  (mapconcat 'identity paths ":"))
+            (setq path-was-modified t)
+            ))
+        ))
+    (when path-was-modified
+      (message (format "updated PATH %s" (getenv "PATH"))))
+    (when exec-path-was-modified
+      (message (format "updated exec-path %s" (prin1-to-string exec-path))))
+    ))
 
 (defun dino-escape-braces-in-regex (str)
   "Replaces { with \\{ and } with \\} in STR."
