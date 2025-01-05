@@ -11,7 +11,7 @@
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
-;; Last-saved : <2024-December-30 18:51:57>
+;; Last-saved : <2025-January-05 01:31:17>
 ;;
 ;;; Commentary:
 ;;
@@ -663,7 +663,9 @@ delete the old jar (or not), and everything will keep working.
          (and (dcjava-latest-gformat-jar)
               (concat "java -jar " (dcjava-latest-gformat-jar) " -"))))
     (if command
-        (dcjava-shell-command-on-buffer command)
+        (let ((savedpoint (point)))
+          (dcjava-shell-command-on-buffer command)
+          (goto-char savedpoint))
       (message "no google-java-format jar found in %s" (or dcjava-location-of-gformat-jar "-unset-")))))
 
 
