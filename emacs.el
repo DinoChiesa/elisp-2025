@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-04 03:21:09>
+;; Last saved: <2025-January-10 01:33:57>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -3239,10 +3239,12 @@ color ready for next time.
 ;; Java
 
 (when (boundp 'apheleia-formatters)
-  ;; change the existing google-java-format in the builtin aphelia-formatters
-  (setf (alist-get 'google-java-format apheleia-formatters)
-        `("java" "-jar"
-          ,(concat (getenv "HOME") "/bin/google-java-format-1.17.0-all-deps.jar") "-")))
+  (let ((gformat-command (dcjava-gformat-command
+                          (concat (getenv "HOME") "/bin"))))
+    (if gformat-command
+        ;; change the existing google-java-format in the builtin aphelia-formatters
+        (setf (alist-get 'google-java-format apheleia-formatters)
+              `,(split-string  gformat-command " +")))))
 
 (defun dino-java-mode-fn ()
   (if c-buffer-is-cc-mode
@@ -3904,6 +3906,7 @@ color ready for next time.
 (global-set-key [(control x)(control r)] 'recentf-open)
 ;;(global-set-key [(control x)(control r)] 'dino-recentf-open-files-compl)
 ;;(global-set-key "\C-x\C-r"  'dino-resize-big)
+(global-set-key (kbd "C-x C-b") 'ibuffer) ; instead of buffer-list
 (global-set-key "\C-xw" 'dino-fixup-linefeeds)
 (global-set-key "\C-cg" 'httpget)
 (global-set-key "\C-cu" 'dino-insert-uuid)
