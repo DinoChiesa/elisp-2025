@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-10 01:33:57>
+;; Last saved: <2025-January-10 01:36:12>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -2448,7 +2448,14 @@ again, I haven't see that as a problem."
          ;;(turn-on-font-lock) ;; apparently no longer needed with TS
          (setq c-basic-offset 4) ;; width of one indent level
          (setq tab-width 4) ;; this variable is used by `eglot-format'
-         (message "setting local key bindings....")
+
+         ;; I am pretty sure eglot will work only locally.
+         (when (not (file-remote-p default-directory))
+           (eglot-ensure)
+           (company-mode)
+           (local-set-key (kbd "<C-tab>") 'company-complete)
+           )
+        (message "setting local key bindings....")
 
          (local-set-key "\M-\C-R"  'indent-region)
          (local-set-key "\M-#" 'dino-indent-buffer)
