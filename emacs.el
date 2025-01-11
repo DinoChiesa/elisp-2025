@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-11 01:12:05>
+;; Last saved: <2025-January-11 15:43:56>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -1468,8 +1468,30 @@ With a prefix argument, makes a private paste."
             (defun dino-json-mode-fn ()
               ;;(turn-on-font-lock)
               ;;(flycheck-mode 0)
-              )
 
+
+              ;; 20250111-1538
+              ;;
+              ;; The default checker is json-python-json, which has a command "python3".
+              ;; On my version of windows,
+              ;;
+              ;; (1) there is no "python3", the executable i sjust called "python" and it resides in c:\Python313 .
+              ;;
+              ;; (2) there is a directory on the path, ~\AppData\Local\Microsoft\WindowsApps, that has a
+              ;; IO_REPARSE_TAG_APPEXECLINK named "python3.exe". Not all systems can handle these reparse
+              ;; points, see
+              ;; https://jpsoft.com/forums/threads/dir-reports-meaningless-symlink-information.9839/ .
+              ;;
+              ;; Not really sure why that directory is on the path.
+              ;;
+              ;; This change modifies the command to just "python". Because c:\Python313 has python.exe,
+              ;; and because c:\python313 lies before that WindowsApps directory with the reparse points,
+              ;; flycheck finds the command successfully and is able to execute the checker.
+              ;;
+              (if (eq system-type 'windows-nt)
+                  (setf (car (flycheck-checker-get 'json-python-json 'command))
+                        "python"))
+              )
             (add-hook 'json-mode-hook   'dino-json-mode-fn)
 
             ;; function alias
