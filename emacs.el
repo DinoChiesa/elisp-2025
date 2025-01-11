@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-10 01:36:12>
+;; Last saved: <2025-January-11 01:12:05>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -1072,6 +1072,7 @@
 ;; use sr-speedbar-open to open the speedbar window
 
 (use-package sr-speedbar ;; put speedbar in same frame
+  :ensure t
   :config
   (setq speedbar-use-images nil))
 
@@ -2910,7 +2911,8 @@ Does not consider word syntax tables.
   (hl-line-mode 1)
   (turn-on-auto-revert-mode)
   (display-line-numbers-mode)
-  (indent-bars-mode)
+  (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
+      (indent-bars-mode))
   (add-hook 'before-save-hook
             (lambda ()
               (save-excursion
@@ -3246,6 +3248,7 @@ color ready for next time.
 ;; Java
 
 (when (boundp 'apheleia-formatters)
+  (require 'dcjava)
   (let ((gformat-command (dcjava-gformat-command
                           (concat (getenv "HOME") "/bin"))))
     (if gformat-command
