@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-11 15:43:56>
+;; Last saved: <2025-January-11 18:59:08>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -34,6 +34,11 @@
 ;; directory to load additional libraries from :
 
 (add-to-list 'load-path "~/elisp")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; gonna need this string utility library
+;;
+(require 's)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; need some utility functions for setting the path
@@ -3788,17 +3793,41 @@ color ready for next time.
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; configure external utilities
+;; configure a few external utilities
+(cond
+ ((eq system-type 'windows-nt)
+  (if (file-exists-p "c:/Users/dpchi/bin/unzip.exe")
+      (setq archive-zip-use-pkzip nil   ; i.e. use unzip instead
+            archive-zip-extract '("c:/Users/dpchi/bin/unzip.exe" "-")))
 
-;; TODO: search path for unzip
-(if (eq system-type 'windows-nt)
-    (if (file-exists-p "c:/Users/dpchi/bin/unzip.exe")
-        (progn
-          (setq archive-zip-use-pkzip nil   ; i.e. use unzip instead
-                archive-zip-extract '("c:/Users/dpchi/bin/unzip.exe" "-"))))
-  )
+  ;; The unxUtils commands don't work, xargs "cannot fork". Git ships with
+  ;; unix-ish tools that actually work, so let's use those..
+  (let* ((git-cmd (executable-find "git"))
+         (git-bin-dir (and git-cmd
+                           (dc-windows-shortpath
+                            (replace-regexp-in-string "cmd/git\.exe" "usr/bin" git-cmd)))))
+    (if (and git-bin-dir (file-exists-p git-bin-dir))
+        (let ((rfn1 (lambda (s) (replace-regexp-in-string "PATH" (regexp-quote git-bin-dir) s)))
+              ;; I don't know why forward slashes don't work for the grep exes, but they don't.
+              (rfn2 (lambda (s) (replace-regexp-in-string "/" (regexp-quote "\\") s))))
 
-(setq-default grep-command "grep -i -n ")
+          (progn
+            (grep-apply-setting 'grep-command (funcall rfn2 (funcall rfn1 "PATH/grep.exe -i -n ")))
+
+            ;; I don't know why there is both grep-find-command and grep-find-template
+            (grep-apply-setting
+             'grep-find-command
+             (funcall rfn2
+              (funcall rfn1
+               "PATH/find.exe . -type f -print0 | PATH/xargs.exe -0 PATH/grep.exe -i -n ")))
+
+            (grep-apply-setting
+             'grep-find-template
+             (funcall rfn2
+              (funcall rfn1
+               "PATH/find.exe <D> <X> -type f <F> -print0 | PATH/xargs.exe -0 PATH/grep.exe <C> -n --null -e <R>"))))))))
+ (t   ;; not windows-nt
+  (setq-default grep-command "grep -i -n ")))
 
 
 
