@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-11 18:59:08>
+;; Last saved: <2025-January-16 19:23:47>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -22,6 +22,8 @@
 (setq user-mail-address "dpchiesa@hotmail.com")
 (setq comment-style 'indent) ;; see doc for variable comment-styles
 (setq Buffer-menu-name-width 40)
+
+(setq browse-url-browser-function 'browse-url-chrome)
 
 ;; for tetris
 (and (boundp 'tetris-score-file)
@@ -845,13 +847,29 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; markdown
+(defun dc-markdown-standalone ()
+  "process the MD buffer with the markdown command-line tool,
+then switch to th emarkdown output buffer."
+  (interactive)
+  ;; 20250116-1921
+  ;; The pandoc command is available on cloudtop only for now.
+  ;; Really it should be on the path. Install from
+  ;; https://github.com/jgm/pandoc/releases/tag/3.6.2
+  (let ((markdown-command "~/pandoc-3.6.2/bin/pandoc"))
+    (let ((buf-name (markdown-standalone))
+          (browse-url-browser-function 'eww-browse-url))
+      (switch-to-buffer-other-window buf-name)
+      (browse-url-of-buffer (get-buffer buf-name)))))
+
 (use-package markdown-mode
   :ensure t
   :defer t
   :config (defun dino-markdown-mode-fn ()
             "My hook for markdown mode"
             (modify-syntax-entry ?_ "w")
-            (auto-fill-mode -1))
+            (auto-fill-mode -1)
+            (local-set-key (kbd "C-c C-c s") 'dc-markdown-standalone)
+            )
   :hook (markdown-mode . dino-markdown-mode-fn))
 
 
