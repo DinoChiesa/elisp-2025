@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-16 19:23:47>
+;; Last saved: <2025-January-18 22:00:12>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -24,6 +24,12 @@
 (setq Buffer-menu-name-width 40)
 
 (setq browse-url-browser-function 'browse-url-chrome)
+
+(if (eq system-type 'windows-nt)
+    (let ((path-to-chrome (w32-read-registry 'HKLM "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe" "")))
+      (if path-to-chrome
+          (setq
+           browse-url-chrome-program path-to-chrome))))
 
 ;; for tetris
 (and (boundp 'tetris-score-file)
