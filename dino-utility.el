@@ -602,7 +602,7 @@ filename."
 
 (defun dino-gcloud-auth-print-access-token ()
   "return output of $(gcloud auth print-access-token)"
-  (let* ((gcloud-pgm "/usr/bin/gcloud")
+  (let* ((gcloud-pgm "gcloud")   ;; /usr/bin/gcloud
          (command-string (concat gcloud-pgm " auth print-access-token"))
          (output (replace-regexp-in-string "\n$" "" (shell-command-to-string command-string)))
          (lines (split-string output "\n")))

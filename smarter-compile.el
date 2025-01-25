@@ -167,12 +167,19 @@
   :group 'processes
   :prefix "smarter-compile")
 
+
+;; ;; to re-assign a member of the following alist
+;; (setf
+;;   (alist-get 'smart-compile-consider-projfile smart-compile-alist)
+;;   "dotnet build")
+
+
 (defcustom smart-compile-alist
   '(
     ("[Mm]akefile\\'"   . smart-compile-get-make-program)
 
     (smart-compile-consider-makefile . nil)
-    (smart-compile-consider-projfile . "msbuild.exe ")
+    (smart-compile-consider-projfile . "dotnet build")
     (smart-compile-compile-command-in-header-comments . nil)
 
     ("\\.cs\\'"         . "csc /t:exe /debug+ %f")
