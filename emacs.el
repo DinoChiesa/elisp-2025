@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-26 15:25:53>
+;; Last saved: <2025-January-26 17:35:38>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -368,7 +368,7 @@
   ;; 20241231 - eglot on jsonnet is helpful. Autocomplete ("code assist") works nicely.
   ;;
   ;; The jsonnet-language-server from Grafana, available at
-  ;; https://github.com/grafana/jsonnet-language-server/releases , seems solid,
+  ;; https://github.com/grafana/jsonnet-language-server/releases, seems solid,
   ;; reliable, and appears to be in wide use.  It must be installed separately
   ;; and available on the `exec-path'.  The `dpc/jsonnet-lsp' function, set into
   ;; `eglot-server-programs', sets the right args for the language server on
@@ -404,6 +404,8 @@
     ;; from a file-local variables decl.
     (setq enable-local-variables t))
 
+  (define-key jsonnet-mode-map (kbd "C-c C-e") 'jsonnet-eval-buffer)
+  (define-key jsonnet-mode-map (kbd "C-c C-b") 'browse-url)
   (display-line-numbers-mode))
 
 ;; What follows is a fixup scratchpad for jsonnetfmt and jsonnet lang server. For the
@@ -1632,8 +1634,8 @@ With a prefix argument, makes a private paste."
                      ("\\.java$"                    .  "Template.java" )
                      ("PostProcessMsi\\.js$"        .  "Template-PostProcessMsi.js" )
                      ("\\.js$"                      .  "Template.js" )
+                     ("\\.jsonnet$"                 .  "Template.jsonnet" )
                      ("\\.wsf$"                     .  "Template.wsf" )
-                     ;;("\\.\\(htm\\|html\\)$"        .  "Template.htm" )
                      ("\\.htm$"                     .  "Template.htm" )
                      ("\\.html$"                    .  "Template.html" )
                      ("\\.c$"                       .  "Template.c" )
