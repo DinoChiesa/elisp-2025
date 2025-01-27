@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-18 22:00:12>
+;; Last saved: <2025-January-26 15:25:53>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -713,11 +713,7 @@
               (require 'goflycheck)
               (flycheck-mode 1)
 
-              (add-hook 'before-save-hook
-                        (lambda ()
-                          (save-excursion
-                            (delete-trailing-whitespace)))
-                        nil 'local)
+              (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
               )
             (add-hook 'go-mode-hook 'dino-go-mode-fn)))
 
@@ -1468,11 +1464,7 @@ With a prefix argument, makes a private paste."
               (flycheck-select-checker
                (if (string= mode-name "SCSS") 'scss-lint 'css-csslint))
 
-              (add-hook 'before-save-hook
-                        (lambda ()
-                          (save-excursion
-                            (delete-trailing-whitespace)))
-                        nil 'local)
+              (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
 
               (display-line-numbers-mode)
 
@@ -1761,11 +1753,7 @@ just auto-corrects on common mis-spellings by me."
   ;; remove trailing whitespace in C files
   ;; http://stackoverflow.com/questions/1931784
   ;;(add-hook 'write-contents-functions 'dino-delete-trailing-whitespace)
-  (add-hook 'before-save-hook
-            (lambda ()
-              (save-excursion
-                (delete-trailing-whitespace)))
-            nil 'local))
+  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1804,11 +1792,7 @@ just auto-corrects on common mis-spellings by me."
     ;; remove trailing whitespace in C files
     ;; http://stackoverflow.com/questions/1931784
     ;;(add-hook 'write-contents-functions 'dino-delete-trailing-whitespace)
-    (add-hook 'before-save-hook
-              (lambda ()
-                (save-excursion
-                  (delete-trailing-whitespace)))
-              nil 'local)
+    (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
 
     (message "dino-c-mode-common-hook-fn: done."))))
 
@@ -2491,6 +2475,21 @@ again, I haven't see that as a problem."
   '(progn
      (require 'compile)
      (add-hook  'csharp-mode-hook 'dino-csharp-mode-fn t)
+
+     ;; 20250126-1013 - adjustments for indentation.
+     ;; This one is for the open curly for the using statement.
+     ;; (The using _directive_ (for import at top of file) is different.)
+     (setf (cdr (car csharp-ts-mode--indent-rules))
+           (cons
+            '((parent-is "using_statement") parent-bol 0)
+            (cdr (car csharp-ts-mode--indent-rules))))
+     ;; This rule is for the opening curly brace on anonymous lambdas, when the
+     ;; open curly is on a new line.
+     (setf (cdr (car csharp-ts-mode--indent-rules))
+           (cons
+            '((parent-is "lambda_expression") parent-bol 0)
+            (cdr (car csharp-ts-mode--indent-rules))))
+     (setq-local treesit-simple-indent-rules csharp-ts-mode--indent-rules)
 ))
 
 
@@ -2500,6 +2499,7 @@ again, I haven't see that as a problem."
          ;;(turn-on-font-lock) ;; apparently no longer needed with TS
          (setq c-basic-offset 4) ;; width of one indent level
          (setq tab-width 4) ;; this variable is used by `eglot-format'
+         (setq show-trailing-whitespace t)
 
          ;; I am pretty sure eglot will work only locally.
          (when (not (file-remote-p default-directory))
@@ -2556,6 +2556,8 @@ again, I haven't see that as a problem."
          (local-set-key "\C-c>"  'hs-hide-block)
          (local-set-key "\C-c<"  'hs-show-block)
 
+         (define-key csharp-ts-mode-map (kbd "C-c C-c") 'comment-region)
+
          ;; autorevert.el is built-in to emacs; if files
          ;; are changed outside of emacs, the buffer auto-reverts.
          (turn-on-auto-revert-mode)
@@ -2565,7 +2567,10 @@ again, I haven't see that as a problem."
          ;; the imenu stuff doesn't perform well; impractical
          (setq csharp-want-imenu nil)
          (display-line-numbers-mode)
+
          (message "dino-csharp-ts-mode-fn: done.")
+
+         (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
          )))
 
 (use-package csharp-ts-mode-navigation
@@ -2884,11 +2889,8 @@ Does not consider word syntax tables.
       (modify-syntax-entry ?\' "\"" sgml-mode-syntax-table)
     (modify-syntax-entry ?\' ".")) ;; . = punctuation
 
-  (add-hook 'before-save-hook
-            (lambda ()
-              (save-excursion
-                (delete-trailing-whitespace)))
-            nil 'local)
+
+  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
 
   ;; when `nxml-slash-auto-complete-flag' is non-nil, get completion
   (setq nxml-slash-auto-complete-flag t)
@@ -2964,11 +2966,7 @@ Does not consider word syntax tables.
   (display-line-numbers-mode)
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
-  (add-hook 'before-save-hook
-            (lambda ()
-              (save-excursion
-                (delete-trailing-whitespace)))
-            nil 'local)
+  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
   )
 
 
