@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-15 06:11:24>
+;; Last saved: <2025-February-15 06:15:14>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -553,12 +553,12 @@
 ;;   </rule>
 ;; </ruleset>
 
-;;; Tips from https://www.youtube.com/watch?v=p3Te_a-AGqM
+;; Tips from https://www.youtube.com/watch?v=p3Te_a-AGqM
 ;; for marking ever-larger regions iteratively
 (use-package expand-region
   :defer
-  ;; this keymap binding conflicts with the font resize key binding
-  :config (keymap-global-set "C-=") 'er/expand-region))
+  ;; TODO: fix this keymap binding; it conflicts with the font resize key binding.
+  :config (keymap-global-set "C-=") 'er/expand-region)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
