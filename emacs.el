@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-14 18:41:42>
+;; Last saved: <2025-February-15 06:11:24>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -54,8 +54,6 @@
 ;;
 (require 'dino-utility)
 (add-hook 'before-save-hook 'dino-untabify-maybe)
-;; TODO - move this to much lower in this file
-(global-set-key "\C-x7"     'dino-toggle-frame-split)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; package manager
@@ -149,8 +147,8 @@
   :ensure t
   :config (progn
             (default-text-scale-mode)
-            (global-set-key (kbd "C-=") 'default-text-scale-increase)
-            (global-set-key (kbd "C--") 'default-text-scale-decrease)))
+            (keymap-global-set "C-=" #'default-text-scale-increase)
+            (keymap-global-set "C--" #'default-text-scale-decrease)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -190,8 +188,8 @@
   :demand t
 
   :bind
-  (("C-," . embark-act)         ;; pick some comfortable binding
-   ;;("C-;" . embark-dwim)        ;; good alternative: M-.
+  (("C-c ," . embark-act)         ;; pick some comfortable binding
+   ("C-c ;" . embark-dwim)        ;; good alternative: M-.
    ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
 
   :init
@@ -240,9 +238,9 @@
               ("<up>" . icomplete-backward-completions)
               ("C-p" . icomplete-backward-completions)
               ("C-v" . icomplete-vertical-toggle)
-              ("C-," . embark-act)
+              ("C-c ," . embark-act)
               ("C-x" . embark-export) ;; temporarily in the minibuffer
-              ("C-;" . embark-collect)
+              ("C-c ;" . embark-collect)
               )
   )
 
@@ -555,15 +553,18 @@
 ;;   </rule>
 ;; </ruleset>
 
-;; TODO: relocate this
-(global-set-key (kbd "C-c d") 'delete-trailing-whitespace)
-
 ;;; Tips from https://www.youtube.com/watch?v=p3Te_a-AGqM
 ;; for marking ever-larger regions iteratively
 (use-package expand-region
-  :config (global-set-key (kbd "C-=") 'er/expand-region))
+  :defer
+  ;; this keymap binding conflicts with the font resize key binding
+  :config (keymap-global-set "C-=") 'er/expand-region))
 
-;; for visually editing similar things with one key sequence
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; multiple-cursors - For visually editing similar things with one key sequence.
+;;
+;; I use this rarely and my fingers don't remember the bindings.
 (use-package multiple-cursors
   :ensure t
   :demand t
@@ -576,19 +577,20 @@
               (remove-hook 'multiple-cursors-mode-hook
                            #'dpc/work-around-multiple-cursors-issue)))
   (defun dpc/multiple-cursors-set-key-bindings ()
-  ;; TODO: convert these to define key
-    (local-set-key (kbd "C->") 'mc/mark-next-like-this)
-    (local-set-key (kbd "C-<") 'mc/mark-previous-like-this)
-    (local-set-key (kbd "C-c C-<") 'mc/mark-all-like-this))
+    ;; TODO: am I ever going to remember this
+    (keymap-local-set "ESC C->"     #'mc/mark-next-like-this)
+    (keymap-local-set "ESC C-<"     #'mc/mark-previous-like-this)
+    (keymap-local-set "ESC C-c C-<" #'mc/mark-all-like-this))
 
   (add-hook 'multiple-cursors-mode-hook #'dpc/multiple-cursors-set-key-bindings)
   )
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wgrep - edit files in a grep output buffer
+;;
 (use-package wgrep
-  ;; TODO: convert this to define key
-  :config (global-set-key (kbd "C-c C-p") 'wgrep-change-to-wgrep-mode))
+  :config (keymap-set grep-mode-map "C-c C-p" #'wgrep-change-to-wgrep-mode))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -892,10 +894,12 @@ then switch to th emarkdown output buffer."
 ;; 20241228-0227 - It seems likely this is probably unnecessary at this point.
 (require 'httpget)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Word-count minor mode
-(autoload 'word-count-mode "word-count"
-  "Minor mode to count words." t nil)
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; Word-count minor mode
+;; ;; 20250215-0542 - not sure where this went, but I don't have it anymore.
+;; ;; and I don't use it.
+;; (autoload 'word-count-mode "word-count"
+;;   "Minor mode to count words." t nil)
 
 
 (require 'skeleton)
@@ -1643,10 +1647,10 @@ With a prefix argument, makes a private paste."
   :ensure nil
   :config (progn
             (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
-            ;; This \\[keymap-global-set] uses a trailing '1' argument, whichis undocumented. Nice!
-            ;; Without it, it does not work.
-            (keymap-global-set  (kbd "C-;") 'dpc-gemini/get-buffer-for-prompt 1))
-  )
+            (keymap-global-set "C-c ;" #'dpc-gemini/get-buffer-for-prompt)
+            ))
+
+
 
 (use-package chatgpt-shell
   :ensure nil
@@ -1670,7 +1674,7 @@ With a prefix argument, makes a private paste."
   :config
   (progn
     (setq google-gemini-key (dpc-gemini/get-gemini-api-key))
-    (keymap-global-set  (kbd "M-C-.") 'gemini-code-completion 1)
+    (keymap-global-set "C-c ." #'gemini-code-completion)
     )
   )
 
@@ -1804,6 +1808,8 @@ just auto-corrects on common mis-spellings by me."
   (auto-fill-mode 1)
   (abbrev-mode 1)
   (dino-fix-abbrev-table)
+  (keymap-local-set "C-c C-c"  #'center-paragraph)
+
   ;;(variable-pitch-mode)
   ;;
   ;; add new abbreviations above.
@@ -3095,7 +3101,7 @@ i.e M-x kmacro-set-counter."
 
 
 ;; 20241228-0137
-;; `global-set-key' is a legacy function. Should use
+;; TODO: `global-set-key' is a legacy function. Should use
 ;; (keymap-global-set KEY COMMAND) instead.
 
 (global-set-key (kbd "<f5>") 'init-macro-counter-default)
@@ -4026,21 +4032,6 @@ color ready for next time.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Global key bindings
 
-;; 20241228-0137
-;;
-;; I have seen an error message stating that `global-set-key' is a legacy
-;; function. and that I should use (keymap-global-set KEY COMMAND) instead.
-;; Using that, I've had difficulty specifying the key I want. This does not work:
-;;
-;; (keymap-global-set (kbd "C-;") 'command-here) ;; no work
-;;
-;; What seems to work is to use the `kbd' form, but add a
-;; final undocumented parameter with the value `1':
-;;
-;; (keymap-global-set (kbd "C-;") 'command-here 1) ;; works
-;;
-
-
 ;; To unbind/ remove unwanted bindings?
 ;; (keymap-global-unset (kbd "C-;") t) ;; for some reason this didn't work; (kbd "C-;") is no good
 ;;
@@ -4055,60 +4046,51 @@ color ready for next time.
 ;;
 ;; (define-key global-map (kbd "C-;") nil) ;; works to unset a key
 
-
-(keymap-global-set (kbd "C-x C-r") 'recentf-open 1)
-
-;; TODO: convert these to keymap-global-set
-(global-set-key [?\C-,] 'embark-act) ;; "\C-,"
-(global-set-key (kbd "C-x C-b") 'ibuffer) ; instead of buffer-list
-(global-set-key "\C-xw" 'dino-fixup-linefeeds)
-(global-set-key "\C-cg" 'httpget)
-(global-set-key "\C-cu" 'dino-insert-uuid)
-(global-set-key "\C-cf" 'dino-insert-filename)
-(global-set-key "\C-cl" 'lorem-ipsum)
-(global-set-key "\C-cb" 'dino-base64-insert-file)
-(global-set-key "\C-c1" 'just-one-space)
-(global-set-key "\C-x|"     'align-regexp)
-(global-set-key "\C-x?"     'describe-text-properties)
-(global-set-key "\M-\C-^"   'describe-variable)
-(global-set-key "\M-+"      'word-count-mode)
-(global-set-key "\C-^"      'describe-key-briefly)
-(global-set-key "\C-x\C-d"  'delete-window)
-(global-set-key "\C-xd"     'dino-ediff-buffer-against-file)
-(global-set-key "\C-x&"     'dino-encode-uri-component-in-region)
-(global-set-key "\C-xx"     'copy-to-register)
-(global-set-key "\C-xg"     'insert-register)
-(global-set-key "\C-xp"     'previous-window)
-(global-set-key "\C-x\C-p"  'previous-window)
-(global-set-key "\C-c\C-x\C-c"  'calendar)
-(global-set-key "\C-xn"     'other-window)
-(global-set-key "\C-x\C-e"  'smarter-compile)
-(global-set-key "\C-xE"     'smarter-compile-run)
-(global-set-key "\C-x\C-g"  'auto-fill-mode)
-(global-set-key "\C-x\C-n"  'next-error)
-                                        ;(global-set-key "\C-xt"     'dino-toggle-truncation)
-(global-set-key "\M-\C-y"   'yank-pop)
-(global-set-key "\M-g"      'goto-line)
-(global-set-key "\M- "      'set-mark-command)
-(global-set-key "\M-\C-h"   'backward-kill-word)
-(global-set-key "\C-c\C-c"  'center-paragraph)  ; good for text mode
-(global-set-key "\C-ck"     'global-set-key)
-(global-set-key "\C-cs"     'search-forward-regexp)
-(global-set-key "\C-cy"     'display-line-numbers-mode)
-;;(global-set-key "\C-c\C-p"  'dino-copy-value-from-key-into-killring)
-;;(global-set-key "\C-cm"     'dino-gtm-url)
-(global-set-key "\C-cq"     'query-replace)
-(global-set-key "\C-cc"     'goto-char)
-(global-set-key "\C-cr"     'replace-regexp)
-(global-set-key "\C-xt"     'dino-insert-timeofday)
-;;(global-set-key "\C-c\C-t"  'dino-insert-timestamp)
-;;(global-set-key "\C-c\C-t"  'dino-toggle-frame-split)
-(global-set-key "\C-cw"     'where-is)
-(global-set-key "\C-c\C-w"  'compare-windows)
-(global-set-key "\C-c~"     'revert-buffer-unconditionally)
-(global-set-key "\C-x~"     'dino-toggle-buffer-modified)
-(global-set-key (kbd "C-<") 'beginning-of-defun)
-(global-set-key (kbd "C->") 'end-of-defun)
+(keymap-global-set "C-x 7"       #'dino-toggle-frame-split )
+(keymap-global-set "C-x C-r"     #'recentf-open)
+(keymap-global-set "C-x C-b"     #'ibuffer) ; instead of buffer-list
+(keymap-global-set "C-x |"       #'align-regexp)
+(keymap-global-set "C-x ?"       #'describe-text-properties)
+(keymap-global-set "C-x w"       #'dino-fixup-linefeeds)
+(keymap-global-set "C-c g"       #'httpget)
+(keymap-global-set "C-c u"       #'dino-insert-uuid)
+(keymap-global-set "C-c f"       #'dino-insert-filename)
+(keymap-global-set "C-c l"       #'lorem-ipsum)
+(keymap-global-set "C-c b"       #'dino-base64-insert-file)
+(keymap-global-set "C-c 1"       #'just-one-space)
+(keymap-global-set "C-c s"       #'search-forward-regexp)
+(keymap-global-set "C-c y"       #'display-line-numbers-mode)
+(keymap-global-set "C-c q"       #'query-replace)
+(keymap-global-set "C-c c"       #'goto-char)
+(keymap-global-set "C-c r"       #'replace-regexp)
+(keymap-global-set "C-x t"       #'dino-insert-timeofday)
+(keymap-global-set "C-x C-d"     #'delete-window)
+(keymap-global-set "C-x x"       #'copy-to-register)
+(keymap-global-set "C-x g"       #'insert-register)
+(keymap-global-set "C-x p"       #'previous-window)
+(keymap-global-set "C-x C-p"     #'previous-window)
+(keymap-global-set "C-x n"       #'other-window)
+(keymap-global-set "C-c w"       #'where-is)
+(keymap-global-set "C-c C-w"     #'compare-windows)
+(keymap-global-set "C-c ~"       #'revert-buffer-unconditionally)
+(keymap-global-set "C-x ~"       #'dino-toggle-buffer-modified)
+(keymap-global-set "C-x C-g"     #'auto-fill-mode)
+(keymap-global-set "C-x C-e"     #'smarter-compile)
+(keymap-global-set "C-x E"       #'smarter-compile-run)
+(keymap-global-set "C-x e"       #'kmacro-end-and-call-macro)
+(keymap-global-set "ESC g"       #'goto-line)
+(keymap-global-set "ESC C-y"     #'yank-pop)
+(keymap-global-set "ESC C-h"     #'backward-kill-word)
+(keymap-global-set "C-x C-n"     #'next-error)
+(keymap-global-set "ESC SPC"     #'set-mark-command)
+(keymap-global-set "C-c k"       #'keymap-global-set)
+(keymap-global-set "C-x d"       #'dino-ediff-buffer-against-file)
+(keymap-global-set "C-x &"       #'dino-encode-uri-component-in-region)
+(keymap-global-set "C-<"         #'beginning-of-defun)
+(keymap-global-set "C->"         #'end-of-defun)
+(keymap-global-set "C-c C-x C-c" #'calendar)
+(keymap-global-set "ESC C-\\"    #'help-for-help)
+(keymap-global-set "C-c d"       #'delete-trailing-whitespace)
 
 
 ;; unicode helpers
@@ -4120,11 +4102,6 @@ color ready for next time.
 (define-key key-translation-map (kbd "\C-x 8 m") (kbd "µ")) ;; mu / micro
 (define-key key-translation-map (kbd "\C-x 8 e") (kbd "ε")) ;; epsilon
 (define-key key-translation-map (kbd "\C-x 8 p") (kbd "π")) ;; pi
-
-
-;;the help key is assigned to Ctrl-\, or Esc-Ctrl-\
-(global-set-key "\M-\C-\\"   'help-for-help)
-(global-set-key "\C-\\"      'help-for-help)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
