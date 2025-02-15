@@ -1,0 +1,6 @@
+# -*- mode: snippet -*-
+# name: nows
+# key: nows
+# --
+
+java.time.Instant.now().with(java.time.temporal.ChronoField.NANO_OF_SECOND, 0).toString();

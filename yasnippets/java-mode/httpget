@@ -1,0 +1,18 @@
+# -*- mode: snippet -*-
+# name: httpget
+# key: httpget
+# --
+  private static String fetch(String uri)
+      throws URISyntaxException, IOException, InterruptedException {
+    System.out.printf("fetch [%s]...\n", uri);
+    HttpRequest request =
+        HttpRequest.newBuilder().header("X-Our-Header-1", "value1").uri(new URI(uri)).GET().build();
+    HttpClient client = HttpClient.newHttpClient();
+    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpHeaders headers = response.headers();
+    System.out.printf("response headers:\n%s\n", headers.toString());
+    String body = response.body();
+
+    System.out.printf("\n\n=>\n%s\n", body);
+    return body;
+  }
