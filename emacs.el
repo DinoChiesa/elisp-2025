@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-January-26 17:35:38>
+;; Last saved: <2025-February-14 18:41:42>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -22,6 +22,7 @@
 (setq user-mail-address "dpchiesa@hotmail.com")
 (setq comment-style 'indent) ;; see doc for variable comment-styles
 (setq Buffer-menu-name-width 40)
+(setq edebug-print-length nil)
 
 (setq browse-url-browser-function 'browse-url-chrome)
 
@@ -63,6 +64,7 @@
 (dolist (item (list
                ;; '("MELPA Stable"     . "https://stable.melpa.org/packages/")
                '("MELPA"     . "https://melpa.org/packages/")
+               '("jcs-elpa"  . "https://jcs-emacs.github.io/jcs-elpa/packages/")
                '("org"       . "http://orgmode.org/elpa/")))
   (add-to-list 'package-archives item))
 
@@ -103,11 +105,12 @@
     (path-helper-setenv "PATH"))
 
 ;; 20241122-1947 - various tools and packages - apheleia, csslint, magit,
-;; csharpier, shfmt and more - need exec-path AND/or environment PATH to be set.
+;; csharpier, shfmt, aider and more - need exec-path AND/or environment PATH to be set.
 (dino-maybe-add-to-exec-path
  (list (dino-find-latest-nvm-version-bin-dir)
        (concat (getenv "HOME") "/.dotnet/tools")
        (concat (getenv "HOME") "/bin")
+       (concat (getenv "HOME") "/.local/bin");; aider
        (concat (getenv "HOME") "/go/bin")
        "/usr/local/bin"
        "/usr/bin"
@@ -356,6 +359,13 @@
   ;;(add-to-list 'eglot-server-programs
   ;;         '(csharp-mode . ("csharp-ls")))
   )
+
+(use-package eglot-booster
+        :after eglot
+        :config (eglot-booster-mode))
+
+;; (use-package aider)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jsonnet
@@ -1589,22 +1599,81 @@ With a prefix argument, makes a private paste."
 ;; At this point I think I am better off rolling my own. It's a simple matter of
 ;; sending a POST to an endpoint with a json payload, then parsing and extracting
 ;; the response from a JSON blob.
+;;
+;; 20250214-1118
+;; At this point I have learned that google-gemini IS available on jcs-emacs elpa repository,
+;; which means the problem with dependencies is no longer, assuming jcs-emacs is in
+;; the list of elpa repositories.
+;;
+
+;; not used
+;; (defun dpc-sort-chatgpt-models (models)
+;;   "sort models by provider, then version (name).
+;;
+;; I wrote this to try to get `chatgpt-shell-swap-model' to present
+;; model options in order sorted first by provider, then by model
+;; name. But it does not satisfy. `chatgpt-shell-swap-model' uses
+;; `completing-read'.  There is something in my configuration that
+;; does its own re-sort of options, sorting by length! of
+;; course. Therefore sorting before presenting the options to
+;; completing-reads is not a solution. The solution needs to involve
+;; somehow turning off that sort-by-length behavior.
+;;
+;; "
+;;   (seq-sort (lambda (a b)
+;;                 (let ((provider-a (map-elt a :provider))
+;;                       (version-a (map-elt a :version))
+;;                       (provider-b (map-elt b :provider))
+;;                       (version-b (map-elt b :version)))
+;;                     (or (string-lessp provider-a provider-b)
+;;                         (string-lessp version-a version-b))))
+;;               models))
+
+;; redefine the chatgpt-shell functionto try to properly sort. (It did not work.)
+    ;; (defun chatgpt-shell-reload-default-models ()
+    ;;   "Reload all available models. (And sort them by provider name)"
+    ;;   (interactive)
+    ;;   (setq chatgpt-shell-models
+    ;;         (dpc-sort-chatgpt-models
+    ;;          (chatgpt-shell--make-default-models)))
+    ;;   (message "Reloaded %d models" (length chatgpt-shell-models)))
+
 
 (use-package dpc-gemini
   :ensure nil
-  :config (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey"))
-
+  :config (progn
+            (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
+            ;; This \\[keymap-global-set] uses a trailing '1' argument, whichis undocumented. Nice!
+            ;; Without it, it does not work.
+            (keymap-global-set  (kbd "C-;") 'dpc-gemini/get-buffer-for-prompt 1))
+  )
 
 (use-package chatgpt-shell
-  :ensure t
+  :ensure nil
+  :requires (dpc-gemini)
   :config
-  (setq chatgpt-shell-google-key
-      (with-temp-buffer
-        (insert-file-contents "~/elisp/.google-gemini-apikey")
-        (buffer-substring-no-properties (point-min) (point-max))))
- :catch
- (lambda (keyword err)
+  (progn
+    (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
+    ;; override the chatpgpt-shell function to specify the available gemini models
+    (defun chatgpt-shell-google-models ()
+      "Build a list of Google LLM models available.
+   See https://ai.google.dev/gemini-api/docs/models/gemini."
+      (mapcar #'dpc-gemini/chapgpt-shell-converter (dpc-gemini/get-generative-models)))
+    )
+
+  :catch
+  (lambda (keyword err)
    (message (format "chatgpt-shell init: %s" (error-message-string err)))))
+
+(use-package gemini-code-completion
+  :requires (dpc-gemini google-gemini)
+  :config
+  (progn
+    (setq google-gemini-key (dpc-gemini/get-gemini-api-key))
+    (keymap-global-set  (kbd "M-C-.") 'gemini-code-completion 1)
+    )
+  )
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3957,22 +4026,23 @@ color ready for next time.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Global key bindings
 
-;; To determine key-chords for strange keys (for example it is not possible to
-;; refer to C-, within a double-quoted string), you can define a binding
-;; manually, then C-x ESC ESC to get the command that would "redo" what you just
-;; did.  Kill, then yank. This works but it results in an obscure keycode,
-;; impossible to reverse engineer. So.
-;;
-;; https://lists.gnu.org/archive/html/help-gnu-emacs/2012-02/msg00254.html
-;;(global-set-key [67108908] 'embark-act) ;; "\C-,"
-
 ;; 20241228-0137
-
+;;
 ;; I have seen an error message stating that `global-set-key' is a legacy
 ;; function. and that I should use (keymap-global-set KEY COMMAND) instead.
+;; Using that, I've had difficulty specifying the key I want. This does not work:
+;;
+;; (keymap-global-set (kbd "C-;") 'command-here) ;; no work
+;;
+;; What seems to work is to use the `kbd' form, but add a
+;; final undocumented parameter with the value `1':
+;;
+;; (keymap-global-set (kbd "C-;") 'command-here 1) ;; works
+;;
 
-;; ;; to unbind/ remove unwanted bindings
-;; ;;(keymap-global-unset (kbd "C-;") t) ;; for some reason this didn't work; (kbd "C-;") is no good
+
+;; To unbind/ remove unwanted bindings?
+;; (keymap-global-unset (kbd "C-;") t) ;; for some reason this didn't work; (kbd "C-;") is no good
 ;;
 ;; ;; (keymap-global-unset [?\C-\;] t) ;; also no
 ;; ;; (key-valid-p (kbd "C-;")) ;; says those key things are invalid. Not keys.  WTF emacs.
@@ -3986,11 +4056,10 @@ color ready for next time.
 ;; (define-key global-map (kbd "C-;") nil) ;; works to unset a key
 
 
-;; TODO: should I convert these to define-key?
+(keymap-global-set (kbd "C-x C-r") 'recentf-open 1)
+
+;; TODO: convert these to keymap-global-set
 (global-set-key [?\C-,] 'embark-act) ;; "\C-,"
-(global-set-key [(control x)(control r)] 'recentf-open)
-;;(global-set-key [(control x)(control r)] 'dino-recentf-open-files-compl)
-;;(global-set-key "\C-x\C-r"  'dino-resize-big)
 (global-set-key (kbd "C-x C-b") 'ibuffer) ; instead of buffer-list
 (global-set-key "\C-xw" 'dino-fixup-linefeeds)
 (global-set-key "\C-cg" 'httpget)
