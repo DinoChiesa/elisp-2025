@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-15 16:59:59>
+;; Last saved: <2025-February-15 18:54:38>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -138,14 +138,15 @@
 ;; appropriate apheleia formatter to be configured and available.
 ;;
 
-;; (use-package apheleia
-;;   :ensure t
-;;   :if (not (eq system-type 'windows-nt))
-;;   :config (setq apheleia-log-debug-info t))
-
 (use-package apheleia
   :ensure t
-  :config (setq apheleia-log-debug-info t))
+  :config (progn
+            (setq apheleia-log-debug-info t)
+            (if (eq system-type 'windows-nt)
+                (cl-dolist (item apheleia-formatters)
+                  (when (and (consp (cdr item)) (equalp "apheleia-npx" (cadr item)))
+                    (setf (cadr item) "npx")))))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package company-box
@@ -256,19 +257,6 @@
               ("C-c ;" . embark-collect)
               )
   )
-
-;; (icomplete-vertical-mode)
-;; (defun dpc-minibuffer-setup ()
-;;   (setq-local completion-styles
-;;               '(flex initials basic partial-completion emacs22)
-;;               )
-;;   ;;(local-set-key [?\C-,] 'embark-act)
-;;   ;;(local-set-key "C-;" 'embark-collect) ;; open a buffer with candidates?
-;;   (define-key minibuffer-local-map (kbd "C-;") 'embark-collect) ;; open a buffer with candidates
-;;   (define-key minibuffer-local-map (kbd "C-,") 'embark-act)
-;;   )
-;; (add-hook 'icomplete-minibuffer-setup-hook 'dpc-minibuffer-setup)
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -403,7 +391,7 @@
   (when (not (file-remote-p default-directory))
     (eglot-ensure)
     (company-mode)
-    (local-set-key (kbd "<C-tab>") 'company-complete)
+    (keymap-local-set "C-<tab>" #'company-complete)
     )
 
   ;; ;; 20241231 - Surprisingly, flycheck does not yet work for remote files.
@@ -425,8 +413,8 @@
     ;; from a file-local variables decl.
     (setq enable-local-variables t))
 
-  (define-key jsonnet-mode-map (kbd "C-c C-e") 'jsonnet-eval-buffer)
-  (define-key jsonnet-mode-map (kbd "C-c C-b") 'browse-url)
+  (keymap-local-set "C-c C-e" #'jsonnet-eval-buffer)
+  (keymap-local-set "C-c C-b" #'browse-url)
   (display-line-numbers-mode))
 
 ;; What follows is a fixup scratchpad for jsonnetfmt and jsonnet lang server. For the
@@ -643,8 +631,8 @@
   (sh-electric-here-document-mode)
   (when (boundp 'apheleia-formatters)
     (apheleia-mode))
-  (local-set-key "\C-c\C-g"  'dino-shfmt-buffer)
-  (local-set-key "\C-c\C-c"  'comment-region)
+  (keymap-local-set "C-c C-g"  #'dino-shfmt-buffer)
+  (keymap-local-set "C-c C-c"  #'comment-region)
   )
 (add-hook 'sh-mode-hook 'dino-sh-mode-fn)
 
@@ -687,9 +675,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; golang
 ;;
-;; (add-to-list 'load-path "/usr/local/go/misc/emacs") ;; removed in golang 1.4
-;; (add-to-list 'load-path "~/elisp/go-mode.el")
-;; (add-to-list 'load-path "~/.emacs.d/elpa/go-mode-1.4.0")
 
 (use-package go-mode
   :ensure t
@@ -698,21 +683,16 @@
             (load "go-mode-autoloads") ;; editing mode; there is no provide statement!
             ;; for flycheck or compile support, I need the go binary on the path
 
-            ;; GOPATH is no longer a thing, in favor of go modules
-            ;;(setenv "GOPATH" (concat (getenv "HOME") "/dev/go"))
-
             (defun dino-go-mode-fn ()
               ;;(setq-default)
               (setq tab-width 2
                     standard-indent 2
                     indent-tabs-mode t) ;; golang prefers tabs, ugh
 
-              ;;  (require 'go-autocomplete) ;; where did this go?
-
-              (local-set-key "\M-\C-R"  'indent-region)
-              (local-set-key "\M-#"     'dino-indent-buffer)
-              (local-set-key "\C-c\C-w" 'compare-windows)
-              (local-set-key "\C-c\C-c"  'comment-region)
+              (keymap-local-set "ESC C-R" #'indent-region)
+              (keymap-local-set "ESC #"   #'dino-indent-buffer)
+              (keymap-local-set "C-c C-w" #'compare-windows)
+              (keymap-local-set "C-c C-c" #'comment-region)
 
               (eval-after-load "smarter-compile"
                 '(progn
@@ -724,9 +704,6 @@
                 '(progn
                    (add-to-list
                     'flycheck-disabled-checkers 'go-build))) ;; go-gofmt?
-
-              (local-set-key "\M-\C-R"  'indent-region)
-              (local-set-key "\M-#"     'dino-indent-buffer)
 
               (display-line-numbers-mode)
 
@@ -867,7 +844,7 @@
               (display-line-numbers-mode)
               ;; why I have to re-set this key is baffling to me.
               ;; and this does not seem to work...
-              (local-set-key "\M-\C-R"  'indent-region)
+              (keymap-local-set "ESC C-R"  #'indent-region)
               ;; Make sure autofill is OFF.
               (auto-fill-mode -1))
 
@@ -897,7 +874,7 @@ then switch to th emarkdown output buffer."
             "My hook for markdown mode"
             (modify-syntax-entry ?_ "w")
             (auto-fill-mode -1)
-            (local-set-key (kbd "C-c C-c s") 'dc-markdown-standalone)
+            (keymap-local-set "C-c C-c s" #'dc-markdown-standalone)
             )
   :hook (markdown-mode . dino-markdown-mode-fn))
 
@@ -1213,8 +1190,8 @@ With a prefix argument, makes a private paste."
 (defun dino-image-mode-fn ()
   "My hook for image-mode"
   (dino/image-transform-fit-to-window)
-  (local-set-key "h"  'image-transform-fit-to-height)
-  (local-set-key "w"  'image-transform-fit-to-width))
+  (keymap-local-set "h"  #'image-transform-fit-to-height)
+  (keymap-local-set "w"  #'image-transform-fit-to-width))
 
 (add-hook 'image-mode-hook 'dino-image-mode-fn)
 
@@ -1242,7 +1219,7 @@ With a prefix argument, makes a private paste."
 
 (defun dino-typescript-mode-fn ()
   (turn-on-font-lock)
-  (local-set-key "\M-\C-R"  'indent-region)
+  (keymap-local-set "ESC C-R" #'indent-region)
   (turn-on-auto-revert-mode)
   (setq typescript-indent-level 2)
   ;;(linum-on) ;; marked obsolete in 29.1
@@ -1327,8 +1304,8 @@ With a prefix argument, makes a private paste."
 ;; HTML
 
 (defun dino-html-mode-fn ()
-  (local-set-key "\C-c1" 'just-one-space)
-  (local-set-key (kbd "<f7>") 'find-file-at-point)
+  (keymap-local-set "C-c 1" #'just-one-space)
+  (keymap-local-set "<f7>"  #'find-file-at-point)
   ;; Make sure autofill is OFF.
   (auto-fill-mode -1)
   )
@@ -1390,10 +1367,10 @@ With a prefix argument, makes a private paste."
   (interactive)
   (turn-on-font-lock)
 
-  (local-set-key "\M-\C-R"  'indent-region)
-  (local-set-key "\M-#"     'dino-indent-buffer)
-  (local-set-key "\C-c\C-w" 'compare-windows)
-  (local-set-key "\C-c\C-c"  'comment-region)
+  (keymap-local-set "ESC C-R" #'indent-region)
+  (keymap-local-set "ESC #"   #'dino-indent-buffer)
+  (keymap-local-set "C-c C-w" #'compare-windows)
+  (keymap-local-set "C-c C-c"  #'comment-region)
 
   (turn-on-auto-revert-mode)
 
@@ -1459,10 +1436,10 @@ With a prefix argument, makes a private paste."
               (interactive)
               (turn-on-font-lock)
 
-              (local-set-key "\M-\C-R"  'indent-region)
-              (local-set-key "\M-#"     'dino-indent-buffer)
-              (local-set-key "\C-c\C-w" 'compare-windows)
-              (local-set-key "\C-c\C-c" 'comment-region)
+              (keymap-local-set "ESC C-R" #'indent-region)
+              (keymap-local-set "ESC #"   #'dino-indent-buffer)
+              (keymap-local-set "C-c C-w" #'compare-windows)
+              (keymap-local-set "C-c C-c" #'comment-region)
 
               (turn-on-auto-revert-mode)
 
@@ -2455,7 +2432,7 @@ again, I haven't see that as a problem."
   (let ((cmd-list
          (if (eq system-type 'windows-nt)
              '("dotnet" "csharpier" "--write-stdout")
-         '("/home/dchiesa/.dotnet/tools/dotnet-csharpier")
+         '("dotnet-csharpier")
          )))
     (push (cons 'csharpier cmd-list) apheleia-formatters))
   (push '(csharp-mode . csharpier) apheleia-mode-alist)
@@ -2602,14 +2579,13 @@ again, I haven't see that as a problem."
          (when (not (file-remote-p default-directory))
            (eglot-ensure)
            (company-mode)
-           (local-set-key (kbd "<C-tab>") 'company-complete)
+           (keymap-local-set "C-<tab>"  #'company-complete)
            )
 
          (message "setting local key bindings....")
-         ;; TODO: replace these with keymap-local-set
-         (local-set-key "\M-\C-R"  'indent-region)
-         (local-set-key "\M-#" 'dino-indent-buffer)
-         (local-set-key "\C-c\C-w" 'compare-windows)
+         (keymap-local-set "ESC C-R"  #'indent-region)
+         (keymap-local-set "ESC #"    #'dino-indent-buffer)
+         (keymap-local-set "C-c C-w"  #'compare-windows)
 
          ;; trying electric-pair mode
          ;; ;; TODO: consider relying on electric-pair
@@ -2651,8 +2627,8 @@ again, I haven't see that as a problem."
          (setq hs-isearch-open t)
 
          ;; with point inside the block, use these keys to hide/show
-         (local-set-key "\C-c>"  'hs-hide-block)
-         (local-set-key "\C-c<"  'hs-show-block)
+         (keymap-local-set "C-c >"  #'hs-hide-block)
+         (meymap-local-set "C-c <"  #'hs-show-block)
 
          (define-key csharp-ts-mode-map (kbd "C-c C-c") 'comment-region)
 
@@ -2841,8 +2817,8 @@ Does not consider word syntax tables.
   (setq c-default-style "bsd"
         c-basic-offset 2)
 
-  (local-set-key "\M-\C-R"  'indent-region)
-  (local-set-key "\M-\C-C"  'un-camelcase-word-at-point)
+  (keymap-local-set "ESC C-R"  #'indent-region)
+  (keymap-local-set "ESC C-C"  #'un-camelcase-word-at-point)
 
   ;; not sure if necessary or not.
   (modify-syntax-entry ?/ ". 124b" php-mode-syntax-table)
@@ -2969,14 +2945,15 @@ Does not consider word syntax tables.
   (setq hs-isearch-open t)
   ;;(linum-on) ;; marked obsolete in 29.1
   (display-line-numbers-mode)
-  (local-set-key "\M-\C-R"  'indent-region)
-  (local-set-key "\C-cn"    'sgml-name-char) ;; inserts entity ref of pressed char
-  (local-set-key "\M-#"     'dino-xml-pretty-print-buffer)
-  (local-set-key "\C-cf"    'dino-replace-filename-no-extension)
 
-  (local-set-key (kbd "C-<")  'nxml-backward-element)
-  (local-set-key (kbd "C->")  'nxml-forward-element)
-  (local-set-key "\C-c\C-c"  'dino-xml-comment-region)
+  (keymap-local-set "ESC C-R" #'indent-region)
+  (keymap-local-set "C-c n"   #'sgml-name-char) ;; inserts entity ref of pressed char
+  (keymap-local-set "M-#"     #'dino-xml-pretty-print-buffer)
+  (keymap-local-set "C-c f"   #'dino-replace-filename-no-extension)
+
+  (keymap-local-set "C-<"      #'nxml-backward-element)
+  (keymap-local-set "C->"      #'nxml-forward-element)
+  (keymap-local-set "C-c C-c"  #'dino-xml-comment-region)
 
   ;; C-M-f will jump over complete elements
 
@@ -3061,12 +3038,12 @@ Does not consider word syntax tables.
 ;;
 
 (defun dino-elisp-mode-fn ()
-  (local-set-key "\r"        'newline-and-indent)
-  (local-set-key "\C-c\C-c"  'comment-region)
-  (local-set-key "\M-\C-R"   'indent-region)
-  (local-set-key "\C-ce"     'eval-buffer)
-  (local-set-key "\C-c\C-e"  'eval-region)
-  (local-set-key "\C-x\C-e"  'byte-compile-file)
+  (local-set-key "\r"          #'newline-and-indent)
+  (keymap-local-set "C-c C-c"  #'comment-region)
+  (keymap-local-set "ESC C-R"  #'indent-region)
+  (keymap-local-set "C-c e"    #'eval-buffer)
+  (keymap-local-set "C-c C-e"  #'eval-region)
+  (keymap-local-set "C-x C-e"  #'byte-compile-file)
 
   ;; never convert leading spaces to tabs:
   ;;(make-local-variable 'indent-tabs-mode)
@@ -3094,12 +3071,12 @@ Does not consider word syntax tables.
 
 (defun dino-python-mode-fn ()
 
-  (local-set-key "\M-\C-R" 'indent-region)
-  (local-set-key "\M-#"     'dino-indent-buffer)
-  (local-set-key "\C-c\C-c"  'comment-region)
+  (keymap-local-set "ESC C-R" #'indent-region)
+  (keymap-local-set "ESC #"   #'dino-indent-buffer)
+  (keymap-local-set "C-c C-c" #'comment-region)
 
   ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
-  (local-set-key "\C-c\C-w"  'compare-windows)
+  (keymap-local-set "C-c C-w"  #'compare-windows)
 
   (set (make-local-variable 'indent-tabs-mode) nil)
   ;;(linum-on) ;; marked obsolete in 29.1
@@ -3316,9 +3293,9 @@ color ready for next time.
 
   (turn-on-font-lock)
 
-  (local-set-key "\M-\C-R"  'indent-region)
-  (local-set-key "\M-#"     'dino-indent-buffer)
-  (local-set-key "\C-cc"    'comment-region)
+  (keymap-local-set "ESC C-R"  #'indent-region)
+  (keymap-local-set "ESC #"    #'dino-indent-buffer)
+  (keymap-local-set "C-c c"    #'comment-region)
 
   ;; Not sure what I should be doing for autocomplete in js-mode
   ;; Having disabled tern, at the moment I have nothing.
@@ -3328,8 +3305,8 @@ color ready for next time.
   ;;(define-key yas-minor-mode-map (kbd "<tab>") nil)
   ;;(local-set-key (kbd "<M-tab>") 'tern-ac-complete)
 
-  (local-set-key (kbd "TAB") 'js-indent-line)
-  (local-set-key (kbd "<C-tab>") 'yas-expand)
+  (keymap-local-set "<TAB>"    #'js-indent-line)
+  (keymap-local-set "C-<TAB>"  #'yas-expand)
 
   (set (make-local-variable 'indent-tabs-mode) nil)
 
@@ -3419,8 +3396,8 @@ color ready for next time.
   (if c-buffer-is-cc-mode
       (c-set-style "myJavaStyle"))
   (turn-on-font-lock)
-  (local-set-key "\M-\C-R" 'indent-region)
-  (local-set-key "\M-#"     'dino-indent-buffer)
+  (keymap-local-set "ESC C-R" #'indent-region)
+  (keymap-local-set "ESC #"   #'dino-indent-buffer)
 
   (modify-syntax-entry ?_ "w")
 
@@ -3430,7 +3407,8 @@ color ready for next time.
   ;; 20191015-1837 - better than autopair or skeleton pair
   (electric-pair-mode)
 
-  ;; 20230718-1235
+  ;; 20230718-1235 - disabled
+  ;; 20250215-1848 - I think this should work now? haven't tried it.
   (if (not (eq system-type 'windows-nt))
       (apheleia-mode))
 
@@ -3442,18 +3420,18 @@ color ready for next time.
 
   ;; some of my own java-mode helpers
   (require 'dcjava)
-  (local-set-key "\C-ci"     'dcjava-auto-add-import)
-  (local-set-key "\C-c\C-i"  'dcjava-auto-add-import)
-  (local-set-key "\C-cp"     'dcjava-insert-inferred-package-name)
-  (local-set-key "\C-c\C-l"  'dcjava-learn-new-import)
-  (local-set-key "\C-c\C-f"  'dcjava-find-wacapps-java-source-for-class-at-point)
-  (local-set-key "\C-c\C-r"  'dcjava-reload-classlist)
-  (local-set-key "\C-c\C-s"  'dcjava-sort-import-statements)
+  (keymap-local-set "C-c i"    #'dcjava-auto-add-import)
+  (keymap-local-set "C-c C-i"  #'dcjava-auto-add-import)
+  (keymap-local-set "C-c p"    #'dcjava-insert-inferred-package-name)
+  (keymap-local-set "C-c C-l"  #'dcjava-learn-new-import)
+  (keymap-local-set "C-c C-f"  #'dcjava-find-wacapps-java-source-for-class-at-point)
+  (keymap-local-set "C-c C-r"  #'dcjava-reload-classlist)
+  (keymap-local-set "C-c C-s"  #'dcjava-sort-import-statements)
 
   ;; 20241230 With apheleia-mode, the manual google-java-format is unnecessary. Apheleia does
-  ;; the work every time the file is saved.  But apheleia does not work on windows, so having
-  ;; the ability to manually invoke google-java-format is a good idea.
-  (local-set-key "\C-c\C-g"  'dcjava-gformat-buffer)
+  ;; the work every time the file is saved.  But it may be that Apheleia is turned off, so having
+  ;; the ability to manually invoke google-java-format is still a good idea.
+  (keymap-local-set "C-c C-g"  #'dcjava-gformat-buffer)
   (dino-enable-delete-trailing-whitespace)
   (display-line-numbers-mode)
   )
@@ -3501,7 +3479,6 @@ color ready for next time.
                ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 ;; proselint
 
 (eval-after-load "flycheck"

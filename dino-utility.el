@@ -1572,8 +1572,6 @@ The original list is not modified.
   "re-orders the exec-path entries to ensure some dirs are preferred above others."
   (setq exec-path (dino-reorder-list exec-path #'dino--preferred-path-entry)))
 
-
-
 (defun dino-escape-braces-in-regex (str)
   "Replaces { with \\{ and } with \\} in STR."
   (replace-regexp-in-string "\\(\u007b\\|\u007d\\)" "\\\\\\1" str nil nil))
