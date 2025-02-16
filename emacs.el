@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-15 06:15:14>
+;; Last saved: <2025-February-15 16:59:59>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -75,6 +75,7 @@
 (let ((default-directory "~/.emacs.d/elpa"))
   (normal-top-level-add-subdirs-to-load-path))
 
+;; 20250215-1547 - not sure I still need this.
 (dino-ensure-package-installed
  'company         ;; COMPlete ANYthing
  ;; 'company-box     ;; i guess this makes the popup a little nicer?
@@ -96,7 +97,6 @@
  'yaxception
  )
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; set path correctly on MacOS, based on /etc/paths
 (if (memq window-system '(ns mac))
@@ -105,33 +105,46 @@
 ;; 20241122-1947 - various tools and packages - apheleia, csslint, magit,
 ;; csharpier, shfmt, aider and more - need exec-path AND/or environment PATH to be set.
 (dino-maybe-add-to-exec-path
- (list (dino-find-latest-nvm-version-bin-dir)
-       (concat (getenv "HOME") "/.dotnet/tools")
-       (concat (getenv "HOME") "/bin")
-       (concat (getenv "HOME") "/.local/bin");; aider
-       (concat (getenv "HOME") "/go/bin")
-       "/usr/local/bin"
-       "/usr/bin"
-       "/usr/lib/google-golang/bin"
-       "/usr/local/git/current/bin"
-       ))
-
-
+ (list
+  "c:/Program Files/Git/usr/bin" ;; needed for diff, for apheleia
+  (dino-find-latest-nvm-version-bin-dir)
+  (concat (getenv "HOME") "/.dotnet/tools")
+  (concat (getenv "HOME") "/bin")
+  (concat (getenv "HOME") "/.local/bin");; aider
+  (concat (getenv "HOME") "/go/bin")
+  "/usr/local/bin"
+  "/usr/bin"
+  "/usr/lib/google-golang/bin"
+  "/usr/local/git/current/bin"
+  ))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; apheleia - clever code reformatting for multiple languages.
 ;;
 ;; https://github.com/radian-software/apheleia
+;;
 ;; It runs code formatters on after-save-hook, and then resaves only if there
-;; are changes. It preserves cursor location across these changes. Sweet.
+;; are changes. It does its best to preserve cursor location across these changes. Sweet.
 ;; Works on java-mode js-mode css-mode sh-mode csharp-mode...
-;; But not on Windows, because it depends on lots of unix-y commands: diff,
-;; and others.
+;;
+;; It works on the Windows machine, IFF the unix-y commands apheleia requires,
+;; like diff, are available. This can be a problem because there are multiple
+;; disparate diff.exe tools installed on Windows typically, and apheleia depends
+;; on the --rcs option for diff, which is not always supported.  The solution is
+;; to ensure that the right gnu diff.exe is available. There is one shipped with
+;; git; putting c:\program files\Git\usr\bin at the top of `exec-path' allows
+;; apheleia to work. This is done just above.  Of course, we still need the
+;; appropriate apheleia formatter to be configured and available.
+;;
+
+;; (use-package apheleia
+;;   :ensure t
+;;   :if (not (eq system-type 'windows-nt))
+;;   :config (setq apheleia-log-debug-info t))
 
 (use-package apheleia
   :ensure t
-  :if (not (eq system-type 'windows-nt))
   :config (setq apheleia-log-debug-info t))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -558,7 +571,7 @@
 (use-package expand-region
   :defer
   ;; TODO: fix this keymap binding; it conflicts with the font resize key binding.
-  :config (keymap-global-set "C-=") 'er/expand-region)
+  :config (keymap-global-set "C-=" 'er/expand-region))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2434,11 +2447,19 @@ again, I haven't see that as a problem."
         hs-special-modes-alist))
 
 
+
+;; To remove a formatter incorrectly added:
+;;(setq apheleia-formatters (delq (assoc 'csharpier apheleia-formatters) apheleia-formatters))
+
 (when (boundp 'apheleia-formatters)
-  (push '(csharpier .
-                  ("/home/dchiesa/.dotnet/tools/dotnet-csharpier"))
-      apheleia-formatters)
-  (push '(csharp-mode . csharpier) apheleia-mode-alist))
+  (let ((cmd-list
+         (if (eq system-type 'windows-nt)
+             '("dotnet" "csharpier" "--write-stdout")
+         '("/home/dchiesa/.dotnet/tools/dotnet-csharpier")
+         )))
+    (push (cons 'csharpier cmd-list) apheleia-formatters))
+  (push '(csharp-mode . csharpier) apheleia-mode-alist)
+  (push '(csharp-ts-mode . csharpier) apheleia-mode-alist))
 
 (defun dino-csharp-mode-fn ()
   "function that runs when csharp-mode is initialized for a buffer."
@@ -2446,9 +2467,7 @@ again, I haven't see that as a problem."
          (turn-on-font-lock)
          (c-set-style "myC#Style")
          (setq c-basic-offset 2) ;; width of one indent level
-         (if (not (eq system-type 'windows-nt))
-             (apheleia-mode))
-
+         (apheleia-mode)
          (message "setting local key bindings....")
 
          (local-set-key "\M-\C-R"  'indent-region)
@@ -2577,6 +2596,7 @@ again, I haven't see that as a problem."
          (setq c-basic-offset 4) ;; width of one indent level
          (setq tab-width 4) ;; this variable is used by `eglot-format'
          (setq show-trailing-whitespace t)
+         (apheleia-mode)
 
          ;; I am pretty sure eglot will work only locally.
          (when (not (file-remote-p default-directory))
@@ -2584,8 +2604,9 @@ again, I haven't see that as a problem."
            (company-mode)
            (local-set-key (kbd "<C-tab>") 'company-complete)
            )
-        (message "setting local key bindings....")
 
+         (message "setting local key bindings....")
+         ;; TODO: replace these with keymap-local-set
          (local-set-key "\M-\C-R"  'indent-region)
          (local-set-key "\M-#" 'dino-indent-buffer)
          (local-set-key "\C-c\C-w" 'compare-windows)
@@ -2654,10 +2675,22 @@ again, I haven't see that as a problem."
     :after csharp-mode
     :config (add-hook 'csharp-ts-mode-hook 'ctsn/setup))
 
+(defun dino-maybe-eglot-reconnect ()
+  "When apheleia reformats a C# buffer it seems to confuse the language server.
+This function will force a reconnect in that case. This is overkill and slow, but I
+have not figured out a way around it."
+  (when (and
+         (or (eq major-mode 'csharp-mode) (eq major-mode 'csharp-ts-mode))
+         (eglot-managed-p))
+    (eglot-reconnect (eglot--current-server-or-lose))
+    ))
+
 (eval-after-load "csharp-mode"
   '(progn
      (require 'compile)
-     (add-hook  'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn t)
+     (add-hook 'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn t)
+     (if (fboundp 'apheleia-mode)
+         (add-hook 'apheleia-post-format-hook #'dino-maybe-eglot-reconnect))
      ))
 
 
@@ -3690,6 +3723,7 @@ color ready for next time.
 ;;         (call-process shell-file-name nil buf nil
 ;;                       shell-command-switch command)))))
 ;;     buf))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Random stuff

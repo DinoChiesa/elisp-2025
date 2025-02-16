@@ -1532,6 +1532,7 @@ item exists as a directory, and is not already present."
           (add-to-list 'exec-path path)
           (setq exec-path-was-modified t)
           )
+        ;; I am not sure if I need both `exec-path' and the PATH environment variable.
         (let ((paths (split-string (getenv "PATH") ":")))
           (when (not (member path paths))
             (message (format "  adding %s to PATH" path))
@@ -1543,8 +1544,35 @@ item exists as a directory, and is not already present."
     (when path-was-modified
       (message (format "updated PATH %s" (getenv "PATH"))))
     (when exec-path-was-modified
+      (if (eq system-type 'windows-nt)
+          (dino-maybe-reorder-exec-path-entries))
       (message (format "updated exec-path %s" (prin1-to-string exec-path))))
     ))
+
+(defun dino-reorder-list (list predicate)
+  "Reorders LIST so that elements satisfying PREDICATE come first.
+Returns a new list with elements reordered according to PREDICATE.
+The original list is not modified.
+"
+  (let (matches non-matches)
+    (dolist (item list)
+      (if (funcall predicate item)
+          (push item matches)
+        (push item non-matches)))
+    (nconc (reverse matches) (reverse non-matches))))
+
+(defun dino--preferred-path-entry (entry)
+"returns t if the entry is to be preferred"
+   (or
+      (string-match-p (regexp-quote "Git/usr/bin") entry)
+      (string-match-p (regexp-quote (concat (getenv "HOME") "/bin")) entry)
+      ))
+
+(defun dino-maybe-reorder-exec-path-entries ()
+  "re-orders the exec-path entries to ensure some dirs are preferred above others."
+  (setq exec-path (dino-reorder-list exec-path #'dino--preferred-path-entry)))
+
+
 
 (defun dino-escape-braces-in-regex (str)
   "Replaces { with \\{ and } with \\} in STR."
