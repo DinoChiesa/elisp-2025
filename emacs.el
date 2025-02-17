@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-17 21:38:33>
+;; Last saved: <2025-February-17 14:22:15>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -142,7 +142,7 @@
             (setq apheleia-log-debug-info t)
             (if (eq system-type 'windows-nt)
                 (cl-dolist (item apheleia-formatters)
-                  (when (and (consp (cdr item)) (equalp "apheleia-npx" (cadr item)))
+                  (when (and (consp (cdr item)) (equal "apheleia-npx" (cadr item)))
                     (setf (cadr item) "npx")))))
   )
 
