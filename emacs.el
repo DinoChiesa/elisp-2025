@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-15 18:54:38>
+;; Last saved: <2025-February-17 21:38:33>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -77,9 +77,7 @@
 
 ;; 20250215-1547 - not sure I still need this.
 (dino-ensure-package-installed
- 'company         ;; COMPlete ANYthing
- ;; 'company-box     ;; i guess this makes the popup a little nicer?
- 'auto-complete   ;; i should probably convert to company. I think this is legacy now.
+ 'auto-complete   ;; i think maybe I do not need this, if I am using company. I think this is legacy now.
  ;; 'company-go
  'dash
  'dash-functional
@@ -88,7 +86,6 @@
  ;; 'js2-mode
  ;; 'js2-refactor
  'logito ;; a tiny logging framework for emacs. Not sure where this is used
- 'lsp-mode
  'path-helper ;; used to set path, just below
  'popup
  's
@@ -104,6 +101,7 @@
 
 ;; 20241122-1947 - various tools and packages - apheleia, csslint, magit,
 ;; csharpier, shfmt, aider and more - need exec-path AND/or environment PATH to be set.
+;; Any nodejs tool installed via "npm i -g" (eg ) should be on the path already.
 (dino-maybe-add-to-exec-path
  (list
   "c:/Program Files/Git/usr/bin" ;; needed for diff, for apheleia
@@ -149,11 +147,17 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(use-package company
+  :defer t
+  :config
+  (define-key company-mode-map "TAB" 'company-complete))
+
 (use-package company-box
    :hook (company-mode . company-box-mode))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package indent-bars
+  :defer t
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -176,14 +180,6 @@
                       (prin1-to-string
                        (treesit-language-available-p 'c-sharp)))))
 
-
-;; (require 'treesit)
-;; (eval-after-load "treesit"
-;;   '(progn
-;;      ;;(tree-sitter-require 'c-sharp) ;; this is the old (pre v29, not integrated) tree-sitter package
-;;      (message (concat "csharp TS lang available ?: " (prin1-to-string
-;;                                        (treesit-language-available-p 'c-sharp))))
-;;      ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; embark
@@ -257,7 +253,6 @@
               ("C-c ;" . embark-collect)
               )
   )
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; electric-operator
@@ -855,7 +850,7 @@
 ;; markdown
 (defun dc-markdown-standalone ()
   "process the MD buffer with the markdown command-line tool,
-then switch to th emarkdown output buffer."
+then switch to the markdown output buffer."
   (interactive)
   ;; 20250116-1921
   ;; The pandoc command is available on cloudtop only for now.
@@ -1029,7 +1024,7 @@ then switch to th emarkdown output buffer."
          ("\\.\\(war\\|ear\\|WAR\\|EAR\\)\\'" . archive-mode)        ; java archives
          ;;("\\.s?html?\\'"                     . nxhtml-mumamo-mode)
          ("\\(Iirf\\|iirf\\|IIRF\\)\\(Global\\)?\\.ini$"   . iirf-mode)
-         ("\\.css$"                           . css-mode)
+         ("\\.css$"                           . css-ts-mode)
          ("\\.proto$"                         . protobuf-mode)
          ("\\.\\(php\\|module\\)$"            . php-mode)
          ("\\.md$"                            . markdown-mode)
@@ -1079,6 +1074,12 @@ then switch to th emarkdown output buffer."
    (if (eq (cdr pair) 'java-mode)
        (setcdr pair 'java-ts-mode)))
  auto-mode-alist)
+
+;; (mapc
+;;  (lambda (pair)
+;;    (if (eq (cdr pair) 'css-mode)
+;;        (setcdr pair 'css-ts-mode)))
+;;  auto-mode-alist)
 
 
 ;;;; Keep this snip !
@@ -1404,12 +1405,17 @@ With a prefix argument, makes a private paste."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; CSS mode
 
+;; 20250217-1908
+;; It is possible to run the CSS language server from VSCode independently.
+;; I am not sure what it gives me, while I am editing CSS. Completion?
+;; Also I am not sure what css-ts-mode gives me? or does completion come from TS?
+
 (use-package css-mode
   :ensure nil
   :config (progn
-            (autoload 'css-mode "css-mode" "Mode for editing Cascading Stylesheets." t)
+            ;;(autoload 'css-mode "css-mode" "Mode for editing Cascading Stylesheets." t)
 
-            ;; Overwrite existing scss-stylelint checker to not use --syntax
+            ;; Overwrite existing scss-stylelint checker to not use --syntax flag
             (flycheck-define-checker scss-stylelint
               "A SCSS syntax and style checker using stylelint. See URL `http://stylelint.io/'."
               :command ("stylelint"
@@ -1419,27 +1425,23 @@ With a prefix argument, makes a private paste."
                         (config-file "--config" flycheck-stylelintrc))
               :standard-input t
               :error-parser flycheck-parse-stylelint
-              :modes (scss-mode))
-
-            ;; (push '(prettier-css-dino .
-            ;;         ("/usr/local/bin/prettier"
-            ;;          "--stdin-filepath" filepath "--parser=css"))
-            ;;       apheleia-formatters)
-            ;;
-            ;; (push '(css-mode . prettier-css-dino) apheleia-mode-alist)
+              :modes (scss-mode ))
 
             (when (boundp 'apheleia-mode-alist)
-              (setf (alist-get 'css-mode apheleia-mode-alist) 'prettier-css))
+              (setf (alist-get 'css-mode apheleia-mode-alist) 'prettier-css)
+              (setf (alist-get 'css-ts-mode apheleia-mode-alist) 'prettier-css))
 
             (defun dino-css-mode-fn ()
               "My hook for CSS mode"
               (interactive)
-              (turn-on-font-lock)
+              ;; (turn-on-font-lock) ;; need this?
+              (company-mode)
 
               (keymap-local-set "ESC C-R" #'indent-region)
               (keymap-local-set "ESC #"   #'dino-indent-buffer)
               (keymap-local-set "C-c C-w" #'compare-windows)
               (keymap-local-set "C-c C-c" #'comment-region)
+              (keymap-local-set "ESC ." #'company-complete)
 
               (turn-on-auto-revert-mode)
 
@@ -1458,9 +1460,7 @@ With a prefix argument, makes a private paste."
 
               ;; make auto-complete start only after 2 chars
               (setq ac-auto-start 2)  ;;or 3?
-
-              (if (not (eq system-type 'windows-nt))
-                  (apheleia-mode))
+              (apheleia-mode)
 
               ;; to install the external checkers:
               ;; sudo npm install -g csslint
@@ -1468,7 +1468,7 @@ With a prefix argument, makes a private paste."
 
               (flycheck-mode)
               (flycheck-select-checker
-               (if (string= mode-name "SCSS") 'scss-lint 'css-csslint))
+               (if (string= mode-name "SCSS") 'scss-stylelint 'css-csslint))
 
               (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
 
@@ -1478,6 +1478,7 @@ With a prefix argument, makes a private paste."
               ;;(make-local-variable 'indent-tabs-mode)
               (setq indent-tabs-mode nil) )
 
+            (add-hook 'css-ts-mode-hook 'dino-css-mode-fn)
             (add-hook 'css-mode-hook 'dino-css-mode-fn)))
 
 
