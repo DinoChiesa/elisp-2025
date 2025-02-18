@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-17 19:56:08>
+;; Last saved: <2025-February-18 22:30:07>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -92,8 +92,6 @@
  'typescript-mode
  'yaxception
  )
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Some configuration specific for system-types.
@@ -309,15 +307,20 @@
 ;;
 (use-package magit
   ;; On a machine with no git installed, an obscure error occurs at runtime.
-  ;; This check attempts to clarify the problem.  The fix is to install git! And
-  ;; make sure it is on the path.
+  ;; This check attempts to clarify the problem. If an error does get flagged,
+  ;; the fix is to install git! And make sure it is on the path.
   :ensure t
-  :defer t
+  :defer 24
   :config (progn
             (if (not (boundp 'magit-git-executable))
-                (error "git executable is not bound")
+                (error "variable 'magit-git-executable' is not bound")
               (if (not magit-git-executable)
-                  (error "git executable is not set")))))
+                  (error "variable 'magit-git-executable' is not set"))
+              (let ((found-exe (executable-find magit-git-executable)))
+                (if (not found-exe)
+                    (error (format "git executable (%s) cannot be found" magit-git-executable)))
+                (message "found %s at %s" magit-git-executable found-exe)
+                ))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; flycheck
@@ -496,6 +499,7 @@
 
 
 (use-package jsonnet-mode
+  :init (progn (require 'flycheck) (require 'eglot))
   :ensure t
   :defer t
   :after (eglot dpc-jsonnet-mode-fixups flycheck)
@@ -630,28 +634,41 @@
   :defer t
   :config (keymap-set grep-mode-map "C-c C-p" #'wgrep-change-to-wgrep-mode))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; stuff for Apigee
+;; Apigee
 ;;
-;; with apigee.el in elisp/apigee/apigee.el
-;; M-x load-library RET "apigee/apigee" RET
-;;
-;; (require 'apigee)
-;; (setq apigee-apiproxies-home "~/dev/apiproxies/")
 
-(eval-after-load "apigee"
-  '(progn
-     (setf (alist-get 'apigeecli apigee-programs-alist)
-           "~/.apigeecli/bin/apigeecli")
-     (setf (alist-get 'gcloud  apigee-programs-alist)
-           "/usr/bin/gcloud")
-     (setf (alist-get 'apigeelint apigee-programs-alist)
-           "node ~/apigeelint/cli.js")
-     (if (and (getenv "ENV")(getenv "ORG"))
-         (setq apigee-environment (getenv "ENV")
-               apigee-organization (getenv "ORG")))
-     ))
+(use-package apigee
+  :if (file-exists-p "~/elisp/apigee/apigee.el")
+  :load-path "~/elisp/apigee"
+  :defer t
+  :config
+  (progn
+    (let* ((apigeecli-path "~/.apigeecli/bin/apigeecli")
+           (found-apigeecli (file-exists-p apigeecli-path)))
+      (if (not found-apigeecli)
+          (error "cannot find apigeecli")
+        (setf (alist-get 'apigeecli apigee-programs-alist)
+              apigeecli-path)))
+    (let* ((gcloud-cmd "gcloud")
+           (found-gcloud (executable-find gcloud-cmd)))
+      (if (not found-gcloud)
+          (error "cannot find gcloud")
+        (setf (alist-get 'gcloud  apigee-programs-alist)
+              found-gcloud)))
+    (let* ((apigeelint-cli-path "~/apigeelint/cli.js")
+           (found-apigeelint (file-exists-p apigeelint-cli-path)))
+      (if (not found-apigeelint)
+          (error "cannot find apigeelint")
+        (setf (alist-get 'apigeelint apigee-programs-alist)
+              (format "node %s" apigeelint-cli-path))))
+    (if (and (getenv "ENV")(getenv "ORG"))
+        (setq apigee-environment (getenv "ENV")
+              apigee-organization (getenv "ORG")))
+    ;; If the ORG and ENV environment vars are not available, the
+    ;; apigee module will prompt the user interactively for values
+    ;; when they are first necessary.
+    ))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
