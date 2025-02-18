@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-18 03:24:31>
+;; Last saved: <2025-February-17 19:56:08>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -43,6 +43,7 @@
 ;; directory to load additional libraries from :
 
 (add-to-list 'load-path "~/elisp")
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gonna need this string utility library
@@ -91,6 +92,37 @@
  'typescript-mode
  'yaxception
  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Some configuration specific for system-types.
+;; Loads system-type config; e.g. "darwin.el" on Mac
+;; TODO: for replace slashes in "gnu/linux"  and add in
+;; customizations there.
+(let ((system-specific-elisp (concat "~/elisp/" (symbol-name system-type) ".el")))
+  (if (file-exists-p system-specific-elisp)
+      (load system-specific-elisp)))
+
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(ls-lisp-format-time-list (quote ("%Y-%m-%d %H:%M" "%Y-%m-%d %H:%M")))
+ '(ls-lisp-use-localized-time-format t)
+ '(temporary-file-directory "/tmp"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(cond
+ ((eq system-type 'windows-nt)
+  (dc-winnt-configure-external-utilities)
+  )
+ (t   ;; not windows-nt
+  (eval-after-load "grep"
+    '(progn
+       (setq-default grep-command "grep -i -n ")))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; set path correctly on MacOS, based on /etc/paths
@@ -3360,12 +3392,10 @@ color ready for next time.
   (electric-operator-mode)
   (display-line-numbers-mode)
   (indent-bars-mode)
-  (if (not (eq system-type 'windows-nt))
-      (progn
-        (apheleia-mode)
-        (setq apheleia-remote-algorithm 'local)
-        (setq apheleia-log-debug-info t)))
 
+  (apheleia-mode)
+  (setq apheleia-remote-algorithm 'local)
+  (setq apheleia-log-debug-info t)
   )
 
 (add-hook 'js-mode-hook   'dino-js-mode-fn)
@@ -3459,7 +3489,7 @@ color ready for next time.
 ;; in the java-mode hook, to check whether the mode is a cc-mode or not.
 ;;
 ;; You can try M-x load-library RET treesit-fold
-;; and then ‘treesit-fold-toggle’ to expand/collapse blocks.
+;; and then  treesit-fold-toggle  to expand/collapse blocks.
 ;;
 (defun dino-java-ts-mode-fn ()
   (setq java-ts-mode-indent-offset 2)
@@ -3929,44 +3959,6 @@ color ready for next time.
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; configure a few external utilities
-(cond
- ((eq system-type 'windows-nt)
-  (if (file-exists-p "c:/Users/dpchi/bin/unzip.exe")
-      (setq archive-zip-use-pkzip nil   ; i.e. use unzip instead
-            archive-zip-extract '("c:/Users/dpchi/bin/unzip.exe" "-")))
-
-  ;; The unxUtils commands don't work, xargs "cannot fork". Git ships with
-  ;; unix-ish tools that actually work, so let's use those..
-  (let* ((git-cmd (executable-find "git"))
-         (git-bin-dir (and git-cmd
-                           (dc-windows-shortpath
-                            (replace-regexp-in-string "cmd/git\.exe" "usr/bin" git-cmd)))))
-    (if (and git-bin-dir (file-exists-p git-bin-dir))
-        (let ((rfn1 (lambda (s) (replace-regexp-in-string "PATH" (regexp-quote git-bin-dir) s)))
-              ;; I don't know why forward slashes don't work for the grep exes, but they don't.
-              (rfn2 (lambda (s) (replace-regexp-in-string "/" (regexp-quote "\\") s))))
-
-          (progn
-            (grep-apply-setting 'grep-command (funcall rfn2 (funcall rfn1 "PATH/grep.exe -i -n ")))
-
-            ;; I don't know why there is both grep-find-command and grep-find-template
-            (grep-apply-setting
-             'grep-find-command
-             (funcall rfn2
-                      (funcall rfn1
-                               "PATH/find.exe . -type f -print0 | PATH/xargs.exe -0 PATH/grep.exe -i -n ")))
-
-            (grep-apply-setting
-             'grep-find-template
-             (funcall rfn2
-                      (funcall rfn1
-                               "PATH/find.exe <D> <X> -type f <F> -print0 | PATH/xargs.exe -0 PATH/grep.exe <C> -n --null -e <R>"))))))))
- (t   ;; not windows-nt
-  (setq-default grep-command "grep -i -n ")))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timestamp
@@ -4021,23 +4013,6 @@ color ready for next time.
 ;; do I want this to be disabled?
 (put 'narrow-to-region 'disabled nil)
 
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(ls-lisp-format-time-list (quote ("%Y-%m-%d %H:%M" "%Y-%m-%d %H:%M")))
- '(ls-lisp-use-localized-time-format t)
- '(temporary-file-directory "/tmp"))
-
-
-;; System-specific configuration
-;; Loads system-type config; e.g. "darwin.el" on Mac
-;; TODO: for replace slashes in "gnu/linux"  and add in
-;; customizations there.
-(let ((system-specific-elisp (concat "~/elisp/" (symbol-name system-type) ".el")))
-  (if (file-exists-p system-specific-elisp)
-      (load system-specific-elisp)))
 
 ;; auto-revert for all files.
 (add-hook 'find-file-hook
@@ -4133,14 +4108,14 @@ color ready for next time.
 
 
 ;; unicode helpers
-(define-key key-translation-map (kbd "\C-x 8 i") (kbd "∞")) ;; infinity
-(define-key key-translation-map (kbd "\C-x 8 y") (kbd "λ")) ;; lambda
-(define-key key-translation-map (kbd "\C-x 8 a") (kbd "α")) ;; alpha
-(define-key key-translation-map (kbd "\C-x 8 b") (kbd "β")) ;; beta
-(define-key key-translation-map (kbd "\C-x 8 d") (kbd "Δ")) ;; delta
+(define-key key-translation-map (kbd "\C-x 8 i") (kbd " ")) ;; infinity
+(define-key key-translation-map (kbd "\C-x 8 y") (kbd " ")) ;; lambda
+(define-key key-translation-map (kbd "\C-x 8 a") (kbd " ")) ;; alpha
+(define-key key-translation-map (kbd "\C-x 8 b") (kbd " ")) ;; beta
+(define-key key-translation-map (kbd "\C-x 8 d") (kbd " ")) ;; delta
 (define-key key-translation-map (kbd "\C-x 8 m") (kbd "µ")) ;; mu / micro
-(define-key key-translation-map (kbd "\C-x 8 e") (kbd "ε")) ;; epsilon
-(define-key key-translation-map (kbd "\C-x 8 p") (kbd "π")) ;; pi
+(define-key key-translation-map (kbd "\C-x 8 e") (kbd " ")) ;; epsilon
+(define-key key-translation-map (kbd "\C-x 8 p") (kbd " ")) ;; pi
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
