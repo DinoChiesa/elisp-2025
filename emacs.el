@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-17 14:22:15>
+;; Last saved: <2025-February-18 03:24:31>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -83,8 +83,6 @@
  'dash-functional
  ;; 'go-autocomplete
  'dart-mode
- ;; 'js2-mode
- ;; 'js2-refactor
  'logito ;; a tiny logging framework for emacs. Not sure where this is used
  'path-helper ;; used to set path, just below
  'popup
@@ -138,6 +136,7 @@
 
 (use-package apheleia
   :ensure t
+  :defer t
   :config (progn
             (setq apheleia-log-debug-info t)
             (if (eq system-type 'windows-nt)
@@ -153,7 +152,8 @@
   (define-key company-mode-map "TAB" 'company-complete))
 
 (use-package company-box
-   :hook (company-mode . company-box-mode))
+  :defer t
+  :hook (company-mode . company-box-mode))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package indent-bars
@@ -163,6 +163,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package default-text-scale
   :ensure t
+  :defer t
   :config (progn
             (default-text-scale-mode)
             (keymap-global-set "C-=" #'default-text-scale-increase)
@@ -172,13 +173,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; treesit
 (use-package treesit
+  :defer t
   :config
   ;;(tree-sitter-require 'c-sharp) ;; this is the old (pre v29, not integrated) tree-sitter package
   ;; 20241229 - There is a grammar for c# at https://github.com/tree-sitter/tree-sitter-c-sharp
   ;; but the Makefile there says that "Windows is not supported."  Wow!
   (message (concat "csharp TS lang available ?: "
-                      (prin1-to-string
-                       (treesit-language-available-p 'c-sharp)))))
+                   (prin1-to-string
+                    (treesit-language-available-p 'c-sharp)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -191,11 +193,12 @@
 ;; - find file (prompt you)
 ;; - present files matching ja*
 ;; - C-x will be embark-export the list into a new Embark buffer, and you can
-;    then C-; (embark-act) on any of those items or a combination of those items.
+                                        ;    then C-; (embark-act) on any of those items or a combination of those items.
 
 (use-package embark
   :ensure t
   :demand t
+  :defer t
 
   :bind
   (("C-c ," . embark-act)         ;; pick some comfortable binding
@@ -228,13 +231,13 @@
   ;; For info: C-h v completion-styles-alist
   (completion-styles '(flex partial-completion substring)) ;; flex initials basic
   (completion-category-overrides
-      '((buffer
-         (styles initials flex)
-         (cycle . 10)) ;; not sure what this does. maybe it's the # of options to show.
-        (file
-         (styles basic substring))
-        (symbol-help
-         (styles basic shorthand substring))))
+   '((buffer
+      (styles initials flex)
+      (cycle . 10)) ;; not sure what this does. maybe it's the # of options to show.
+     (file
+      (styles basic substring))
+     (symbol-help
+      (styles basic shorthand substring))))
   (read-file-name-completion-ignore-case t)
   (icomplete-vertical-prospects-height 10) ;; 10 is the default
   (read-buffer-completion-ignore-case t)
@@ -260,6 +263,7 @@
 ;; for smart insertion of ++ and == and += etc, replaces smart-op.
 
 (use-package electric-operator
+  :defer t
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -276,6 +280,7 @@
   ;; This check attempts to clarify the problem.  The fix is to install git! And
   ;; make sure it is on the path.
   :ensure t
+  :defer t
   :config (progn
             (if (not (boundp 'magit-git-executable))
                 (error "git executable is not bound")
@@ -286,6 +291,8 @@
 ;; flycheck
 ;;
 (use-package flycheck
+  :ensure t
+  :defer t
   :config (progn
             ;;(add-hook 'after-init-hook #'global-flycheck-mode)
             (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc jsonnet))
@@ -316,6 +323,7 @@
     (eglot-ensure)))
 
 (use-package eglot
+  :defer t
   :demand t
   :commands (eglot eglot-ensure)
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
@@ -355,8 +363,9 @@
   )
 
 (use-package eglot-booster
-        :after eglot
-        :config (eglot-booster-mode))
+  :defer t
+  :after eglot
+  :config (eglot-booster-mode))
 
 ;; (use-package aider)
 
@@ -364,9 +373,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jsonnet
 ;;
-
-(use-package dpc-jsonnet-mode-fixups
-  :pin manual)
 
 (defun dino-jsonnet-mode-fn ()
   ;; 20241231 - eglot on jsonnet is helpful. Autocomplete ("code assist") works nicely.
@@ -392,8 +398,8 @@
   ;; ;; 20241231 - Surprisingly, flycheck does not yet work for remote files.
   ;; ;; https://github.com/flycheck/flycheck/pull/1922
   ;;
-    ;; ;; Also I am not sure I like flycheck in an eglot buffer. Too many
-    ;; ;; cooks in the kitchen. Too much feedback when I'm trying to do completion.
+  ;; ;; Also I am not sure I like flycheck in an eglot buffer. Too many
+  ;; ;; cooks in the kitchen. Too much feedback when I'm trying to do completion.
   (flycheck-mode -1)
   (when (not (file-remote-p default-directory))
     ;;  (flycheck-mode 1)
@@ -459,8 +465,41 @@
 
 (use-package jsonnet-mode
   :ensure t
-  :after (eglot dpc-jsonnet-mode-fixups)
-  :config (dino-jsonnet-package-config)
+  :defer t
+  :after (eglot dpc-jsonnet-mode-fixups flycheck)
+  :config
+  (progn
+    (dino-jsonnet-package-config)
+
+    ;; 20241230-2227
+    ;;
+    ;; flycheck does jsonnet checks. By default it just passes the file to the
+    ;; jsonnet command. Scripts that import libraries from a different directory
+    ;; will cause the jsonnet command to barf. To fix that, must pass the -J option
+    ;; to specify locations of jsonnet include libraries. There may be other command
+    ;; options, for example specifying external variables. (Not sure that is
+    ;; required for flycheck though). This modified checker command allows
+    ;; specification of those things. I filed a PR https://github.com/flycheck/flycheck/pull/2105
+    ;; but who knows if it will be merged. In the meantime, this will work.
+
+    (setf (flycheck-checker-get 'jsonnet 'command)
+          `("jsonnet"
+            (option-list "-J" flycheck-jsonnet-include-paths)
+            (eval flycheck-jsonnet-command-args)
+            source-inplace)))
+  ;; These variables can be set as file-local variables with a block like so:
+  ;;
+  ;; /* Local Variables:                                  */
+  ;; /* jsonnet-library-search-directories: ("./lib")     */
+  ;; /* jsonnet-command-options:   ("--ext-str" "xy=ab")  */
+  ;;
+  ;; /* flycheck-jsonnet-include-paths:  ("./lib")        */
+  ;; /* flycheck-jsonnet-command-args: ()              */
+  ;; /* End:                                              */
+
+  ;; There are actually two sets of variables carrying the same information; one
+  ;; for jsonnet-mode (used when evaluating the buffer), the other for flycheck.
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   :mode (
          ("\\.libjsonnet\\'" . jsonnet-mode)
          ("\\.jsonnet\\'" . jsonnet-mode)
@@ -468,40 +507,10 @@
          )
   :hook (jsonnet-mode . dino-jsonnet-mode-fn))
 
-
-;;(add-hook 'jsonnet-mode-hook #'dino-untabify-maybe)
-
-;; 20241230-2227
-;;
-;; flycheck does jsonnet checks. By default it just passes the file to the
-;; jsonnet command. Scripts that import libraries from a different directory
-;; will cause the jsonnet command to barf. To fix that, must pass the -J option
-;; to specify locations of jsonnet include libraries. There may be other command
-;; options, for example specifying external variables. (Not sure that is
-;; required for flycheck though). This modified checker command allows
-;; specification of those things. I filed a PR https://github.com/flycheck/flycheck/pull/2105
-;; but who knows if it will be merged. In the meantime, this will work.
-
-(setf (flycheck-checker-get 'jsonnet 'command)
-      `("jsonnet"
-        (option-list "-J" flycheck-jsonnet-include-paths)
-        (eval flycheck-jsonnet-command-args)
-        source-inplace))
-
-;; These variables can be set as file-local variables with a block like so:
-;;
-;; /* Local Variables:                                  */
-;; /* jsonnet-library-search-directories: ("./lib")     */
-;; /* jsonnet-command-options:   ("--ext-str" "xy=ab")  */
-;;
-;; /* flycheck-jsonnet-include-paths:  ("./lib")        */
-;; /* flycheck-jsonnet-command-args: ()              */
-;; /* End:                                              */
-
-;; There are actually two sets of variables carrying the same information; one
-;; for jsonnet-mode (used when evaluating the buffer), the other for flycheck.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+(use-package dpc-jsonnet-mode-fixups
+  :defer t
+  :after (jsonnet-mode)
+  :pin manual)
 
 
 
@@ -552,7 +561,7 @@
 ;; Tips from https://www.youtube.com/watch?v=p3Te_a-AGqM
 ;; for marking ever-larger regions iteratively
 (use-package expand-region
-  :defer
+  :defer t
   ;; TODO: fix this keymap binding; it conflicts with the font resize key binding.
   :config (keymap-global-set "C-=" 'er/expand-region))
 
@@ -564,7 +573,7 @@
 (use-package multiple-cursors
   :ensure t
   :demand t
-  :defer
+  :defer t
   :init
   ;; 20241228-2133 - supposedly there is a bug, and reloading avoids it?
   (add-hook 'multiple-cursors-mode-hook
@@ -586,6 +595,7 @@
 ;; wgrep - edit files in a grep output buffer
 ;;
 (use-package wgrep
+  :defer t
   :config (keymap-set grep-mode-map "C-c C-p" #'wgrep-change-to-wgrep-mode))
 
 
@@ -617,7 +627,7 @@
 
 (when (boundp 'apheleia-formatters)
   (setcar (alist-get 'shfmt apheleia-formatters)
-        "~/go/bin/shfmt")
+          "~/go/bin/shfmt")
   (push '(sh-mode . shfmt) apheleia-mode-alist))
 
 (defun dino-sh-mode-fn ()
@@ -672,7 +682,9 @@
 ;;
 
 (use-package go-mode
+  :defer t
   :ensure t
+  :after (smarter-compile flycheck)
   :config (progn
             ;;(require 'go-mode-autoloads) ;; editing mode
             (load "go-mode-autoloads") ;; editing mode; there is no provide statement!
@@ -781,6 +793,7 @@
 ;; latter appends some things to yasnippet.
 
 (use-package yasnippet
+  :defer t
   :config (progn
             (setq yas-snippet-dirs (list "~/elisp/yasnippets"))
             (yas-global-mode 1)
@@ -824,12 +837,14 @@
 
 ;; (add-to-list 'ac-dictionary-directories "/Users/Dino/elisp/autocomplete/ac-dict")
 (use-package auto-complete-config
+  :defer t
   :config (ac-config-default))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; web
 (use-package web-mode
+  :defer t
   :config (progn
             (defun dino-web-mode-fn ()
               "My hook for web mode"
@@ -879,19 +894,13 @@ then switch to the markdown output buffer."
 ;; 20241228-0227 - It seems likely this is probably unnecessary at this point.
 (require 'httpget)
 
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;; Word-count minor mode
-;; ;; 20250215-0542 - not sure where this went, but I don't have it anymore.
-;; ;; and I don't use it.
-;; (autoload 'word-count-mode "word-count"
-;;   "Minor mode to count words." t nil)
-
 
 (require 'skeleton)
 
 ;; handle text end-of-line conventions the way it oughta be:
 (setq inhibit-eol-conversion nil)
 
+;; 20250218-0251 - not sure this is necessary any longer
 ;; turn on font-lock globally
 ;; for fontification in emacs progmodes:
 (require 'font-lock)
@@ -914,7 +923,6 @@ then switch to the markdown output buffer."
 
 ;; set truncation on side-by-side windows to nil.
 (setq truncate-partial-width-windows nil)
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1004,7 +1012,6 @@ then switch to the markdown output buffer."
 (autoload 'csharp-mode "csharp-mode" "Major mode for editing C# code." t)
 (autoload 'iirf-mode "iirf-mode" "Major mode for editing IIRF ini files." t)
 (autoload 'php-mode "php-mode" "Major mode for editing php code." t)
-
 
 
 
@@ -1105,60 +1112,65 @@ then switch to the markdown output buffer."
 
 (use-package sr-speedbar ;; put speedbar in same frame
   :ensure t
+  :defer t
   :config
   (setq speedbar-use-images nil))
 
 
-(use-package hideshow) ;; builtin
+(use-package hideshow  ;; builtin
+  :defer t )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; htmlize
 
-;;(require 'htmlize)
-(autoload 'htmlize-buffer "htmlize"
-  "Turning code into HTML." t)
+(use-package htmlize
+  :defer t
+  :config
+  (progn
+    (setq htmlize-output-type 'inline-css)
+    (autoload 'htmlize-buffer "htmlize"
+      "Turning code into HTML." t)))
 
-(eval-after-load "htmlize"
-  '(progn
-     (setq htmlize-output-type 'inline-css)
-     ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; gist
+;;
+;; I stopped  using this because I couldn't figure out the MFA for Github.
 
-;;(require 'gist)
-
-;; Sometimes when invoking gist-buffer, you get an error like this:
-;; Invalid slot type: gh-gist-gist, id, string, nil
-;; If so, just run 'gist-list' and retry the gist-buffer.
-(eval-after-load "gist"
-  '(progn
-     ;; note that we added the DESCRIPTION argument
-     (defun gist-region-with-description (begin end &optional description private callback)
-       "Post the current region as a new paste at gist.github.com
-Copies the URL into the kill ring.
-
-With a prefix argument, makes a private paste."
-       (interactive "r\nsGist Description: \nP") ;; we handle the prompt here!
-       (let* ((file (or (buffer-file-name) (buffer-name)))
-              (name (file-name-nondirectory file))
-              (ext (or (cdr (assoc major-mode gist-supported-modes-alist))
-                       (file-name-extension file)
-                       "txt"))
-              (fname (concat (file-name-sans-extension name) "." ext))
-              (files (list
-                      (gh-gist-gist-file "file"
-                                         :filename fname
-                                         :content (buffer-substring begin end)))))
-         ;; finally we use our new arg to specify the description in the internal call
-         (gist-internal-new files private description callback)))
-     ))
-
-;; (defun dino-add-user-agent (old-function &rest arguments)
-;;   "set the user agent when invoking github APIs"
-;;   (let ((url-user-agent "emacs/url-http.el"))
-;;     (apply old-function arguments)))
-;;(advice-add #'gh-api-authenticated-request :around #'dino-add-user-agent)
-;;(advice-remove #'gh-api-authenticated-request  #'dino-add-user-agent)
+;; (use-package gist
+;;   :defer t
+;;   :config
+;;   (progn
+;;     ;; Sometimes when invoking gist-buffer, you get an error like this:
+;;     ;; Invalid slot type: gh-gist-gist, id, string, nil
+;;     ;; If so, just run 'gist-list' and retry the gist-buffer.
+;;     ;; note that we added the DESCRIPTION argument
+;;     (defun gist-region-with-description (begin end &optional description private callback)
+;;       "Post the current region as a new paste at gist.github.com
+;; Copies the URL into the kill ring.
+;;
+;; With a prefix argument, makes a private paste."
+;;       (interactive "r\nsGist Description: \nP") ;; we handle the prompt here!
+;;       (let* ((file (or (buffer-file-name) (buffer-name)))
+;;              (name (file-name-nondirectory file))
+;;              (ext (or (cdr (assoc major-mode gist-supported-modes-alist))
+;;                       (file-name-extension file)
+;;                       "txt"))
+;;              (fname (concat (file-name-sans-extension name) "." ext))
+;;              (files (list
+;;                      (gh-gist-gist-file "file"
+;;                                         :filename fname
+;;                                         :content (buffer-substring begin end)))))
+;;         ;; finally we use our new arg to specify the description in the internal call
+;;         (gist-internal-new files private description callback)))
+;;
+;;     ;; (defun dino-add-user-agent (old-function &rest arguments)
+;;     ;;   "set the user agent when invoking github APIs"
+;;     ;;   (let ((url-user-agent "emacs/url-http.el"))
+;;     ;;     (apply old-function arguments)))
+;;     ;;(advice-add #'gh-api-authenticated-request :around #'dino-add-user-agent)
+;;     ;;(advice-remove #'gh-api-authenticated-request  #'dino-add-user-agent)
+;;     ))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1357,48 +1369,48 @@ With a prefix argument, makes a private paste."
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; VBNET mode (and also, VBScript)
-
-(autoload 'vbnet-mode "vbnet-mode" "Mode for editing VB.NET code." t)
-(autoload 'vbs-mode "vbs-mode" "Mode for editing VBScript code." t)
-
-(defun dino-vbnet-mode-fn ()
-  "My hook for VB.NET mode (and VBScript)"
-  (interactive)
-  (turn-on-font-lock)
-
-  (keymap-local-set "ESC C-R" #'indent-region)
-  (keymap-local-set "ESC #"   #'dino-indent-buffer)
-  (keymap-local-set "C-c C-w" #'compare-windows)
-  (keymap-local-set "C-c C-c"  #'comment-region)
-
-  (turn-on-auto-revert-mode)
-
-  ;; "no tabs" -- use only spaces
-  ;;(make-local-variable 'indent-tabs-mode)
-  (setq indent-tabs-mode nil)
-
-  ;; for snippets support:
-  (require 'yasnippet)
-  (yas-minor-mode-on)
-
-  ;; use autopair for curlies, parens, square brackets.
-  ;; electric-pair-mode works better than autopair.el in 24.4,
-  ;; and is important for use with popup / auto-complete.
-  (if (or (not (fboundp 'version<)) (version< emacs-version "24.4"))
-      (progn (require 'autopair) (autopair-mode))
-    (electric-pair-mode))
-
-  ;;(require 'myfixme)
-  ;;(myfixme-mode 1)
-
-  (require 'rfringe)
-  (setq comment-empty-lines t))
-
-
-(add-hook 'vbnet-mode-hook 'dino-vbnet-mode-fn)
-(add-hook 'vbs-mode-hook 'dino-vbnet-mode-fn)
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; VBNET mode (and also, VBScript)
+;;
+;; (autoload 'vbnet-mode "vbnet-mode" "Mode for editing VB.NET code." t)
+;; (autoload 'vbs-mode "vbs-mode" "Mode for editing VBScript code." t)
+;;
+;; (defun dino-vbnet-mode-fn ()
+;;   "My hook for VB.NET mode (and VBScript)"
+;;   (interactive)
+;;   (turn-on-font-lock)
+;;
+;;   (keymap-local-set "ESC C-R" #'indent-region)
+;;   (keymap-local-set "ESC #"   #'dino-indent-buffer)
+;;   (keymap-local-set "C-c C-w" #'compare-windows)
+;;   (keymap-local-set "C-c C-c"  #'comment-region)
+;;
+;;   (turn-on-auto-revert-mode)
+;;
+;;   ;; "no tabs" -- use only spaces
+;;   ;;(make-local-variable 'indent-tabs-mode)
+;;   (setq indent-tabs-mode nil)
+;;
+;;   ;; for snippets support:
+;;   (require 'yasnippet)
+;;   (yas-minor-mode-on)
+;;
+;;   ;; use autopair for curlies, parens, square brackets.
+;;   ;; electric-pair-mode works better than autopair.el in 24.4,
+;;   ;; and is important for use with popup / auto-complete.
+;;   (if (or (not (fboundp 'version<)) (version< emacs-version "24.4"))
+;;       (progn (require 'autopair) (autopair-mode))
+;;     (electric-pair-mode))
+;;
+;;   ;;(require 'myfixme)
+;;   ;;(myfixme-mode 1)
+;;
+;;   (require 'rfringe)
+;;   (setq comment-empty-lines t))
+;;
+;;
+;; (add-hook 'vbnet-mode-hook 'dino-vbnet-mode-fn)
+;; (add-hook 'vbs-mode-hook 'dino-vbnet-mode-fn)
 
 
 
@@ -1411,6 +1423,7 @@ With a prefix argument, makes a private paste."
 ;; Also I am not sure what css-ts-mode gives me? or does completion come from TS?
 
 (use-package css-mode
+  :defer t
   :ensure nil
   :config (progn
             ;;(autoload 'css-mode "css-mode" "Mode for editing Cascading Stylesheets." t)
@@ -1485,6 +1498,7 @@ With a prefix argument, makes a private paste."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JSON
 (use-package json-mode
+  :defer t
   :config (progn
             (require 'json-reformat)
             (autoload 'json-mode "json" nil t)
@@ -1540,6 +1554,7 @@ With a prefix argument, makes a private paste."
 ;; 20241227 - API key is still working
 ;;
 (use-package thesaurus
+  :defer t
   :config
   (progn
     (thesaurus-set-bhl-api-key-from-file "~/elisp/.BigHugeLabs.apikey.txt")
@@ -1560,6 +1575,7 @@ With a prefix argument, makes a private paste."
 ;; dictionary
 ;;
 (use-package dictionary
+  :defer t
   :config (global-set-key "\C-c\C-d"     'dictionary-lookup-definition)
   )
 
@@ -1568,6 +1584,7 @@ With a prefix argument, makes a private paste."
 ;; 20241227 - still works
 ;;
 (use-package wordnik
+  :defer t
   :ensure nil
   :config (progn
             (wordnik-set-api-key-from-file "~/elisp/.wordnik.apikey.txt")
@@ -1625,16 +1642,17 @@ With a prefix argument, makes a private paste."
 ;;               models))
 
 ;; redefine the chatgpt-shell functionto try to properly sort. (It did not work.)
-    ;; (defun chatgpt-shell-reload-default-models ()
-    ;;   "Reload all available models. (And sort them by provider name)"
-    ;;   (interactive)
-    ;;   (setq chatgpt-shell-models
-    ;;         (dpc-sort-chatgpt-models
-    ;;          (chatgpt-shell--make-default-models)))
-    ;;   (message "Reloaded %d models" (length chatgpt-shell-models)))
+;; (defun chatgpt-shell-reload-default-models ()
+;;   "Reload all available models. (And sort them by provider name)"
+;;   (interactive)
+;;   (setq chatgpt-shell-models
+;;         (dpc-sort-chatgpt-models
+;;          (chatgpt-shell--make-default-models)))
+;;   (message "Reloaded %d models" (length chatgpt-shell-models)))
 
 
 (use-package dpc-gemini
+  :defer t
   :ensure nil
   :config (progn
             (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
@@ -1642,9 +1660,9 @@ With a prefix argument, makes a private paste."
             ))
 
 
-
 (use-package chatgpt-shell
-  :ensure nil
+  :defer t
+  :ensure t
   :requires (dpc-gemini)
   :config
   (progn
@@ -1658,9 +1676,10 @@ With a prefix argument, makes a private paste."
 
   :catch
   (lambda (keyword err)
-   (message (format "chatgpt-shell init: %s" (error-message-string err)))))
+    (message (format "chatgpt-shell init: %s" (error-message-string err)))))
 
 (use-package gemini-code-completion
+  :defer t
   :requires (dpc-gemini google-gemini)
   :config
   (progn
@@ -1675,6 +1694,7 @@ With a prefix argument, makes a private paste."
 ;; auto-insert - 20241206-0142
 ;;
 (use-package autoinsert
+  :defer t
   :config (progn
             (auto-insert-mode 1);; global minor mode
             (setq auto-insert-query nil) ;; no prompt before auto-insertion
@@ -1749,7 +1769,6 @@ With a prefix argument, makes a private paste."
 
 ;; eliminate the gid in dired on windows
 (setq ls-lisp-verbosity '(links uid))
-
 
 
 
@@ -2433,8 +2452,8 @@ again, I haven't see that as a problem."
   (let ((cmd-list
          (if (eq system-type 'windows-nt)
              '("dotnet" "csharpier" "--write-stdout")
-         '("dotnet-csharpier")
-         )))
+           '("dotnet-csharpier")
+           )))
     (push (cons 'csharpier cmd-list) apheleia-formatters))
   (push '(csharp-mode . csharpier) apheleia-mode-alist)
   (push '(csharp-ts-mode . csharpier) apheleia-mode-alist))
@@ -2564,7 +2583,7 @@ again, I haven't see that as a problem."
             '((parent-is "lambda_expression") parent-bol 0)
             (cdr (car csharp-ts-mode--indent-rules))))
      (setq-local treesit-simple-indent-rules csharp-ts-mode--indent-rules)
-))
+     ))
 
 
 (defun dino-csharp-ts-mode-fn ()
@@ -2649,8 +2668,9 @@ again, I haven't see that as a problem."
          )))
 
 (use-package csharp-ts-mode-navigation
-    :after csharp-mode
-    :config (add-hook 'csharp-ts-mode-hook 'ctsn/setup))
+  :defer t
+  :after csharp-mode
+  :config (add-hook 'csharp-ts-mode-hook 'ctsn/setup))
 
 (defun dino-maybe-eglot-reconnect ()
   "When apheleia reformats a C# buffer it seems to confuse the language server.
@@ -2911,33 +2931,33 @@ Does not consider word syntax tables.
 ;;
 (when (boundp 'apheleia-formatters)
   (push '(dino-xmlpretty .
-                       ("java" "-jar"
-                        "/Users/dchiesa/dev/java/XmlPretty/target/com.google.dchiesa-xml-prettifier-20230725.jar"
-                        "-"))
-      apheleia-formatters)
+                         ("java" "-jar"
+                          "/Users/dchiesa/dev/java/XmlPretty/target/com.google.dchiesa-xml-prettifier-20230725.jar"
+                          "-"))
+        apheleia-formatters)
 
   (push '(xml-prettier .
-                     ("/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"
-                      "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
-                      "--stdin-filepath" "foo.xml"))
-      apheleia-formatters)
+                       ("/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"
+                        "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
+                        "--stdin-filepath" "foo.xml"))
+        apheleia-formatters)
 
 
-;; ;; change an existing formatter in the alist (during development only)
-;; (setf (alist-get 'xml-prettier apheleia-formatters)
-;;        '("/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"
-;;           "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
-;;          "--stdin-filepath" "foo.xml"))
+  ;; ;; change an existing formatter in the alist (during development only)
+  ;; (setf (alist-get 'xml-prettier apheleia-formatters)
+  ;;        '("/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"
+  ;;           "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
+  ;;          "--stdin-filepath" "foo.xml"))
 
-;; to specify an apheleia plugin for a mode that is not currently in the list:
-;;(push '(nxml-mode . dino-xmlpretty) apheleia-mode-alist)
+  ;; to specify an apheleia plugin for a mode that is not currently in the list:
+  ;;(push '(nxml-mode . dino-xmlpretty) apheleia-mode-alist)
   (push '(nxml-mode . xml-prettier) apheleia-mode-alist)
 
-;; ;; to switch between previously set plugin for a mode:
-;; (setf (alist-get 'nxml-mode apheleia-mode-alist) 'xml-prettier)
-;; ;;(setf (alist-get 'nxml-mode apheleia-mode-alist) 'dino-xmlpretty)
+  ;; ;; to switch between previously set plugin for a mode:
+  ;; (setf (alist-get 'nxml-mode apheleia-mode-alist) 'xml-prettier)
+  ;; ;;(setf (alist-get 'nxml-mode apheleia-mode-alist) 'dino-xmlpretty)
 
-)
+  )
 
 (defun dino-xml-mode-fn ()
   (turn-on-auto-revert-mode)
@@ -3023,6 +3043,7 @@ Does not consider word syntax tables.
 ;; to highlight trailing whitespace
 ;;
 (use-package highlight-chars
+  :defer t
   :config (progn
             (defun dino-enable-highlight-trailing-ws-based-on-extension ()
               "turns on highlighting of trailing whitespace based on file extension"
@@ -3054,10 +3075,11 @@ Does not consider word syntax tables.
   (display-line-numbers-mode)
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
+  (apheleia-mode)
   (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
   )
 
-
+;; add (emacs-lisp-mode . lisp-indent) to apheleia-mode-alist
 (add-hook 'emacs-lisp-mode-hook 'dino-elisp-mode-fn)
 
 ;; This is for scratch buffer
@@ -3071,6 +3093,8 @@ Does not consider word syntax tables.
 ;; Python
 
 (defun dino-python-mode-fn ()
+  ;;(eglot) ;; never tried this
+  ;;(apheleia-mode) ;; never tried this
 
   (keymap-local-set "ESC C-R" #'indent-region)
   (keymap-local-set "ESC #"   #'dino-indent-buffer)
@@ -3110,30 +3134,10 @@ i.e M-x kmacro-set-counter."
   (interactive)
   (kmacro-set-counter 1))
 
-
-;; 20241228-0137
-;; TODO: `global-set-key' is a legacy function. Should use
-;; (keymap-global-set KEY COMMAND) instead.
-
-(global-set-key (kbd "<f5>") 'init-macro-counter-default)
-(global-set-key (kbd "<f6>") 'kmacro-insert-counter)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
+(keymap-global-set "<f5>" #'init-macro-counter-default)
+(keymap-global-set "<f6>" #'kmacro-insert-counter)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; tern
-;;
-;; I think I don't need this, now that I am using deno.
-;;
-;; (add-to-list 'load-path (file-name-as-directory "~/elisp/tern/emacs/"))
-;; (autoload 'tern-mode "tern.el" nil t)
-;;
-;; (eval-after-load 'tern
-;;   '(progn
-;;      (require 'tern-auto-complete)
-;;      (tern-ac-setup)))
-
 
 
 ;; 20241214-2357
@@ -3276,7 +3280,6 @@ color ready for next time.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JavaScript - js-mode (everything old is new again)
-(autoload 'js-mode "js" nil t)  ;; 20220426-2016
 
 ;; (setf (alist-get 'prettier-javascript apheleia-formatters)
 ;;        '("apheleia-npx" "prettier"
@@ -3353,7 +3356,7 @@ color ready for next time.
   ;;(require 'imenu)
   ;;(imenu-add-menubar-index)
   (hs-minor-mode t)
-
+  (apheleia-mode)
   (electric-operator-mode)
   (display-line-numbers-mode)
   (indent-bars-mode)
@@ -3502,17 +3505,20 @@ color ready for next time.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; compile stuff
 
-(require 'smarter-compile)
-
-(setq smart-compile-alist
-      (append
-       '(
-         ("\\.go\\'"      . "go build %f")
-         ("\\.txt\\'"      . "proselint %f")
-         ("\\.wxs\\'"      . "%M %n.msi")
-         ("\\.css\\'"      . "~/js/csslint.node.js %f")
-         ("\\.js\\'"       . "~/js/jshint.node.js %f")
-         ) smart-compile-alist ))
+(use-package smarter-compile
+  :defer t
+  :config
+  (progn
+    (setq smart-compile-alist
+          (append
+           '(
+             ("\\.go\\'"      . "go build %f")
+             ("\\.txt\\'"      . "proselint %f")
+             ("\\.wxs\\'"      . "%M %n.msi")
+             ("\\.css\\'"      . "~/js/csslint.node.js %f")
+             ("\\.js\\'"       . "~/js/jshint.node.js %f")
+             ) smart-compile-alist ))
+    ))
 
 (eval-after-load "compile"
   '(progn
@@ -3523,8 +3529,11 @@ color ready for next time.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; salted files
-(require 'salted)
-(setq salted--salt-file-utility "~/go/src/github.com/DinoChiesa/salted/salt_file")
+(use-package salted
+  :defer t
+  :config
+  (setq salted--salt-file-utility "~/go/src/github.com/DinoChiesa/salted/salt_file"))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Github GraphQL mode
@@ -3534,32 +3543,30 @@ color ready for next time.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; restclient - invoke REST API calls from within Emacs
 
-(require 'restclient)
-(require 'dino-netrc)
+(use-package restclient
+  :defer t
+  :config
+  (progn
+    (require 'dino-netrc)
 
-(eval-after-load "restclient"
-  '(progn
+    (defadvice restclient-http-do (around dino-restclient-eliminate-giant-useless-header activate)
+      "make emacs be less chatty when sending requests"
+      (let (url-mime-charset-string url-user-agent url-extensions-header)
+        ad-do-it))
 
-     (defadvice restclient-http-do (around dino-restclient-eliminate-giant-useless-header activate)
-       "make emacs be less chatty when sending requests"
-       (let (url-mime-charset-string url-user-agent url-extensions-header)
-         ad-do-it))
+    (if (not (fboundp 'json-pretty-print-buffer))
+        (defun json-pretty-print-buffer ()
+          (json-prettify-buffer)))
 
-     (if (not (fboundp 'json-pretty-print-buffer))
-         (defun json-pretty-print-buffer ()
-           (json-prettify-buffer)))
-     ))
-
-
-(eval-after-load "url"
-  '(progn
-     (defun dino-url-http-cleaner-request (old-function &rest arguments)
-       "make url-http be less chatty when sending requests"
-       (let (url-mime-charset-string
-             url-extensions-header
-             (url-user-agent "User-Agent: emacs/url-http.el\r\n"))
-         (apply old-function arguments)))
-     (advice-add #'url-http-create-request :around #'dino-url-http-cleaner-request)))
+    (eval-after-load "url"
+      '(progn
+         (defun dino-url-http-cleaner-request (old-function &rest arguments)
+           "make url-http be less chatty when sending requests"
+           (let (url-mime-charset-string
+                 url-extensions-header
+                 (url-user-agent "User-Agent: emacs/url-http.el\r\n"))
+             (apply old-function arguments)))
+         (advice-add #'url-http-create-request :around #'dino-url-http-cleaner-request)))))
 
 
 ;; to disable at runtime:
@@ -3721,7 +3728,8 @@ color ready for next time.
     (message "Characters entered: %s" (key-description chars))))
 
 
-(require 'lorem)
+(use-package lorem
+  :defer t)
 
 ;;08.04.2003: Kai Großjohann
 (defun increment-number-at-point (amount)
@@ -3765,16 +3773,28 @@ color ready for next time.
                          (make-string count ?+))))))))
 
 
-(defun open-in-finder ()
-  "Open current folder in Finder. Works on Mac, in dired mode."
-  (interactive)
-  (shell-command "open ."))
-(global-set-key (kbd "<f8>") 'open-in-finder)
+
+(if (eq system-type 'darwin)
+    (progn
+      (defun open-in-finder ()
+        "Open current folder in Finder. Works on Mac, in dired mode."
+        (interactive)
+        (shell-command "open ."))
+      (keymap-global-set "<f8>" #'open-in-finder)))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; 20241116-0108 - trying to reduce touches
+;; 20241116-0108 - trying to reduce touches, when using
+;; the chromebook as client and opening tramp connections.
+;;
+;; This stuff helped _a little_, but in the end it was still way too klunky
+;; a UX to be constantly touching the gnubby key, and waiting for things to
+;; timeout, and so on.  So now I ssh to the remote, and run emacs there in a terminal.
+;;
+;; As a result I think all of the below is unnecessary now.
+
 ;;  go/corpssh-faq#fewer-touches
 (defun dino-tramp-setup ()
   "This function tries to set some things for tramp."
@@ -3791,7 +3811,6 @@ color ready for next time.
   ;;       (concat
   ;;        "-o ControlPath=/tmp/ssh-ControlPath-%%r@%%h:%%p "
   ;;        "-o ControlMaster=auto -o ControlPersist=yes"))
-
 
   ;; https://www.gnu.org/software/tramp/#Improving-performance-of-asynchronous-remote-processes-1
   (connection-local-set-profile-variables
@@ -3816,13 +3835,19 @@ color ready for next time.
      (compilation-shell-name . "/bin/bash")
      ))
 
-  (connection-local-set-profiles
-   '(:application tramp :protocol "ssh" :machine "cloudtop")
-   'remote-bash)
+  ;; 20250218-0244
+  ;; ;
+  ;; I'm commenting these next 2 sections out.  I upgraded tramp today, and
+  ;; suddenly tramp is starting up, even when I am not using tramp
+  ;; or opening a buffer over tramp. WTF Tramp?
 
-  (connection-local-set-profiles
-   '(:application tramp :protocol "ssh" :machine "dpchiesa.c.googlers.com")
-   'remote-bash)
+  ;; (connection-local-set-profiles
+  ;;  '(:application tramp :protocol "ssh" :machine "cloudtop")
+  ;;  'remote-bash)
+
+  ;; (connection-local-set-profiles
+  ;;  '(:application tramp :protocol "ssh" :machine "dpchiesa.c.googlers.com")
+  ;;  'remote-bash)
 
   ;; tell tramp to FRICKING USE MY PATH on the remote machine, why would it do otherwise?
   (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
@@ -3836,7 +3861,8 @@ color ready for next time.
   ;; If this isn't set, Tramp will always prompt for shell on M-x shell (which i do not often use)
   (customize-set-variable 'explicit-shell-file-name "/bin/bash"))
 
-(eval-after-load "tramp" '(dino-tramp-setup))
+;; 20250218-0244 - suddenly tramp is starting up. I hate tramp sometimes.
+;;(eval-after-load "tramp" '(dino-tramp-setup))
 
 ;; also for tramp
 (defun dino-vc-off-if-remote ()
@@ -3929,14 +3955,14 @@ color ready for next time.
             (grep-apply-setting
              'grep-find-command
              (funcall rfn2
-              (funcall rfn1
-               "PATH/find.exe . -type f -print0 | PATH/xargs.exe -0 PATH/grep.exe -i -n ")))
+                      (funcall rfn1
+                               "PATH/find.exe . -type f -print0 | PATH/xargs.exe -0 PATH/grep.exe -i -n ")))
 
             (grep-apply-setting
              'grep-find-template
              (funcall rfn2
-              (funcall rfn1
-               "PATH/find.exe <D> <X> -type f <F> -print0 | PATH/xargs.exe -0 PATH/grep.exe <C> -n --null -e <R>"))))))))
+                      (funcall rfn1
+                               "PATH/find.exe <D> <X> -type f <F> -print0 | PATH/xargs.exe -0 PATH/grep.exe <C> -n --null -e <R>"))))))))
  (t   ;; not windows-nt
   (setq-default grep-command "grep -i -n ")))
 
@@ -3969,14 +3995,15 @@ color ready for next time.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; server
 ;;
-;; An emacsclient will look in
-;; ~/.emacs.d/server/server for the TCP server information or
-;; /run/user/387638/emacs/server for the socket
 (require 'server)
 ;; see https://mina86.com/2021/emacs-remote/
 ;; if using server / daemon
 (setq server-port 17687
       server-use-tcp t) ;; nil means use socket, not port (server-port is ignored)
+;; If using servewr-port, tell emacsclient to find it there.
+;;   alias e='emacsclient -f ~/.emacs.d/server/server -t -a ""'
+;; Otherwise, emacsclient will look in /tmp/emacsSOMETHING for the socket.
+
 (if (not (eq t (server-running-p server-name)))
     (server-start)
   (if server-use-tcp
