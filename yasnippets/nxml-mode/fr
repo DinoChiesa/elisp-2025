@@ -1,5 +1,5 @@
 #key : fr
-#name : <FaultRule...>
+#name : <FaultRule2...>
 # --
 <FaultRule name='${1:rule1}'>
   <Step>

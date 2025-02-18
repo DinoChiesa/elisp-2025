@@ -1,5 +1,5 @@
 # -*- mode: snippet -*-
-# name: <AssignMessage...>
+# name: <AssignMessage variable...>
 # key: amv
 # --
 <AssignMessage name='AM-$1'>
