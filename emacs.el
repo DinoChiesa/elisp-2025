@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-18 22:30:07>
+;; Last saved: <2025-February-19 19:06:36>
 ;;
 ;; Works with v29.4 of emacs.
 ;;
@@ -177,23 +177,24 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package company
-  :defer t
+  :defer 31
   :config
   (define-key company-mode-map "TAB" 'company-complete))
 
 (use-package company-box
   :defer t
+  :after (company)
   :hook (company-mode . company-box-mode))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package indent-bars
-  :defer t
+  :defer 19
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package default-text-scale
   :ensure t
-  :defer t
+  :defer 21
   :config (progn
             (default-text-scale-mode)
             (keymap-global-set "C-=" #'default-text-scale-increase)
@@ -223,7 +224,7 @@
 ;; - find file (prompt you)
 ;; - present files matching ja*
 ;; - C-x will be embark-export the list into a new Embark buffer, and you can
-                                        ;    then C-; (embark-act) on any of those items or a combination of those items.
+;;    then C-; (embark-act) on any of those items or a combination of those items.
 
 (use-package embark
   :ensure t
@@ -236,10 +237,8 @@
    ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
 
   :init
-
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
-
 
   :config
   ;; Hide the mode line of the Embark live/completions buffers
@@ -293,7 +292,7 @@
 ;; for smart insertion of ++ and == and += etc, replaces smart-op.
 
 (use-package electric-operator
-  :defer t
+  :defer 8
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -327,7 +326,7 @@
 ;;
 (use-package flycheck
   :ensure t
-  :defer t
+  :defer 23
   :config (progn
             ;;(add-hook 'after-init-hook #'global-flycheck-mode)
             (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc jsonnet))
@@ -842,7 +841,7 @@
 ;; latter appends some things to yasnippet.
 
 (use-package yasnippet
-  :defer t
+  :defer 13
   :config (progn
             (setq yas-snippet-dirs (list "~/elisp/yasnippets"))
             (yas-global-mode 1)
@@ -886,6 +885,7 @@
 
 ;; (add-to-list 'ac-dictionary-directories "/Users/Dino/elisp/autocomplete/ac-dict")
 (use-package auto-complete-config
+  :init (require 'yasnippet)
   :defer t
   :config (ac-config-default))
 
@@ -3592,6 +3592,8 @@ color ready for next time.
 
 (use-package restclient
   :defer t
+  :load-path "~/elisp"
+  :commands (restclient-mode)
   :config
   (progn
     (require 'dino-netrc)
@@ -3613,50 +3615,49 @@ color ready for next time.
                  url-extensions-header
                  (url-user-agent "User-Agent: emacs/url-http.el\r\n"))
              (apply old-function arguments)))
+         ;; to disable at runtime:
+         ;; (ad-disable-advice 'url-http-create-request 'around 'dino-url-eliminate-giant-useless-header)
+         ;; (ad-activate 'url-http-create-request)
          (advice-add #'url-http-create-request :around #'dino-url-http-cleaner-request)))))
 
 
-;; to disable at runtime:
-;; (ad-disable-advice 'url-http-create-request 'around 'dino-url-eliminate-giant-useless-header)
-;; (ad-activate 'url-http-create-request)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; perl mode
+;;
+;; I don't often use perl these days.
 
 (defalias 'perl-mode 'cperl-mode)
-(require 'cperl-mode)
 
-;; this is for Mac; won't work on other platforms.
-(autoload 'perl-mode
-  "/Applications/Emacs.app/Contents/Resources/lisp/progmodes/cperl-mode" "" t)
-;;(autoload 'perl-mode "/emacs/lisp/progmodes/cperl-mode" "" t)
-;;(autoload 'perl-mode "c:/emacs/lisp/progmodes/perl-mode" "" t)
+(use-package cperl-mode
+  :ensure t
+  :defer t
+  :init
+  :mode ("\.pl$" . cperl-mode)
+  :config
+  (progn
+    (defconst my-cperl-style
+      '( ("MyPerl"
+          (cperl-indent-level               .  0)
+          (cperl-brace-offset               .  2)
+          (cperl-continued-statement-offset .  2)
+          (cperl-continued-brace-offset     . -2)
+          (cperl-label-offset               . -2)
+          (cperl-close-paren-offset         . -1))))
 
-;;(setq cperl-comment-column   44)                 ; must this be set globally?
+    (defun cperl-mode-hook-fn ()
+      "My hook for perl mode"
+      (set-variable 'c-indent-level 0)      ; required for c-outline
+      (turn-on-font-lock)
+      (set (make-local-variable 'cperl-style-alist) 'my-cperl-style))
 
-(defconst my-cperl-style
-  '( ("MyPerl"
-      (cperl-indent-level               .  0)
-      (cperl-brace-offset               .  2)
-      (cperl-continued-statement-offset .  2)
-      (cperl-continued-brace-offset     . -2)
-      (cperl-label-offset               . -2)
-      (cperl-close-paren-offset         . -1))))
+    (add-hook 'cperl-mode-hook 'cperl-mode-hook-fn)
 
-
-(defun cperl-mode-hook-fn ()
-  "My hook for perl mode"
-  (set-variable 'c-indent-level 0)      ; required for c-outline
-  (turn-on-font-lock)
-  (set (make-local-variable 'cperl-style-alist) 'my-cperl-style))
-
-
-(add-hook 'cperl-mode-hook 'cperl-mode-hook-fn)
-
-(add-to-list 'auto-mode-alist '("\\.\\([pP][Llm]\\|al\\)\\'" . cperl-mode))
-(add-to-list 'interpreter-mode-alist '("perl" . cperl-mode))
-(add-to-list 'interpreter-mode-alist '("perl5" . cperl-mode))
-(add-to-list 'interpreter-mode-alist '("miniperl" . cperl-mode))
+    (add-to-list 'auto-mode-alist '("\\.\\([pP][Llm]\\|al\\)\\'" . cperl-mode))
+    (add-to-list 'interpreter-mode-alist '("perl" . cperl-mode))
+    (add-to-list 'interpreter-mode-alist '("perl5" . cperl-mode))
+    (add-to-list 'interpreter-mode-alist '("miniperl" . cperl-mode))
+    ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
