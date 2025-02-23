@@ -1,8 +1,8 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-19 19:06:36>
+;; Last saved: <2025-February-23 12:29:17>
 ;;
-;; Works with v29.4 of emacs.
+;; Works with v30.1 of emacs.
 ;;
 
 ;;; Commentary:
@@ -189,6 +189,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package indent-bars
   :defer 19
+  :ensure t)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(use-package x509-mode
+  :defer t
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -729,7 +734,7 @@
 ;; golang
 ;;
 
-(use-package go-mode
+(use-package go-ts-mode
   :defer t
   :ensure t
   :after (smarter-compile flycheck)
@@ -774,7 +779,7 @@
 
               (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
               )
-            (add-hook 'go-mode-hook 'dino-go-mode-fn)))
+            (add-hook 'go-ts-mode-hook 'dino-go-mode-fn)))
 
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3859,6 +3864,8 @@ color ready for next time.
   ;;       (concat
   ;;        "-o ControlPath=/tmp/ssh-ControlPath-%%r@%%h:%%p "
   ;;        "-o ControlMaster=auto -o ControlPersist=yes"))
+  ;;
+  ;; ;; BTW, in emacs 30.1,  'tramp-use-ssh-controlmaster-options' was renamed to 'tramp-use-connection-share'.
 
   ;; https://www.gnu.org/software/tramp/#Improving-performance-of-asynchronous-remote-processes-1
   (connection-local-set-profile-variables
