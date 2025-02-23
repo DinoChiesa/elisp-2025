@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-23 12:29:17>
+;; Last saved: <2025-February-23 14:28:54>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -9,6 +9,7 @@
 
 ;;; Code:
 (message "Running emacs.el...")
+(if (fboundp 'tool-bar-mode) (tool-bar-mode -1)) ;; we don't need no steenking icons
 
 (setq inhibit-splash-screen t)
 (setq visible-bell nil) ;; quiet, please! No dinging!
@@ -18,14 +19,44 @@
                             (set-face-background 'default "black")))
 
 (setq scroll-error-top-bottom t) ;; move cursor when scrolling not possible
-(if (fboundp 'tool-bar-mode) (tool-bar-mode -1)) ;; we don't need no steenking icons
 (setq user-mail-address "dpchiesa@hotmail.com")
 (setq comment-style 'indent) ;; see doc for variable comment-styles
 (setq Buffer-menu-name-width 40)
 (setq edebug-print-length nil)
-
+(setq read-file-name-completion-ignore-case t)
+(setq default-directory "~/")
 (setq browse-url-browser-function 'browse-url-chrome)
+(setq dictionary-use-single-buffer t)
+(setq dictionary-server "dict.org")
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; setting up faces etc
+;; For some reason, the font-face reverts during load of various elisp
+;; libraries above.  So I set it again, here.
+
+(custom-set-faces
+ '(default                         ((t (:background "black" :foreground "white") )))
+ '(region                          ((t (:background "gray19"))))
+ '(flycheck-error                  ((t (:background "firebrick4"))))
+ '(font-lock-comment-face          ((t (:foreground "PaleVioletRed3"))))
+ '(font-lock-keyword-face          ((t (:foreground "CadetBlue2"))))
+ '(tooltip                         ((t (:foreground "Navy" :background "khaki1"))))
+ ;;'(font-lock-keyword-face        ((t (:foreground "Cyan1"))))
+ '(font-lock-type-face             ((t (:foreground "PaleGreen"))))
+ '(font-lock-constant-face         ((t (:foreground "DodgerBlue"))))
+ '(font-lock-function-name-face    ((t (:foreground "RoyalBlue1"))))
+ '(font-lock-variable-name-face    ((t (:foreground "LightGoldenrod"))))
+ '(dictionary-word-definition-face ((t (:family "Sans Serif"))))
+ '(dictionary-button-button        ((t (:family "Sans Serif"))))
+ '(dictionary-button-face          ((t (:background "gray11" :foreground "LightSteelBlue"))))
+ '(font-lock-string-face           ((t (:background "gray11" :foreground "MediumOrchid1")))))
+
+
+;; to try just one:
+;; (set-face-attribute 'dictionary-button-face nil :background "gray11"  :foreground "LightSteelBlue")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (if (eq system-type 'windows-nt)
     (let ((path-to-chrome (w32-read-registry 'HKLM "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe" "")))
       (if path-to-chrome
@@ -35,8 +66,11 @@
 ;; for tetris
 (and (boundp 'tetris-score-file)
      (setq tetris-score-file "~/elisp/tetris-scores")
-     (defadvice tetris-end-game (around zap-scores activate)
-       (save-window-excursion ad-do-it)))
+     ;; 20250223-1425
+     ;;     ;;  Turn off leaderboard prompt at end of game?
+     ;;      (defadvice tetris-end-game (around zap-scores activate)
+     ;;        (save-window-excursion ad-do-it))
+     )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -172,7 +206,29 @@
             (if (eq system-type 'windows-nt)
                 (cl-dolist (item apheleia-formatters)
                   (when (and (consp (cdr item)) (equal "apheleia-npx" (cadr item)))
-                    (setf (cadr item) "npx")))))
+                    (setf (cadr item) "npx"))))
+
+
+            ;; 20250223-1330
+            ;;
+            ;; I learned today that this is unnecessary. In my
+            ;; csharp-ts-mode-fn, I could just (setq-local apheleia-formatter
+            ;; 'csharpier) ... to override the apheleia-mode-alist lookup.
+            (let ((cmd-list
+                   (if (eq system-type 'windows-nt)
+                       '("dotnet" "csharpier" "--write-stdout")
+                     '("dotnet-csharpier")
+                     )))
+              (push (cons 'csharpier cmd-list) apheleia-formatters))
+            ;; To retrieve a formatter by name:
+            ;; (alist-get 'csharpier apheleia-formatters)
+            ;; To remove a formatter incorrectly added:
+            ;;(setq apheleia-formatters (delq (assoc 'csharpier apheleia-formatters) apheleia-formatters))
+            (push '(csharp-mode . csharpier) apheleia-mode-alist)
+            (push '(csharp-ts-mode . csharpier) apheleia-mode-alist)
+            )
+  ;; To check a mode from the mode-alist:
+  ;;(alist-get 'csharp-mode apheleia-mode-alist)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -218,6 +274,22 @@
                    (prin1-to-string
                     (treesit-language-available-p 'c-sharp)))))
 
+
+(use-package hl-line
+  ;;:defer 9
+  :config (progn
+            (set-face-background hl-line-face "gray18")
+            (global-hl-line-mode)))
+
+;; ;; 20250223-1338 - this may be obsolete now.
+;; ;; I couldn't get eval-after-load to work with hl-line, so
+;; ;; I made this an after advice.
+;; (defadvice hl-line-mode (after
+;;                          dino-advise-hl-line-mode
+;;                          activate compile)
+;;   (set-face-background hl-line-face "gray18"))
+
+(global-hl-line-mode)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; embark
@@ -395,10 +467,6 @@
         (delete-char 1))))
 
   (advice-add 'eglot--apply-text-edits :after #'dpc/strip-cr)
-
-  ;; 20241229-1647 - in my experience, this is not necessary
-  ;;(add-to-list 'eglot-server-programs
-  ;;         '(csharp-mode . ("csharp-ls")))
   )
 
 (use-package eglot-booster
@@ -847,6 +915,7 @@
 
 (use-package yasnippet
   :defer 13
+  :ensure t
   :config (progn
             (setq yas-snippet-dirs (list "~/elisp/yasnippets"))
             (yas-global-mode 1)
@@ -1063,9 +1132,9 @@ then switch to the markdown output buffer."
 ;; you will be asked before the abbreviations are saved
 
 
-(autoload 'csharp-mode "csharp-mode" "Major mode for editing C# code." t)
-(autoload 'iirf-mode "iirf-mode" "Major mode for editing IIRF ini files." t)
-(autoload 'php-mode "php-mode" "Major mode for editing php code." t)
+;; (autoload 'csharp-mode "csharp-mode" "Major mode for editing C# code." t)
+;; (autoload 'iirf-mode "iirf-mode" "Major mode for editing IIRF ini files." t)
+;; (autoload 'php-mode "php-mode" "Major mode for editing php code." t)
 
 
 
@@ -1349,6 +1418,8 @@ then switch to the markdown output buffer."
 
 (eval-after-load "lua-mode"
   '(progn
+     ;; TODO: convert this to
+     ;;   (advice-add 'lua-start-process :before #'my-specially-defined-function)
      (defadvice lua-start-process (before
                                    dino-set-lua-shell-buffer-name-nicely
                                    activate)
@@ -1633,16 +1704,16 @@ then switch to the markdown output buffer."
   :config (global-set-key "\C-c\C-d"     'dictionary-lookup-definition)
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; wordnik (dictionary)
-;; 20241227 - still works
-;;
-(use-package wordnik
-  :defer t
-  :ensure nil
-  :config (progn
-            (wordnik-set-api-key-from-file "~/elisp/.wordnik.apikey.txt")
-            (define-key global-map (kbd "C-c ?") 'wordnik-show-definition)))
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; wordnik (dictionary)
+;; ;; 20241227 - still works
+;; ;;
+;; (use-package wordnik
+;;   :defer t
+;;   :ensure nil
+;;   :config (progn
+;;             (wordnik-set-api-key-from-file "~/elisp/.wordnik.apikey.txt")
+;;             (define-key global-map (kbd "C-c ?") 'wordnik-show-definition)))
 
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2477,8 +2548,8 @@ again, I haven't see that as a problem."
 
 
 ;; more for hideshow.el
-(unless (assoc 'csharp-mode hs-special-modes-alist)
-  (push '(csharp-mode
+(unless (assoc 'csharp-ts-mode hs-special-modes-alist)
+  (push '(csharp-ts-mode
 
           ;; "\\(^\\s*#\\s*region\\b\\)\\|{"       ; regexp for start block
           "\\(^[ \\t]*#[ \\t]*region\\b\\)\\|{"    ; regexp for start block
@@ -2499,18 +2570,6 @@ again, I haven't see that as a problem."
 
 
 
-;; To remove a formatter incorrectly added:
-;;(setq apheleia-formatters (delq (assoc 'csharpier apheleia-formatters) apheleia-formatters))
-
-(when (boundp 'apheleia-formatters)
-  (let ((cmd-list
-         (if (eq system-type 'windows-nt)
-             '("dotnet" "csharpier" "--write-stdout")
-           '("dotnet-csharpier")
-           )))
-    (push (cons 'csharpier cmd-list) apheleia-formatters))
-  (push '(csharp-mode . csharpier) apheleia-mode-alist)
-  (push '(csharp-ts-mode . csharpier) apheleia-mode-alist))
 
 (defun dino-csharp-mode-fn ()
   "function that runs when csharp-mode is initialized for a buffer."
@@ -2684,6 +2743,7 @@ again, I haven't see that as a problem."
          ;; 20241229-1756
          (electric-pair-local-mode 1)
 
+         (require 'yasnippet)
          (yas-minor-mode-on)
          (show-paren-mode 1)
          (hl-line-mode 1)
@@ -2702,7 +2762,7 @@ again, I haven't see that as a problem."
 
          ;; with point inside the block, use these keys to hide/show
          (keymap-local-set "C-c >"  #'hs-hide-block)
-         (meymap-local-set "C-c <"  #'hs-show-block)
+         (keymap-local-set "C-c <"  #'hs-show-block)
 
          (define-key csharp-ts-mode-map (kbd "C-c C-c") 'comment-region)
 
@@ -2721,28 +2781,30 @@ again, I haven't see that as a problem."
          (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
          )))
 
+(eval-after-load "csharp-mode"
+  '(progn
+     (require 'compile)
+     (add-hook 'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn t)
+     ;; 20250223-1328 - this may not be necessary in emacs 30.1; bears further testing.
+     ;; (if (fboundp 'apheleia-mode)
+     ;;     (add-hook 'apheleia-post-format-hook #'dino-maybe-eglot-reconnect))
+     ))
+
 (use-package csharp-ts-mode-navigation
   :defer t
   :after csharp-mode
   :config (add-hook 'csharp-ts-mode-hook 'ctsn/setup))
 
 (defun dino-maybe-eglot-reconnect ()
-  "When apheleia reformats a C# buffer it seems to confuse the language server.
-This function will force a reconnect in that case. This is overkill and slow, but I
-have not figured out a way around it."
+  "At least in emacxs 29.4, when apheleia reformats a C# buffer it seems to
+confuse the language server. This function will force a reconnect in
+that case. This is overkill and slow, but I have not yet figured out a way
+around it."
   (when (and
          (or (eq major-mode 'csharp-mode) (eq major-mode 'csharp-ts-mode))
          (eglot-managed-p))
     (eglot-reconnect (eglot--current-server-or-lose))
     ))
-
-(eval-after-load "csharp-mode"
-  '(progn
-     (require 'compile)
-     (add-hook 'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn t)
-     (if (fboundp 'apheleia-mode)
-         (add-hook 'apheleia-post-format-hook #'dino-maybe-eglot-reconnect))
-     ))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3603,10 +3665,18 @@ color ready for next time.
   (progn
     (require 'dino-netrc)
 
-    (defadvice restclient-http-do (around dino-restclient-eliminate-giant-useless-header activate)
+    ;; 20250223-1428 - defadvice is now deprecated
+    ;;
+    ;; (defadvice restclient-http-do (around dino-restclient-eliminate-giant-useless-header activate)
+    ;;   "make emacs be less chatty when sending requests"
+    ;;   (let (url-mime-charset-string url-user-agent url-extensions-header)
+    ;;     ad-do-it))
+
+    (defun dpc--around-restclient-http-do (orig-fn &rest args)
       "make emacs be less chatty when sending requests"
       (let (url-mime-charset-string url-user-agent url-extensions-header)
-        ad-do-it))
+        (apply orig-fn args)))
+    (advice-add 'restclient-http-do :around #'dpc--around-restclient-http-do)
 
     (if (not (fboundp 'json-pretty-print-buffer))
         (defun json-pretty-print-buffer ()
@@ -3622,7 +3692,6 @@ color ready for next time.
              (apply old-function arguments)))
          ;; to disable at runtime:
          ;; (ad-disable-advice 'url-http-create-request 'around 'dino-url-eliminate-giant-useless-header)
-         ;; (ad-activate 'url-http-create-request)
          (advice-add #'url-http-create-request :around #'dino-url-http-cleaner-request)))))
 
 
@@ -4142,45 +4211,5 @@ color ready for next time.
 (define-key key-translation-map (kbd "\C-x 8 e") (kbd " ")) ;; epsilon
 (define-key key-translation-map (kbd "\C-x 8 p") (kbd " ")) ;; pi
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; basic, default colors
-;; For some reason, the font-face reverts during load of various elisp
-;; libraries above.  So I set it again, here.
-
-(set-face-attribute 'default nil :foreground "white")
-(set-face-attribute 'default nil :background "black")
-(set-face-attribute 'region nil :background "gray19")
-
-;;(set-face-background 'default "black")
-
-;; I couldn't get eval-after-load to work with hl-line, so
-;; I made this an after advice.
-(defadvice hl-line-mode (after
-                         dino-advise-hl-line-mode
-                         activate compile)
-  (set-face-background hl-line-face "gray18"))
-
-(global-hl-line-mode)
-
-(custom-set-faces
- '(flycheck-error               ((t (:background "firebrick4"))))
- '(font-lock-comment-face       ((t (:foreground "PaleVioletRed3"))))
- '(font-lock-keyword-face       ((t (:foreground "CadetBlue2"))))
- ;;'(font-lock-keyword-face       ((t (:foreground "Cyan1"))))
- '(font-lock-type-face          ((t (:foreground "PaleGreen"))))
- '(font-lock-constant-face      ((t (:foreground "DodgerBlue"))))
- '(font-lock-function-name-face ((t (:foreground "RoyalBlue1"))))
- '(font-lock-variable-name-face ((t (:foreground "LightGoldenrod"))))
- '(font-lock-string-face        ((t (:background "gray11" :foreground "MediumOrchid1")))))
-
-(set-face-foreground 'tooltip "Navy")
-(set-face-background 'tooltip "khaki1")
-(set-face-background 'font-lock-string-face "gray11")
-
-;;(setq read-buffer-completion-ignore-case t)
-(setq read-file-name-completion-ignore-case t)
-
-(setq default-directory "~/")
 
 (message "Done with emacs.el...")
