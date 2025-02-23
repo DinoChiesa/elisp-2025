@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-23 14:28:54>
+;; Last saved: <2025-February-23 14:44:53>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1168,6 +1168,7 @@ then switch to the markdown output buffer."
          ("\\.html$"                          . web-mode)
          ("\\.htm$"                           . web-mode)
          ("\\.md$"                            . markdown-mode)
+         ("\\.py$"                            . python-ts-mode)
          ("\\.dart$"                          . dart-mode)
          ("\\.el$"                            . emacs-lisp-mode)
          ;;("\\.js$"                            . js-mode)
@@ -3234,6 +3235,7 @@ Does not consider word syntax tables.
   (yas-minor-mode-on)
   (show-paren-mode 1))
 
+(add-hook 'python-ts-mode-hook 'dino-python-mode-fn)
 (add-hook 'python-mode-hook 'dino-python-mode-fn)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
