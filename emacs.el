@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-23 14:44:53>
+;; Last saved: <2025-February-24 01:30:47>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1413,26 +1413,28 @@ then switch to the markdown output buffer."
 (add-to-list 'auto-mode-alist '("\\.lua\\'" . lua-mode))
 (add-to-list 'interpreter-mode-alist '("lua" . lua-mode))
 
-(if (eq system-type 'windows-nt)
-    (setq lua-default-application "c:\\tools\\lua\\lua52.exe")
-  )
-
-(eval-after-load "lua-mode"
-  '(progn
-     ;; TODO: convert this to
-     ;;   (advice-add 'lua-start-process :before #'my-specially-defined-function)
-     (defadvice lua-start-process (before
-                                   dino-set-lua-shell-buffer-name-nicely
-                                   activate)
-       "Use a proper name for the interactive LUA shell. "
-       (let ((arg0 (ad-get-arg 0))
-             (arg1 (ad-get-arg 1)))
-         (if arg0
-             (when (not arg1)
-               (ad-set-arg 0 "LuaShell")
-               (ad-set-arg 1 arg0))
-           (ad-set-arg 0 "LuaShell")
-           (ad-set-arg 1 lua-default-application))))))
+;; 20250224-0130 - it's so rare that I use lua-mode
+;; (if (eq system-type 'windows-nt)
+;;     (setq lua-default-application "c:\\tools\\lua\\lua52.exe")
+;;   )
+;;
+;; (eval-after-load "lua-mode"
+;;   '(progn
+;;      ;; TODO: convert this to
+;;      ;;   (advice-add 'lua-start-process :before #'my-specially-defined-function)
+;;
+;;      (defadvice lua-start-process (before
+;;                                    dino-set-lua-shell-buffer-name-nicely
+;;                                    activate)
+;;        "Use a proper name for the interactive LUA shell. "
+;;        (let ((arg0 (ad-get-arg 0))
+;;              (arg1 (ad-get-arg 1)))
+;;          (if arg0
+;;              (when (not arg1)
+;;                (ad-set-arg 0 "LuaShell")
+;;                (ad-set-arg 1 arg0))
+;;            (ad-set-arg 0 "LuaShell")
+;;            (ad-set-arg 1 lua-default-application))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
