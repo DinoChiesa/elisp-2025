@@ -49,8 +49,8 @@ which is up to 10gb.  Some files are larger than that.
       (format (if (floatp f-size) " %11.0f" " %11d") f-size)
     (let (post-fixes)
       (cl-do ((f-size (/ f-size 1024.0) (/ f-size 1024.0))
-           ;; kilo, mega, giga, tera, peta, exa
-           (post-fixes (list "k" "M" "G" "T" "P" "E") (cdr post-fixes)))
+              ;; kilo, mega, giga, tera, peta, exa
+              (post-fixes (list "k" "M" "G" "T" "P" "E") (cdr post-fixes)))
           ((< f-size 1024) (format " %10.0f%s"  f-size (car post-fixes)))))))
 
 ;; On MacOS, the builtin ls program does not do the -X option. (lame)
@@ -147,7 +147,7 @@ initial sort.
 
 
 (defun dino-dired-sort-set-modeline ()
- "This is a redefinition of the fn from `dired.el'. This one
+  "This is a redefinition of the fn from `dired.el'. This one
 properly provides the modeline in dired mode, supporting the new
 search modes defined in the new `dino-dired-sort-cycle'.
 "
@@ -179,42 +179,58 @@ search modes defined in the new `dino-dired-sort-cycle'.
 prefix arg, the next N files "
   (interactive "P")
   (let* ((fn-list
-    (dired-get-marked-files nil arg)))
+          (dired-get-marked-files nil arg)))
     (mapc 'find-file fn-list)))
-
 
 (defun mode-for-buffer (&optional buffer-or-string)
   "Returns the major mode associated with a buffer."
   (with-current-buffer (or buffer-or-string (current-buffer))
-     major-mode))
+    major-mode))
 
-(defun dino-dired-copy-or-move-other-window (fn)
-  "copy or move the marked files to another directory."
+(defun dino-dired-copy-or-move-other-window (operation)
+  "copy or move the marked files to another directory.
+OPERATION is a symbol, either 'COPY or 'MOVE .
+This works with files or directories."
   (unless (eq major-mode 'dired-mode)
     (error "works only when current-buffer is in dired-mode"))
   (let ((other-visible-dired-buffers
          (delq nil (mapcar #'(lambda (w)
-                              (let* ((b (window-buffer w))
-                                     (m (mode-for-buffer b)))
-                                (and (eq m 'dired-mode)
-                                     (not (eq b (current-buffer)))
-                                     b)))
+                               (let* ((b (window-buffer w))
+                                      (m (mode-for-buffer b)))
+                                 (and (eq m 'dired-mode)
+                                      (not (eq b (current-buffer)))
+                                      b)))
                            (window-list)))))
 
     (unless (= (length other-visible-dired-buffers) 1)
       (error "Can copy only if exactly 2 dired windows are visible"))
 
-    (let ((dst-dir (expand-file-name (with-current-buffer (car other-visible-dired-buffers)
+    (let ((fns (cond
+                ((eq operation 'COPY)
+                 '(copy-file copy-directory))
+                ((eq operation 'MOVE)
+                 '(rename-file rename-file))
+                (t
+                 (error "unsupported operation")
+                 )))
+          (dst-dir (expand-file-name (with-current-buffer (car other-visible-dired-buffers)
                                        default-directory))))
-      (mapc #'(lambda (f) (funcall fn f dst-dir 1))
-              (dired-get-marked-files nil))
-       (with-current-buffer (car other-visible-dired-buffers)
-         (revert-buffer))
-       (revert-buffer))))
+      (mapc #'(lambda (f)
+                (let ((fn
+                       (cond
+                        ((file-directory-p f)
+                         (cadr fns))
+                        (t
+                         (car fns)))))
+                  (funcall fn f dst-dir 1)))
+            (dired-get-marked-files nil))
+      (with-current-buffer (car other-visible-dired-buffers)
+        (revert-buffer))
+      (revert-buffer))))
 
 
 (defun dino-dired-move-file-to-dir-in-other-window (&optional arg)
-"If there are two or more windows, and the current one is in
+  "If there are two or more windows, and the current one is in
 dired-mode, and one of the others is also dired-mode, then move
 the file under cursor or the marked files to the directory shown
 in the other dired window. If the current buffer is not in
@@ -222,10 +238,10 @@ dired-mode, or if not exactly 2 windows show dired, then message
 and quit.
 "
   (interactive "P")
-  (dino-dired-copy-or-move-other-window #'rename-file))
+  (dino-dired-copy-or-move-other-window 'MOVE))
 
 (defun dino-dired-copy-file-to-dir-in-other-window (&optional arg)
-"If there are two or more windows, and the current one is in
+  "If there are two or more windows, and the current one is in
 dired-mode, and one of the others is also dired-mode, then copy
 the file under cursor or the marked files to the directory shown
 in the other dired window. If the current buffer is not in
@@ -233,7 +249,7 @@ dired-mode, or if not exactly 2 windows show dired, then message
 and quit.
 "
   (interactive "P")
-    (dino-dired-copy-or-move-other-window #'copy-file))
+  (dino-dired-copy-or-move-other-window 'COPY))
 
 
 ;; Auto-update capability with timer
@@ -257,7 +273,7 @@ and quit.
              ;; else, the dired buffer points to a dir that no longer exists
              (let ((zombie-buffer (window-buffer win)))
                (kill-buffer zombie-buffer))))))
-               ;;(condition-case nil (delete-window win) (error nil)))))))
+   ;;(condition-case nil (delete-window win) (error nil)))))))
    'no-mini 'all-frames))
 
 (run-with-idle-timer 1 t 'maybe-revert-dired-buffers)
@@ -293,12 +309,12 @@ for a given file or set of files. This function makes an intelligent guess."
   "copies the contents of the marked file into the kill-ring"
   (interactive "P")
   (let ((filename-list (dired-get-marked-files nil arg)))
-      (mapc #'(lambda (f)
-               (with-temp-buffer
-                 (insert-file-contents f)
-                 (kill-new
-                  (buffer-substring-no-properties (point-min) (point-max)))))
-            filename-list)))
+    (mapc #'(lambda (f)
+              (with-temp-buffer
+                (insert-file-contents f)
+                (kill-new
+                 (buffer-substring-no-properties (point-min) (point-max)))))
+          filename-list)))
 
 
 ;; This fn redefined here to change the doc string, only.
