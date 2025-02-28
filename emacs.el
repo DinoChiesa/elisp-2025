@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-24 01:30:47>
+;; Last saved: <2025-February-28 04:25:58>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -251,6 +251,24 @@
 (use-package x509-mode
   :defer t
   :ensure t)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(use-package rego-mode
+  ;; the melpa version is very old
+  :if (file-exists-p "~/elisp/rego-mode.el")
+  :load-path "~/elisp"
+  :defer 20
+  :ensure t
+  :config
+  (progn
+    (when (boundp 'apheleia-formatters)
+      (when (not (alist-get 'opa-fmt apheleia-formatters))
+        (push '(opa-fmt . ("opa" "fmt"))
+              apheleia-formatters))
+      (when (not (alist-get 'rego-mode apheleia-mode-alist))
+        (push '(rego-mode . opa-fmt) apheleia-mode-alist)))
+    (apheleia-mode)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package default-text-scale
