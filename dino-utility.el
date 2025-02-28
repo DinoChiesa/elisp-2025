@@ -5,7 +5,7 @@
 ;; Package-Requires: (package)
 ;; URL:
 ;; X-URL:
-;; Version: 2024.12.18
+;; Version: 2025.02.28
 ;; Keywords: utility
 ;; License: New BSD
 
@@ -17,7 +17,7 @@
 ;;
 ;; This code is distributed under the New BSD License.
 ;;
-;; Copyright (c) 2013-2024, Dino Chiesa
+;; Copyright (c) 2013-2025, Dino Chiesa
 ;; All rights reserved.
 ;;
 ;; Redistribution and use in source and binary forms, with or without
@@ -91,12 +91,12 @@
 (defun dino-ensure-package-installed (&rest packages)
   "For each package in the list of PACKAGES, check if it is installed. If not,
 ask for installation. Return the list of packages."
-   (mapcar
-    (lambda (package)
-      (unless (package-installed-p package)
-        (package-install package))
-      (use-package package))
-     packages))
+  (mapcar
+   (lambda (package)
+     (unless (package-installed-p package)
+       (package-install package))
+     (use-package package))
+   packages))
 
 
 (defun dino-add-path-if-not-present (pathlist)
@@ -148,7 +148,7 @@ filename including the full directory path into the kill ring."
   (let ((found
          (if no-extension
              (looking-at dino--short-filename-no-extension-regex)
-             (looking-at dino--short-filename-regex) )))
+           (looking-at dino--short-filename-regex) )))
     (if found
         (progn
           (setq found (buffer-substring-no-properties (match-beginning 0) (match-end 0)))
@@ -316,12 +316,12 @@ to determine if we need to rotate through various formats.")
                                         ("september" . 9) ("october" . 10)
                                         ("november" . 11) ("december" . 12)))
 (defconst dino-time-formats '(
-                             ("%Y%m%d-%H%M"         . dino-parse-YYYYMMDDHHMM-time)
-                             ("%A, %e %B %Y, %H:%M" . dino-parse-rfc822-time)
-                             ("%Y %B %e"            . dino-parse-YBe-time)
-                             ("%H:%M:%S"            . dino-parse-HMS-time)
-                             ("%Y-%m-%dT%H:%M:%S"   . dino-parse-YmdHMS-time)
-                             )
+                              ("%Y%m%d-%H%M"         . dino-parse-YYYYMMDDHHMM-time)
+                              ("%A, %e %B %Y, %H:%M" . dino-parse-rfc822-time)
+                              ("%Y %B %e"            . dino-parse-YBe-time)
+                              ("%H:%M:%S"            . dino-parse-HMS-time)
+                              ("%Y-%m-%dT%H:%M:%S"   . dino-parse-YmdHMS-time)
+                              )
   "A list of time formats with corresponding parse functions to use in `dino-insert-timeofday' and `dino-maybe-delete-time-string-looking-forward' ")
 
 ;; (setq dino-time-formats '(
@@ -543,7 +543,6 @@ Point is placed at the beginning of the newly inserted timestamp.
         (push-mark)
         (goto-char orig-point))))))
 
-
 (defun dino-insert-current-time-millis ()
   "function to insert the value like java's currentTimeMillis."
   (interactive)
@@ -597,17 +596,24 @@ filename."
 (defun dino-googleapis-project-id (json-keyfile)
   "parse the json keyfile and extract the project id"
   (and
-     (file-exists-p json-keyfile)
-     (cdr (assoc 'project_id (json-read-file json-keyfile)))))
+   (file-exists-p json-keyfile)
+   (cdr (assoc 'project_id (json-read-file json-keyfile)))))
+
+(defun dino--gcloud-auth-print-token (tokentype)
+  "return output of $(gcloud auth print-{identity,access}-token)"
+  (let* ((gcloud-pgm "gcloud")
+         (command-string (concat gcloud-pgm " auth print-" tokentype "-token"))
+         (output (replace-regexp-in-string "\n$" "" (shell-command-to-string command-string)))
+         (lines (split-string output "\n")))
+    (car (last lines))))
 
 (defun dino-gcloud-auth-print-access-token ()
   "return output of $(gcloud auth print-access-token)"
-  (let* ((gcloud-pgm "gcloud")   ;; /usr/bin/gcloud
-         (command-string (concat gcloud-pgm " auth print-access-token"))
-         (output (replace-regexp-in-string "\n$" "" (shell-command-to-string command-string)))
-         (lines (split-string output "\n")))
-       (car (last lines))))
+  (dino--gcloud-auth-print-token "access"))
 
+(defun dino-gcloud-auth-print-identity-token ()
+  "return output of $(gcloud auth print-access-token)"
+  (dino--gcloud-auth-print-token "identity"))
 
 (defun dino-googleapis-token-for-sa (json-keyfile)
   "generate and return a new OAuth token for googleapis.com for a service account"
@@ -615,8 +621,8 @@ filename."
   ;; So we try turning it off.
   (setq gnutls-algorithm-priority "NORMAL:-VERS-TLS1.3")
   (let ((project-id (dino-googleapis-project-id json-keyfile)))
-  (and
-   project-id
+    (and
+     project-id
      (let* ((command-string
              (format "node ~/dev/apigee-edge-js-examples/getToken.js -J %s -o %s -v" json-keyfile project-id))
             (output (replace-regexp-in-string "\n$" "" (shell-command-to-string command-string)))
@@ -681,7 +687,7 @@ xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx ."
 (defun dino-base64-encode-file (filename)
   "function to get base64 encoding of a given file, and return it."
   (let ((command (concat dino-base64-prog " " filename)))
-      (shell-command-to-string command)))
+    (shell-command-to-string command)))
 
 ;; c:/sw/VS2010ImageLibrary/Actions/png_format/Office and VS/Animate.png
 (defun dino-base64-insert-file (filename)
@@ -691,10 +697,10 @@ Handy for editing .resx files within emacs.
   (interactive "*fFile? ")
   (save-excursion
     (let* ((beg (point))
-          (fname-quoted (concat "\"" filename "\""))
-          (b64
-           (replace-regexp-in-string (char-to-string 13) ""
-                                     (dino-base64-encode-file fname-quoted))))
+           (fname-quoted (concat "\"" filename "\""))
+           (b64
+            (replace-regexp-in-string (char-to-string 13) ""
+                                      (dino-base64-encode-file fname-quoted))))
       ;; If previous cmd was a kill, this separates the
       ;; kill items:
       (forward-char 1)
@@ -741,7 +747,7 @@ LABEL is printed as a prefix.
 TEXT is a format control string, and the remaining arguments ARGS
 are the string substitutions (see `format')."
   (let* ((msg (apply 'format text args)))
-        (message "%s %s %s" label (dino-time) msg)))
+    (message "%s %s %s" label (dino-time) msg)))
 
 (defun dino-set-alist-entry (alist key value-cdr)
   "like `add-to-list' but works whether the key exists or not.
@@ -788,8 +794,8 @@ are the string substitutions (see `format')."
   (dino-xml-pretty-print-region (point-min) (point-max)))
 
 (defvar dino-html-escape-pairs '(("&" "&amp;")
-                       ("<" "&lt;")
-                       (">" "&gt;"))
+                                 ("<" "&lt;")
+                                 (">" "&gt;"))
   "a list of pairs of strings to swap when escaping and unescaping html")
 
 (defun dino-replace-s-non-interactively (from-string to-string)
@@ -806,7 +812,7 @@ Like `replace-string' but for non-interactive use. "
       (mapcar (lambda (elt)
                 (goto-char (point-min))
                 (dino-replace-s-non-interactively (car elt) (cadr elt)))
-                dino-html-escape-pairs))))
+              dino-html-escape-pairs))))
 
 (defun dino-unescape-html-in-region (start end)
   (interactive "r")
@@ -816,14 +822,14 @@ Like `replace-string' but for non-interactive use. "
       (mapcar (lambda (elt)
                 (goto-char (point-min))
                 (dino-replace-s-non-interactively (cadr elt) (car elt)))
-                dino-html-escape-pairs))))
+              dino-html-escape-pairs))))
 
 (defvar dino-xml-escape-pairs '(("&" "&amp;")
-                            ("<" "&lt;")
-                             (">" "&gt;")
-                             ("'" "&apos;")
-                             ("\"" "&quot;"))
-    "a list of pairs of strings to swap when escaping and unescaping xml")
+                                ("<" "&lt;")
+                                (">" "&gt;")
+                                ("'" "&apos;")
+                                ("\"" "&quot;"))
+  "a list of pairs of strings to swap when escaping and unescaping xml")
 
 (defun dino-unescape-xml-in-region (start end)
   "replaces XML entities with their referents."
@@ -834,7 +840,7 @@ Like `replace-string' but for non-interactive use. "
       (mapcar (lambda (elt)
                 (goto-char (point-min))
                 (dino-replace-s-non-interactively (cadr elt) (car elt)))
-                dino-xml-escape-pairs))))
+              dino-xml-escape-pairs))))
 
 
 (defun dino-urlencode-region (start end)
@@ -872,8 +878,8 @@ Like `replace-string' but for non-interactive use. "
         (delete-char len)
         (insert (shell-command-to-string
                  (concat
-                       "node -e \"console.log(unescape('"
-                       str "'))\"" )))))))
+                  "node -e \"console.log(unescape('"
+                  str "'))\"" )))))))
 
 
 (defun dino-sum-column (start end)
@@ -891,7 +897,7 @@ Overwrites register 9. "
     (while (re-search-forward "[0-9]*\\.?[0-9]+" nil t)
       (setq sum (+ sum (string-to-number (match-string 0)))))
     (if (fboundp 'paste-to-osx)
-          (paste-to-osx (format "%f" sum)))
+        (paste-to-osx (format "%f" sum)))
     (message "Sum: %f" sum)))
 
 
@@ -946,7 +952,7 @@ Overwrites register 9. "
   "invoke `dino-xml-comment-region' when in an xml mode."
   (apply
    (if (or (eq major-mode 'nxml-mode))
-      'dino-xml-comment-region
+       'dino-xml-comment-region
      old-function) arguments))
 
 (advice-add #'comment-region :around #'dino-maybe-xml-comment-region)
@@ -972,8 +978,8 @@ eg,
   (cl-remove-if-not 'file-exists-p  list-of-possible-files)
 
 "
-     (delq nil
-           (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
+  (delq nil
+        (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
 
 
 (defun dino-add-load-path-for-package (pkg)
@@ -1033,21 +1039,21 @@ in DIR.
   (let ((testname
          (concat (file-name-as-directory dir) fname)))
     (if (file-exists-p testname)
-      (let ((parts (split-string fname "\\."))
-            (continue t))
-        (let ((basename
-               (mapconcat 'identity (reverse (cdr (reverse parts))) "."))
-              (extension
-               (if (> (length parts) 1)
-                   (car (reverse parts))
-               ""))
-              (ix 1))
-        (while continue
-          (setq testname
-                (concat (file-name-as-directory dir) basename
-                        "-" (format "%d" ix) "." extension))
-          (setq continue (file-exists-p testname)
-                ix (1+ ix))))))
+        (let ((parts (split-string fname "\\."))
+              (continue t))
+          (let ((basename
+                 (mapconcat 'identity (reverse (cdr (reverse parts))) "."))
+                (extension
+                 (if (> (length parts) 1)
+                     (car (reverse parts))
+                   ""))
+                (ix 1))
+            (while continue
+              (setq testname
+                    (concat (file-name-as-directory dir) basename
+                            "-" (format "%d" ix) "." extension))
+              (setq continue (file-exists-p testname)
+                    ix (1+ ix))))))
     testname))
 
 
@@ -1113,10 +1119,10 @@ Eg,
 ;;     (message "empty meeting ID")))
 
 
-  (defun dino-copy-value-from-key-into-killring (key)
-    "Extract a value from the secure keystore into the killring, using the given KEY to do the lookup."
-    ;; eg, (dino-copy-value-from-key-into-killring "box-personal")
-    (interactive "skey: ")
+(defun dino-copy-value-from-key-into-killring (key)
+  "Extract a value from the secure keystore into the killring, using the given KEY to do the lookup."
+  ;; eg, (dino-copy-value-from-key-into-killring "box-personal")
+  (interactive "skey: ")
   (let ((buf (get-buffer "pwds.txt.gpg"))
         (regexp (concat "^[ \t]*\\b" key "\\b.+ \\([^ \r\n]+\\)$")))
     (if buf
@@ -1250,17 +1256,17 @@ insert a pair, and backup one character."
 
 (eval-and-compile
 
-;; [4] NameStartChar
-;; See the definition of word syntax in `xml-syntax-table'.
-(defconst xml-name-start-char-re "[[:word:]:_]")
+  ;; [4] NameStartChar
+  ;; See the definition of word syntax in `xml-syntax-table'.
+  (defconst xml-name-start-char-re "[[:word:]:_]")
 
-;; [4a] NameChar ::= NameStartChar | "-" | "." | [0-9] | #xB7
-;;                 | [#x0300-#x036F] | [#x203F-#x2040]
-(defconst xml-name-char-re "[[:word:]:_.0-9\u00B7\u0300-\u036F\u203F\u2040-]")
+  ;; [4a] NameChar ::= NameStartChar | "-" | "." | [0-9] | #xB7
+  ;;                 | [#x0300-#x036F] | [#x203F-#x2040]
+  (defconst xml-name-char-re "[[:word:]:_.0-9\u00B7\u0300-\u036F\u203F\u2040-]")
 
-;; [5] Name     ::= NameStartChar (NameChar)*
-(defconst xml-name-re (concat xml-name-start-char-re xml-name-char-re "*"))
-)
+  ;; [5] Name     ::= NameStartChar (NameChar)*
+  (defconst xml-name-re (concat xml-name-start-char-re xml-name-char-re "*"))
+  )
 
 ;;; Thursday, 12 October 2017, 13:18
 ;;; replace xml-parse-tag-1 to not skip comments.
@@ -1305,7 +1311,7 @@ insert a pair, and backup one character."
             comment)
         (search-forward "-->")
         (setq comment (buffer-substring-no-properties start (point)))
-      ;; FIXME: This loses the skipped-over spaces.
+        ;; FIXME: This loses the skipped-over spaces.
         (skip-syntax-forward " ")
         (cons nil comment)))
 
@@ -1423,8 +1429,8 @@ The first line is indented with INDENT-STRING."
            ((not (car node))
             (insert (cdr node)))
            (t
-          (insert ?\n)
-          (xml-debug-print-internal node (concat indent-string "  ")))))
+            (insert ?\n)
+            (xml-debug-print-internal node (concat indent-string "  ")))))
          ((stringp node)
           (insert (xml-escape-string node)))
          (t
@@ -1455,37 +1461,37 @@ The first line is indented with INDENT-STRING."
   (dino--find-file-in-tree default-directory ".jshintrc"))
 
 (defun dino-jshintrc-get-or-create ()
-    "create a .jshintrc file in the current working directory if one does not yet exist."
+  "create a .jshintrc file in the current working directory if one does not yet exist."
   (interactive)
   (or (file-exists-p ".jshintrc")
       (progn
         (with-temp-file ".jshintrc"
           (insert (concat
-"{\n"
-"  \"node\": true,\n"
-"  \"browser\": true,\n"
-"  \"esversion\": 6, \n"
-"  \"esnext\": true,\n"
-"  \"bitwise\": true,\n"
-"  \"camelcase\": true,\n"
-"  \"curly\": true,\n"
-"  \"eqeqeq\": true,\n"
-"  \"immed\": true,\n"
-"  \"indent\": 2,\n"
-"  \"latedef\": true,\n"
-"  \"newcap\": true,\n"
-"  \"noarg\": true,\n"
-"  \"quotmark\": \"single\",\n"
-"  \"regexp\": true,\n"
-"  \"undef\": true,\n"
-"  \"unused\": true,\n"
-"  \"strict\": true,\n"
-"  \"trailing\": true,\n"
-"  \"smarttabs\": true,\n"
-"  \"predef\": [\n"
-"  \"Promise\"\n"
-"  ]\n"
-"}\n"))))))
+                   "{\n"
+                   "  \"node\": true,\n"
+                   "  \"browser\": true,\n"
+                   "  \"esversion\": 6, \n"
+                   "  \"esnext\": true,\n"
+                   "  \"bitwise\": true,\n"
+                   "  \"camelcase\": true,\n"
+                   "  \"curly\": true,\n"
+                   "  \"eqeqeq\": true,\n"
+                   "  \"immed\": true,\n"
+                   "  \"indent\": 2,\n"
+                   "  \"latedef\": true,\n"
+                   "  \"newcap\": true,\n"
+                   "  \"noarg\": true,\n"
+                   "  \"quotmark\": \"single\",\n"
+                   "  \"regexp\": true,\n"
+                   "  \"undef\": true,\n"
+                   "  \"unused\": true,\n"
+                   "  \"strict\": true,\n"
+                   "  \"trailing\": true,\n"
+                   "  \"smarttabs\": true,\n"
+                   "  \"predef\": [\n"
+                   "  \"Promise\"\n"
+                   "  ]\n"
+                   "}\n"))))))
 
 
 (defun dino-read-globals-from-jshintrc ()
@@ -1493,8 +1499,8 @@ The first line is indented with INDENT-STRING."
   (let ((jshintrc (dino-jshintrc-find)))
     (if jshintrc
         (let ((json-object-type 'alist)
-               (json-array-type 'list)
-               (json-key-type 'string))
+              (json-array-type 'list)
+              (json-key-type 'string))
           (let* ((json (json-read-file jshintrc))
                  (globals (assoc "globals" json)))
             (mapcar 'car (cdr globals))
@@ -1505,7 +1511,7 @@ The first line is indented with INDENT-STRING."
   "Convert buganizer ticket to description"
   (interactive)
   (let ((bounds (if (use-region-p)
-                     (cons (region-beginning) (region-end))
+                    (cons (region-beginning) (region-end))
                   (bounds-of-thing-at-point 'word))))
     (when bounds
       (let* ((raw-text (buffer-substring-no-properties (car bounds) (cdr bounds)))
@@ -1562,11 +1568,11 @@ The original list is not modified.
     (nconc (reverse matches) (reverse non-matches))))
 
 (defun dino--preferred-path-entry (entry)
-"returns t if the entry is to be preferred"
-   (or
-      (string-match-p (regexp-quote "Git/usr/bin") entry)
-      (string-match-p (regexp-quote (concat (getenv "HOME") "/bin")) entry)
-      ))
+  "returns t if the entry is to be preferred"
+  (or
+   (string-match-p (regexp-quote "Git/usr/bin") entry)
+   (string-match-p (regexp-quote (concat (getenv "HOME") "/bin")) entry)
+   ))
 
 (defun dino-maybe-reorder-exec-path-entries ()
   "re-orders the exec-path entries to ensure some dirs are preferred above others."
