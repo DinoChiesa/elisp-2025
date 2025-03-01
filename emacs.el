@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-01 03:04:01>
+;; Last saved: <2025-March-01 21:35:30>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -253,22 +253,24 @@
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(use-package rego-mode
-  ;; the melpa version is very old
-  :if (file-exists-p "~/elisp/rego-mode.el")
-  :load-path "~/elisp"
-  :defer 20
-  :ensure t
-  :config
-  (progn
-    (when (boundp 'apheleia-formatters)
-      (when (not (alist-get 'opa-fmt apheleia-formatters))
-        (push '(opa-fmt . ("opa" "fmt"))
-              apheleia-formatters))
-      (when (not (alist-get 'rego-mode apheleia-mode-alist))
-        (push '(rego-mode . opa-fmt) apheleia-mode-alist)))
-    (apheleia-mode)))
-
+(if (file-exists-p "~/elisp/rego-mode.el")
+    ;; I do not want to load from Melpa
+    (use-package rego-mode
+      ;; the melpa version is very old
+      :if (file-exists-p "~/elisp/rego-mode.el")
+      :load-path "~/elisp"
+      :defer 20
+      :ensure t
+      :config
+      (progn
+        (when (boundp 'apheleia-formatters)
+          (when (not (alist-get 'opa-fmt apheleia-formatters))
+            (push '(opa-fmt . ("opa" "fmt"))
+                  apheleia-formatters))
+          (when (not (alist-get 'rego-mode apheleia-mode-alist))
+            (push '(rego-mode . opa-fmt) apheleia-mode-alist)))
+        (apheleia-mode)))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package default-text-scale
