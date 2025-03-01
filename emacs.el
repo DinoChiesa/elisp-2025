@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-01 21:35:30>
+;; Last saved: <2025-March-01 22:17:02>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -253,24 +253,31 @@
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(if (file-exists-p "~/elisp/rego-mode.el")
-    ;; I do not want to load from Melpa
-    (use-package rego-mode
-      ;; the melpa version is very old
-      :if (file-exists-p "~/elisp/rego-mode.el")
-      :load-path "~/elisp"
-      :defer 20
-      :ensure t
-      :config
-      (progn
-        (when (boundp 'apheleia-formatters)
-          (when (not (alist-get 'opa-fmt apheleia-formatters))
-            (push '(opa-fmt . ("opa" "fmt"))
-                  apheleia-formatters))
-          (when (not (alist-get 'rego-mode apheleia-mode-alist))
-            (push '(rego-mode . opa-fmt) apheleia-mode-alist)))
-        (apheleia-mode)))
-  )
+;; rego - OPA configuration language
+(when (file-exists-p "~/elisp/rego-mode.el")
+  ;; rego-mode on MELPA is out of date and unmaintained.
+  ;; I do not think use-package can be co-erced to loading a local
+  ;; file when a package exists on ELPA.  So use-package is out.
+  ;; just use old-fashioned autoload.
+  (autoload 'rego-mode "~/elisp/rego-mode.el" "Major mode for editing REGO configurations." t)
+
+  (eval-after-load "rego-mode"
+    '(progn
+       (when (boundp 'apheleia-formatters)
+         (when (not (alist-get 'opa-fmt apheleia-formatters))
+           (push '(opa-fmt . ("opa" "fmt"))
+                 apheleia-formatters))
+         (when (not (alist-get 'rego-mode apheleia-mode-alist))
+           (push '(rego-mode . opa-fmt) apheleia-mode-alist)))))
+
+
+  (defun dino-rego-mode-fn ()
+    (display-line-numbers-mode)
+    (when (and (boundp 'apheleia-formatters)
+               (alist-get 'rego-mode apheleia-mode-alist))
+      (apheleia-mode)))
+
+  (add-hook 'rego-mode-hook 'dino-rego-mode-fn))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package default-text-scale
