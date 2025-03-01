@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-February-28 04:25:58>
+;; Last saved: <2025-March-01 03:04:01>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -737,6 +737,9 @@
     (let* ((apigeecli-path "~/.apigeecli/bin/apigeecli")
            (found-apigeecli (file-exists-p apigeecli-path)))
       (if (not found-apigeecli)
+          (setq apigeecli-path (executable-find "apigeecli")
+                found-apigeecli (file-exists-p apigeecli-path)))
+      (if (not found-apigeecli)
           (error "cannot find apigeecli")
         (setf (alist-get 'apigeecli apigee-programs-alist)
               apigeecli-path)))
@@ -744,7 +747,7 @@
            (found-gcloud (executable-find gcloud-cmd)))
       (if (not found-gcloud)
           (error "cannot find gcloud")
-        (setf (alist-get 'gcloud  apigee-programs-alist)
+        (setf (alist-get 'gcloud apigee-programs-alist)
               found-gcloud)))
     (let* ((apigeelint-cli-path "~/apigeelint/cli.js")
            (found-apigeelint (file-exists-p apigeelint-cli-path)))
