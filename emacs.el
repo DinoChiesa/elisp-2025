@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-01 22:17:02>
+;; Last saved: <2025-March-05 04:36:04>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1824,6 +1824,8 @@ then switch to the markdown output buffer."
   :requires (dpc-gemini)
   :config
   (progn
+    (require 'dpc-gemini)
+    (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
     (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
     ;; override the chatpgpt-shell function to specify the available gemini models
     (defun chatgpt-shell-google-models ()
@@ -2732,87 +2734,112 @@ again, I haven't see that as a problem."
      ))
 
 
+
+(defun dino-csharpier-buffer ()
+  "run csharpier on the current buffer."
+  (interactive)
+  (let ((command
+         (if (eq system-type 'windows-nt)
+             "dotnet csharpier --write-stdout"
+           "dotnet-csharpier"))
+        (orig-point (point))
+        (output-goes-to-current-buffer t)
+        (output-replaces-current-content t))
+
+    (message "dino-csharpier-buffer command: %s" command)
+    (save-excursion
+      (shell-command-on-region (point-min)
+                               (point-max)
+                               command
+                               output-goes-to-current-buffer
+                               output-replaces-current-content))
+    (goto-char orig-point)))
+
+
 (defun dino-csharp-ts-mode-fn ()
   "function that runs when csharp-ts-mode is initialized for a buffer."
-  (cond (window-system
-         ;;(turn-on-font-lock) ;; apparently no longer needed with TS
-         (setq c-basic-offset 4) ;; width of one indent level
-         (setq tab-width 4) ;; this variable is used by `eglot-format'
-         (setq show-trailing-whitespace t)
-         (apheleia-mode)
 
-         ;; I am pretty sure eglot will work only locally.
-         (when (not (file-remote-p default-directory))
-           (eglot-ensure)
-           (company-mode)
-           (keymap-local-set "C-<tab>"  #'company-complete)
-           )
+  ;;(turn-on-font-lock) ;; apparently no longer needed with TS
+  (setq c-basic-offset 4) ;; width of one indent level
+  (setq tab-width 4) ;; this variable is used by `eglot-format'
+  (setq show-trailing-whitespace t)
+  (apheleia-mode)
 
-         (message "setting local key bindings....")
-         (keymap-local-set "ESC C-R"  #'indent-region)
-         (keymap-local-set "ESC #"    #'dino-indent-buffer)
-         (keymap-local-set "C-c C-w"  #'compare-windows)
+  ;; I am pretty sure eglot will work only locally.
+  (when (not (file-remote-p default-directory))
+    (eglot-ensure)
+    (company-mode)
+    (keymap-local-set "C-<tab>"  #'company-complete)
+    )
 
-         ;; trying electric-pair mode
-         ;; ;; TODO: consider relying on electric-pair
-         ;; (local-set-key (kbd "<") 'skeleton-pair-insert-maybe)
-         ;; (local-set-key (kbd "(") 'skeleton-pair-insert-maybe)
-         ;; (local-set-key (kbd "[") 'skeleton-pair-insert-maybe)
-         ;;
-         ;; ;; TODO: determine if I still need this, or can electric-pair
-         ;; ;; or skeleton-pair work for me?
-         ;; (local-set-key (kbd "\"") 'dino-insert-paired-quotes)
-         ;; (local-set-key (kbd "\'") 'dino-insert-paired-quotes)
-         ;;
-         ;; ;; these allow typeover of matching brackets
-         ;; ;; (local-set-key (kbd "\"") 'dino-skeleton-pair-end)
-         ;; (local-set-key (kbd ">") 'dino-skeleton-pair-end)
-         ;; (local-set-key (kbd ")") 'dino-skeleton-pair-end)
-         ;; (local-set-key (kbd "]") 'dino-skeleton-pair-end)
-         ;;
-         ;; ;; for skeleton stuff
-         ;; (set (make-local-variable 'skeleton-pair) t)
+  (message "setting local key bindings....")
+  (keymap-local-set "ESC C-R"  #'indent-region)
+  (keymap-local-set "ESC #"    #'dino-indent-buffer)
+  (keymap-local-set "C-c C-w"  #'compare-windows)
+  (keymap-local-set "C-c C-g"  #'dino-csharpier-buffer)
+  (keymap-local-set "C-x C-e"     #'compile)
 
-         ;; 20241229-1756
-         (electric-pair-local-mode 1)
+  ;; trying electric-pair mode
+  ;; ;; TODO: consider relying on electric-pair
+  ;; (local-set-key (kbd "<") 'skeleton-pair-insert-maybe)
+  ;; (local-set-key (kbd "(") 'skeleton-pair-insert-maybe)
+  ;; (local-set-key (kbd "[") 'skeleton-pair-insert-maybe)
+  ;;
+  ;; ;; TODO: determine if I still need this, or can electric-pair
+  ;; ;; or skeleton-pair work for me?
+  ;; (local-set-key (kbd "\"") 'dino-insert-paired-quotes)
+  ;; (local-set-key (kbd "\'") 'dino-insert-paired-quotes)
+  ;;
+  ;; ;; these allow typeover of matching brackets
+  ;; ;; (local-set-key (kbd "\"") 'dino-skeleton-pair-end)
+  ;; (local-set-key (kbd ">") 'dino-skeleton-pair-end)
+  ;; (local-set-key (kbd ")") 'dino-skeleton-pair-end)
+  ;; (local-set-key (kbd "]") 'dino-skeleton-pair-end)
+  ;;
+  ;; ;; for skeleton stuff
+  ;; (set (make-local-variable 'skeleton-pair) t)
 
-         (require 'yasnippet)
-         (yas-minor-mode-on)
-         (show-paren-mode 1)
-         (hl-line-mode 1)
-         (company-mode)
+  ;; 20241229-1756
+  (electric-pair-local-mode 1)
 
-         ;; 20241228-0619
-         ;; Like all TS modes, csharp-ts-mode relies on flyMAKE, not flycheck.
-         ;; So I think I should disable this for now.
-         ;; (require 'flycheck)
-         ;; (flycheck-mode)
-         ;;         (flycheck-select-checker 'csharp)
+  (require 'yasnippet)
+  (yas-minor-mode-on)
+  (show-paren-mode 1)
+  (hl-line-mode 1)
+  (company-mode)
+  (display-line-numbers-mode)
 
-         ;; for hide/show support
-         (hs-minor-mode 1)
-         (setq hs-isearch-open t)
+  ;; 20241228-0619
+  ;; Like all TS modes, csharp-ts-mode relies on flyMAKE, not flycheck.
+  ;; So I think I should disable this for now.
+  ;; (require 'flycheck)
+  ;; (flycheck-mode)
+  ;;         (flycheck-select-checker 'csharp)
 
-         ;; with point inside the block, use these keys to hide/show
-         (keymap-local-set "C-c >"  #'hs-hide-block)
-         (keymap-local-set "C-c <"  #'hs-show-block)
+  ;; for hide/show support
+  (hs-minor-mode 1)
+  (setq hs-isearch-open t)
 
-         (define-key csharp-ts-mode-map (kbd "C-c C-c") 'comment-region)
+  ;; with point inside the block, use these keys to hide/show
+  (keymap-local-set "C-c >"  #'hs-hide-block)
+  (keymap-local-set "C-c <"  #'hs-show-block)
 
-         ;; autorevert.el is built-in to emacs; if files
-         ;; are changed outside of emacs, the buffer auto-reverts.
-         (turn-on-auto-revert-mode)
-         ;; never convert leading spaces to tabs:
-         ;; (setting this variable automatically makes it local)
-         (setq indent-tabs-mode nil)
-         ;; the imenu stuff doesn't perform well; impractical
-         (setq csharp-want-imenu nil)
-         (display-line-numbers-mode)
+  (define-key csharp-ts-mode-map (kbd "C-c C-c") 'comment-region)
 
-         (message "dino-csharp-ts-mode-fn: done.")
+  ;; autorevert.el is built-in to emacs; if files
+  ;; are changed outside of emacs, the buffer auto-reverts.
+  (turn-on-auto-revert-mode)
+  ;; never convert leading spaces to tabs:
+  ;; (setting this variable automatically makes it local)
+  (setq indent-tabs-mode nil)
+  ;; the imenu stuff doesn't perform well; impractical
+  (setq csharp-want-imenu nil)
+  (display-line-numbers-mode)
 
-         (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
-         )))
+  (message "dino-csharp-ts-mode-fn: done.")
+
+  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
+  )
 
 (eval-after-load "csharp-mode"
   '(progn
