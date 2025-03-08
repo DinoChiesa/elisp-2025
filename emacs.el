@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-05 04:36:04>
+;; Last saved: <2025-March-08 14:10:27>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -741,6 +741,7 @@
   :if (file-exists-p "~/elisp/apigee/apigee.el")
   :load-path "~/elisp/apigee"
   :defer t
+  :commands (apigee-new-proxy apigee-lint-asset)
   :config
   (progn
     (let* ((apigeecli-path "~/.apigeecli/bin/apigeecli")
@@ -1811,28 +1812,32 @@ then switch to the markdown output buffer."
 
 (use-package dpc-gemini
   :defer t
+  :load-path "~/elisp"
   :ensure nil
+  ;; autoloads for local modules don't work. It works only if the package is published via elpa.
+  :commands (dpc-gemini/set-api-key-from-file dpc-gemini/get-gemini-api-key)
   :config (progn
             (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
             (keymap-global-set "C-c ;" #'dpc-gemini/get-buffer-for-prompt)
             ))
 
-
 (use-package chatgpt-shell
   :defer t
   :ensure t
-  :requires (dpc-gemini)
-  :config
-  (progn
-    (require 'dpc-gemini)
-    (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
-    (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
-    ;; override the chatpgpt-shell function to specify the available gemini models
-    (defun chatgpt-shell-google-models ()
-      "Build a list of Google LLM models available.
-   See https://ai.google.dev/gemini-api/docs/models/gemini."
-      (mapcar #'dpc-gemini/chapgpt-shell-converter (dpc-gemini/get-generative-models)))
-    )
+  ;; The :requires keyword specifies a dependency,but _does not_ force load it.
+  ;; Rather, it prevents loading of THIS package unless the required feature is
+  ;; already loaded.
+  ;; :requires (dpc-gemini) ;;
+  :config (progn
+            ;;(require 'dpc-gemini)
+            (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
+            (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
+            ;;  ;; override the chatpgpt-shell function to specify the available gemini models
+            ;;  (defun chatgpt-shell-google-models ()
+            ;;    "Build a list of Google LLM models available.
+            ;; See https://ai.google.dev/gemini-api/docs/models/gemini."
+            ;;    (mapcar #'dpc-gemini/chapgpt-shell-converter (dpc-gemini/get-generative-models)))
+            )
 
   :catch
   (lambda (keyword err)
@@ -3721,6 +3726,8 @@ color ready for next time.
 (use-package restclient
   :defer t
   :load-path "~/elisp"
+  ;; autoloads work only for modules published via elpa.
+  ;; use :commands to get this effect for locally-sourced modules.
   :commands (restclient-mode)
   :config
   (progn
