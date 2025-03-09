@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-08 19:58:56>
+;; Last saved: <2025-March-09 23:43:59>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1773,7 +1773,7 @@ then switch to the markdown output buffer."
 ;;                         (string-lessp version-a version-b))))
 ;;               models))
 
-;; redefine the chatgpt-shell functionto try to properly sort. (It did not work.)
+;; redefine the chatgpt-shell function to try to properly sort. (It did not work.)
 ;; (defun chatgpt-shell-reload-default-models ()
 ;;   "Reload all available models. (And sort them by provider name)"
 ;;   (interactive)
@@ -1781,7 +1781,6 @@ then switch to the markdown output buffer."
 ;;         (dpc-sort-chatgpt-models
 ;;          (chatgpt-shell--make-default-models)))
 ;;   (message "Reloaded %d models" (length chatgpt-shell-models)))
-
 
 (use-package dpc-gemini
   :defer t
@@ -1801,23 +1800,22 @@ then switch to the markdown output buffer."
 
 (use-package chatgpt-shell
   :defer t
-  ;;:load-path "~/dev/elisp-projects/chatgpt-shell"
-  ;;:commands (chatgpt-shell)
-  :ensure t
+  ;; :load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
+  :load-path "~/newdev/elisp-projects/chatgpt-shell"
+  :commands (chatgpt-shell)
+  ;; :ensure t
 
-  ;; The :requires keyword specifies a dependency,but _does not_ force load it.
+  ;; The :requires keyword specifies a dependency, but _does not_ force load it.
   ;; Rather, it prevents loading of THIS package unless the required feature is
   ;; already loaded.
   ;; :requires (dpc-gemini) ;;
   :config (progn
-            ;;(require 'dpc-gemini)
             (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
             (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
-            ;;  ;; override the chatpgpt-shell function to specify the available gemini models
-            ;;  (defun chatgpt-shell-google-models ()
-            ;;    "Build a list of Google LLM models available.
-            ;; See https://ai.google.dev/gemini-api/docs/models/gemini."
-            ;;    (mapcar #'dpc-gemini/chapgpt-shell-converter (dpc-gemini/get-generative-models)))
+            (defun dino-chatgpt-shell-mode-fn ()
+              (keymap-local-set "C-c t" #'chatgpt-shell-google-toggle-grounding-with-google-search)
+              (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models))
+            (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn)
             )
 
   :catch
@@ -1826,6 +1824,7 @@ then switch to the markdown output buffer."
 
 (use-package gemini-code-completion
   :defer t
+  :commands (gemini-code-completion)
   :requires (dpc-gemini google-gemini)
   :config
   (progn
@@ -1833,7 +1832,6 @@ then switch to the markdown output buffer."
     (keymap-global-set "C-c ." #'gemini-code-completion)
     )
   )
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3876,8 +3874,12 @@ color ready for next time.
     (message "Characters entered: %s" (key-description chars))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package lorem
-  :defer t)
+  :defer t
+  :load-path "~/elisp"
+  :ensure nil
+  :commands (lorem-ipsum))
 
 ;;08.04.2003: Kai Großjohann
 (defun increment-number-at-point (amount)
@@ -4189,7 +4191,7 @@ color ready for next time.
 ;;(keymap-global-set "C-c g"       #'httpget)
 (keymap-global-set "C-c u"       #'dino-insert-uuid)
 (keymap-global-set "C-c f"       #'dino-insert-filename)
-(keymap-global-set "C-c l"       #'lorem-ipsum)
+(keymap-global-set "C-c C-l"     #'lorem-ipsum)
 (keymap-global-set "C-c b"       #'dino-base64-insert-file)
 (keymap-global-set "C-c 1"       #'just-one-space)
 (keymap-global-set "C-c s"       #'search-forward-regexp)
