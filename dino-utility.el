@@ -5,7 +5,7 @@
 ;; Package-Requires: (package)
 ;; URL:
 ;; X-URL:
-;; Version: 2025.02.28
+;; Version: 2025.03.08
 ;; Keywords: utility
 ;; License: New BSD
 
@@ -1684,5 +1684,6 @@ latest version of node under management by nvm, or nil if none is found.
 ;;         (delete-region (car bounds) (cdr bounds))
 ;;         (insert (int-to-string numeric))))))
 
+(provide 'dino-utility)
 
 ;;; dino-utility.el ends here
