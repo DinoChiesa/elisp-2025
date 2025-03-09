@@ -17,8 +17,8 @@
    (file-name-as-directory
     (if (eq system-type 'windows-nt)
         (getenv "USERPROFILE")
-        (getenv "HOME")))
-          "Documents/Lorem.txt")
+      (getenv "HOME")))
+   "Documents/Lorem.txt")
   "name of the default file to use for lorem ipsum text")
 
 (defun lorem-set-source-file (file)
@@ -30,11 +30,11 @@
 (defun lorem-string-ends-with (s ending)
   "return non-nil if string S ends with ENDING"
   (if (and (stringp s)
-       (> (length s) 0))
-  (let ((elength (length ending)))
-    (string=
-     (substring s (- 0 elength))
-     ending))))
+           (> (length s) 0))
+      (let ((elength (length ending)))
+        (string=
+         (substring s (- 0 elength))
+         ending))))
 
 (defun lorem-ipsum-reset ()
   "resets the source file to allow re-reading."
@@ -42,6 +42,7 @@
   (setq lorem-text-list nil)
   )
 
+;;;###autoload
 (defun lorem-ipsum ()
   "Inserts one paragraph of lorem ipsum text at point."
   (interactive)
