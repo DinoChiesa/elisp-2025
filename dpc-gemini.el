@@ -53,7 +53,7 @@
   :group 'Editing)
 
 (defcustom dpc-gemini-base-url "https://generativelanguage.googleapis.com/"
-           "the base URL for the Gemini API"
+  "the base URL for the Gemini API"
   :type 'string
   :group 'dpc-gemini)
 
@@ -211,8 +211,8 @@ the model description needed by chatgpt-shell ."
                   (progn
                     (goto-char posn-of-three-backticks)
                     (when (search-forward "\n```" nil t)
-                       (forward-char)
-                       t)))))
+                      (forward-char)
+                      t)))))
         (when keep-going
           (fill-paragraph nil)
           (forward-paragraph))))))
@@ -229,14 +229,14 @@ the model description needed by chatgpt-shell ."
         (browse-url "https://aistudio.google.com/app/apikey")
         nil)
     (let* ((gem-url
-           (concat
-            dpc-gemini-base-url
-            "v1beta/"
-            dpc-gemini-model
-            ":generateContent?key="
-            dpc-gemini-api-key))
-          (gem-prompt
-           (read-from-minibuffer "ask gemini ? " nil nil nil nil nil)))
+            (concat
+             dpc-gemini-base-url
+             "v1beta/"
+             dpc-gemini-model
+             ":generateContent?key="
+             dpc-gemini-api-key))
+           (gem-prompt
+            (read-from-minibuffer "ask gemini ? " nil nil nil nil nil)))
       (message (concat "invoking " gem-url))
       (dpc-gemini/post-prompt gem-url gem-prompt)
       (let* ((json-object-type 'hash-table)
