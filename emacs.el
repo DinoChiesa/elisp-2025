@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-08 14:10:27>
+;; Last saved: <2025-March-08 19:58:56>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -132,7 +132,7 @@
 ;; Loads system-type config; e.g. "darwin.el" on Mac
 ;; TODO: for replace slashes in "gnu/linux"  and add in
 ;; customizations there.
-(let ((system-specific-elisp (concat "~/elisp/" (symbol-name system-type) ".el")))
+(let ((system-specific-elisp (concat "~/elisp/dpc-" (symbol-name system-type) ".el")))
   (if (file-exists-p system-specific-elisp)
       (load system-specific-elisp)))
 
@@ -148,12 +148,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (cond
  ((eq system-type 'windows-nt)
-  (dc-winnt-configure-external-utilities)
+  (dpc-windows-nt-configure-external-utilities)
   )
  (t   ;; not windows-nt
   (eval-after-load "grep"
     '(progn
-       (setq-default grep-command "grep -i -n ")))))
+       (setq-default grep-command "grep -l -i -n ")))))
+
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1495,35 +1497,6 @@ then switch to the markdown output buffer."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; CSharp Code Completion
-
-;; 20241120-0112
-;; commenting out this stuff. Not sure it's reliable.
-;; (add-to-list 'load-path (file-name-as-directory "~/elisp/cscomp"))
-;;
-;; (autoload 'cscomp-complete-at-point      "csharp-completion"  "code-completion for C#" t)
-;; (autoload 'cscomp-complete-at-point-menu "csharp-completion"  "code-completion for C#" t)
-;;
-;; (eval-after-load "csharp-completion"
-;;   '(progn
-;;      (setq cscomp-assembly-search-paths
-;;            (list "c:\\.net2.0"
-;;                  "c:\\.net3.0RA" ;; speech, WPF, WCF, UIAutomation
-;;                  ;;"c:\\.net3.5" -- not necessary, there are no DLLs there
-;;                  "c:\\Program Files (x86)\\Microsoft ASP.NET\\ASP.NET MVC 2\\Assemblies"             ;; for ASPNET MVC2
-;;                  "c:\\.net3.5ra"  ;; Linq, System.ServiceModel.Web, etc
-;;                  "c:\\users\\dino\\dev\\DotNet"  ;; for ICSharpCode.NRefactory.dll, etc
-;;                  "c:\\users\\dino\\bin"  ;; for Ionic.Zip.dll
-;;                  "c:\\Program Files (x86)\\Microsoft WCF REST\\WCF REST Starter Kit Preview 2\\Assemblies"
-;;                  ))
-;;      ))
-
-;;TODO: fix this
-;; (csde-complete-load-additional-assemblies
-;;   (list "Ionic.Zip" "System.Xml" "System.Data" "System.Drawing" "System.Windows.Forms"))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 
@@ -1814,16 +1787,24 @@ then switch to the markdown output buffer."
   :defer t
   :load-path "~/elisp"
   :ensure nil
-  ;; autoloads for local modules don't work. It works only if the package is published via elpa.
-  :commands (dpc-gemini/set-api-key-from-file dpc-gemini/get-gemini-api-key)
+  ;; autoloads for local modules don't work. That mechanism works only if the
+  ;; package is published via elpa.
+  :commands (dpc-gemini/set-api-key-from-file dpc-gemini/get-gemini-api-key dpc-gemini/ask-gemini)
+
   :config (progn
             (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
-            (keymap-global-set "C-c ;" #'dpc-gemini/get-buffer-for-prompt)
+            (keymap-global-set "C-c g ?" #'dpc-gemini/ask-gemini)
+            (keymap-global-set "C-c g a" #'dpc-gemini/ask-gemini)
+            (keymap-global-set "C-c g l" #'dpc-gemini/list-models)
+            (keymap-global-set "C-c g s" #'dpc-gemini/select-model)
             ))
 
 (use-package chatgpt-shell
   :defer t
+  ;;:load-path "~/dev/elisp-projects/chatgpt-shell"
+  ;;:commands (chatgpt-shell)
   :ensure t
+
   ;; The :requires keyword specifies a dependency,but _does not_ force load it.
   ;; Rather, it prevents loading of THIS package unless the required feature is
   ;; already loaded.
@@ -2137,10 +2118,8 @@ just auto-corrects on common mis-spellings by me."
 
          \"cl.exe /I uthash\"
 
-    It's ok to have whitespace between the marker and the following
-    colon.
-
-    "
+It's ok to have whitespace between the marker and the following
+colon."
   (let (start search-limit found)
     ;; determine what lines to look in
     (save-excursion
@@ -2784,26 +2763,6 @@ again, I haven't see that as a problem."
   (keymap-local-set "C-c C-g"  #'dino-csharpier-buffer)
   (keymap-local-set "C-x C-e"     #'compile)
 
-  ;; trying electric-pair mode
-  ;; ;; TODO: consider relying on electric-pair
-  ;; (local-set-key (kbd "<") 'skeleton-pair-insert-maybe)
-  ;; (local-set-key (kbd "(") 'skeleton-pair-insert-maybe)
-  ;; (local-set-key (kbd "[") 'skeleton-pair-insert-maybe)
-  ;;
-  ;; ;; TODO: determine if I still need this, or can electric-pair
-  ;; ;; or skeleton-pair work for me?
-  ;; (local-set-key (kbd "\"") 'dino-insert-paired-quotes)
-  ;; (local-set-key (kbd "\'") 'dino-insert-paired-quotes)
-  ;;
-  ;; ;; these allow typeover of matching brackets
-  ;; ;; (local-set-key (kbd "\"") 'dino-skeleton-pair-end)
-  ;; (local-set-key (kbd ">") 'dino-skeleton-pair-end)
-  ;; (local-set-key (kbd ")") 'dino-skeleton-pair-end)
-  ;; (local-set-key (kbd "]") 'dino-skeleton-pair-end)
-  ;;
-  ;; ;; for skeleton stuff
-  ;; (set (make-local-variable 'skeleton-pair) t)
-
   ;; 20241229-1756
   (electric-pair-local-mode 1)
 
@@ -2980,12 +2939,11 @@ Does not consider word syntax tables.
 
 
 (defun un-camelcase-word-at-point ()
-  "un-camelcase the word at point, replacing uppercase chars with
-    the lowercase version preceded by an underscore.
+  "Un-camelcase the word at point, replacing uppercase chars with
+the lowercase version preceded by an underscore.
 
-    The first char, if capitalized (eg, PascalCase) is just
-    downcased, no preceding underscore.
-    "
+The first char, if capitalized (eg, PascalCase) is just downcased, no
+preceding underscore."
   (interactive)
   (save-excursion
     (let ((bounds (bounds-of-thing-at-point 'word)))
@@ -4228,7 +4186,7 @@ color ready for next time.
 (keymap-global-set "C-x |"       #'align-regexp)
 (keymap-global-set "C-x ?"       #'describe-text-properties)
 (keymap-global-set "C-x w"       #'dino-fixup-linefeeds)
-(keymap-global-set "C-c g"       #'httpget)
+;;(keymap-global-set "C-c g"       #'httpget)
 (keymap-global-set "C-c u"       #'dino-insert-uuid)
 (keymap-global-set "C-c f"       #'dino-insert-filename)
 (keymap-global-set "C-c l"       #'lorem-ipsum)

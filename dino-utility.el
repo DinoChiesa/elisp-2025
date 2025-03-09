@@ -1057,7 +1057,6 @@ in DIR.
     testname))
 
 
-
 (defun dino-check-files-and-move (src targ)
   "Checks SRC directory and moves any files there to
 TARG directory. Fixes up names for uniqueness. Returns
@@ -1685,17 +1684,5 @@ latest version of node under management by nvm, or nil if none is found.
 ;;         (delete-region (car bounds) (cdr bounds))
 ;;         (insert (int-to-string numeric))))))
 
-(defun dc-windows-shortpath (s)
-  "Resolves paths containing spaces (like paths starting from \"c:\\program files\")
-into the short-path form on windows. This makes it easier for emacs to execute
-commands in such directories."
-  (and s (s-trim
-          (shell-command-to-string
-           (concat "pwsh.exe -Command (New-Object -ComObject Scripting.FileSystemObject).GetFolder('"
-                   s
-                   "').ShortPath")))))
-
-
-(provide 'dino-utility)
 
 ;;; dino-utility.el ends here
