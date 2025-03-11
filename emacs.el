@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-09 23:43:59>
+;; Last saved: <2025-March-11 04:01:39>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -355,12 +355,15 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; icomplete-vertical
+;; icomplete
 ;;
-;; overview:  https://github.com/oantolin/icomplete-vertical
+;; icomplete is old.  icomplete-vertical WAS a third-party thing:
+;; https://github.com/oantolin/icomplete-vertical .  As of emacs 28, it is
+;; builtin.  It seems to be exactly equivalent, though the configuration options
+;; are different.  Beware when searching for configuration hints!
 
-(use-package icomplete-vertical
-  :ensure t
+(use-package icomplete ;; -vertical
+  ;;:ensure t ;; it's builtin!
   :demand t
   :custom
   ;; For info: C-h v completion-styles-alist
@@ -368,28 +371,36 @@
   (completion-category-overrides
    '((buffer
       (styles initials flex)
-      (cycle . 10)) ;; not sure what this does. maybe it's the # of options to show.
+      (cycle . 10)) ;; C-h v completion-cycle-threshold
      (file
-      (styles basic substring))
+      (styles basic substring)
+      (cycle . 10))
      (symbol-help
       (styles basic shorthand substring))))
   (read-file-name-completion-ignore-case t)
-  (icomplete-vertical-prospects-height 10) ;; 10 is the default
+  ;;(icomplete-vertical-prospects-height 10) ;; 10 is the default ;; not supported by BUILTIN module
   (read-buffer-completion-ignore-case t)
   (completion-ignore-case t)
+  (max-mini-window-height 0.2)
+  (icomplete-prospects-height 15)
+  (icomplete-show-matches-on-no-input t)
+
   :config
   (icomplete-mode)
   (icomplete-vertical-mode)
-  :bind (:map icomplete-minibuffer-map
-              ("<down>" . icomplete-forward-completions)
-              ("C-n" . icomplete-forward-completions)
-              ("<up>" . icomplete-backward-completions)
-              ("C-p" . icomplete-backward-completions)
-              ("C-v" . icomplete-vertical-toggle)
-              ("C-c ," . embark-act)
-              ("C-x" . embark-export) ;; temporarily in the minibuffer
-              ("C-c ;" . embark-collect)
-              )
+
+  :bind (:map  icomplete-vertical-mode-minibuffer-map ;; icomplete-minibuffer-map <== for the gh version
+               ;; these are defaults, unnecessary
+               ;; ("<down>" . icomplete-forward-completions)
+               ;; ("C-n" . icomplete-forward-completions)
+               ;; ("<up>" . icomplete-backward-completions)
+               ;; ("C-p" . icomplete-backward-completions)
+               ("RET"   . icomplete-force-complete-and-exit)
+               ("C-v"   . icomplete-vertical-mode) ;; toggle
+               ("C-c ," . embark-act)
+               ("C-x"   . embark-export) ;; temporarily in the minibuffer
+               ("C-c ;" . embark-collect)
+               )
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
