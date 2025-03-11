@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-10 21:12:12>
+;; Last saved: <2025-March-10 21:19:59>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1773,69 +1773,6 @@ then switch to the markdown output buffer."
 ;; the list of elpa repositories.
 ;;
 
-;; not used
-;; (defun dpc-sort-chatgpt-models (models)
-;;   "sort models by provider, then version (name).
-;;
-;; I wrote this to try to get `chatgpt-shell-swap-model' to present
-;; model options in order sorted first by provider, then by model
-;; name. But it does not satisfy. `chatgpt-shell-swap-model' uses
-;; `completing-read'.  There is something in my configuration that
-;; does its own re-sort of options, sorting by length! of
-;; course. Therefore sorting before presenting the options to
-;; completing-reads is not a solution. The solution needs to involve
-;; somehow turning off that sort-by-length behavior.
-;;
-;;
-;;   (seq-sort (lambda (a b)
-;;                 (let ((provider-a (map-elt a :provider))
-;;                       (version-a (map-elt a :version))
-;;                       (provider-b (map-elt b :provider))
-;;                       (version-b (map-elt b :version)))
-;;                     (or (string-lessp provider-a provider-b)
-;;                         (string-lessp version-a version-b))))
-;;               models))
-
-;; redefine the chatgpt-shell function to try to properly sort. (It did not work.)
-;; (defun chatgpt-shell-reload-default-models ()
-;;   "Reload all available models. (And sort them by provider name)"
-;;   (interactive)
-;;   (setq chatgpt-shell-models
-;;         (dpc-sort-chatgpt-models
-;;          (chatgpt-shell--make-default-models)))
-;;   (message "Reloaded %d models" (length chatgpt-shell-models)))
-
-
-;; 20250309-2223
-
-;; Trying to get `chatgpt-shell-swap-model' to present
-;; model options in order sorted first by provider, then by model
-;; name.
-;;
-;; By default, minibuffer.el says:
-;;
-;; If the table doesn't stipulate a sorting function or a
-;; group function, sort first by length and
-;; alphabetically.
-;;
-;; Which is ... surprising and ... crazy
-
-;; But there is a way, I am sure!
-;;
-;; `chatgpt-shell-swap-model' uses
-;; `completing-read' for completions.
-
-;; .  There is something in my configuration that
-;; does its own re-sort of options, sorting by length! of
-;; course. Therefore sorting before presenting the options to
-;; completing-reads is not a solution. The solution needs to involve
-;; somehow turning off that sort-by-length behavior.
-;;
-
-
-
-
-
 (use-package dpc-gemini
   :defer t
   :load-path "~/elisp"
@@ -1857,7 +1794,7 @@ then switch to the markdown output buffer."
   :load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
   ;; :load-path "~/newdev/elisp-projects/chatgpt-shell"
   :commands (chatgpt-shell)
-  ;; :ensure t
+  ;; :ensure t ;; restore this later
 
   ;; The :requires keyword specifies a dependency, but _does not_ force load it.
   ;; Rather, it prevents loading of THIS package unless the required feature is
@@ -1865,14 +1802,13 @@ then switch to the markdown output buffer."
   ;; :requires (dpc-gemini) ;;
   :config (progn
             (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
-            (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
+            (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key)
+                  chatgpt-shell-model-sort (lambda (candidates) (sort candidates :lessp #'string<)))
+
             (defun dino-chatgpt-shell-mode-fn ()
               (keymap-local-set "C-c t" #'chatgpt-shell-google-toggle-grounding-with-google-search)
               (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models))
             (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn)
-
-            ;; TODO: file this as a PR for chatgpt-shell
-            ;;(require 'chatgpt-shell-fixups)
             )
 
   :catch
