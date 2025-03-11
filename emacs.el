@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-11 04:01:39>
+;; Last saved: <2025-March-10 21:12:12>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -179,7 +179,6 @@
   "/usr/lib/google-golang/bin"
   "/usr/local/git/current/bin"
   ))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; apheleia - clever code reformatting for multiple languages.
@@ -515,7 +514,20 @@
   :config (eglot-booster-mode))
 
 ;; (use-package aider)
+(use-package aidermacs
+  :defer 35
+  :bind (("C-c a" . aidermacs-transient-menu))
+  :config
+  ;; Enable minor mode for Aider files
+  (aidermacs-setup-minor-mode)
+  (setenv "AIDER_WEAK_MODEL" "gemini/gemini-2.0-flash")
+  (setenv "AIDER_EDITOR_MODEL" "gemini/gemini-2.0-flash")
 
+  :custom
+  ;; See the Configuration section below
+  (aidermacs-auto-commits t)
+  (aidermacs-use-architect-mode t)
+  (aidermacs-default-model "sonnet"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jsonnet
@@ -1774,7 +1786,7 @@ then switch to the markdown output buffer."
 ;; completing-reads is not a solution. The solution needs to involve
 ;; somehow turning off that sort-by-length behavior.
 ;;
-;; "
+;;
 ;;   (seq-sort (lambda (a b)
 ;;                 (let ((provider-a (map-elt a :provider))
 ;;                       (version-a (map-elt a :version))
@@ -1792,6 +1804,37 @@ then switch to the markdown output buffer."
 ;;         (dpc-sort-chatgpt-models
 ;;          (chatgpt-shell--make-default-models)))
 ;;   (message "Reloaded %d models" (length chatgpt-shell-models)))
+
+
+;; 20250309-2223
+
+;; Trying to get `chatgpt-shell-swap-model' to present
+;; model options in order sorted first by provider, then by model
+;; name.
+;;
+;; By default, minibuffer.el says:
+;;
+;; If the table doesn't stipulate a sorting function or a
+;; group function, sort first by length and
+;; alphabetically.
+;;
+;; Which is ... surprising and ... crazy
+
+;; But there is a way, I am sure!
+;;
+;; `chatgpt-shell-swap-model' uses
+;; `completing-read' for completions.
+
+;; .  There is something in my configuration that
+;; does its own re-sort of options, sorting by length! of
+;; course. Therefore sorting before presenting the options to
+;; completing-reads is not a solution. The solution needs to involve
+;; somehow turning off that sort-by-length behavior.
+;;
+
+
+
+
 
 (use-package dpc-gemini
   :defer t
@@ -1811,8 +1854,8 @@ then switch to the markdown output buffer."
 
 (use-package chatgpt-shell
   :defer t
-  ;; :load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
-  :load-path "~/newdev/elisp-projects/chatgpt-shell"
+  :load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
+  ;; :load-path "~/newdev/elisp-projects/chatgpt-shell"
   :commands (chatgpt-shell)
   ;; :ensure t
 
@@ -1827,6 +1870,9 @@ then switch to the markdown output buffer."
               (keymap-local-set "C-c t" #'chatgpt-shell-google-toggle-grounding-with-google-search)
               (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models))
             (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn)
+
+            ;; TODO: file this as a PR for chatgpt-shell
+            ;;(require 'chatgpt-shell-fixups)
             )
 
   :catch
@@ -3777,6 +3823,7 @@ color ready for next time.
 ;;(require 'ediff)
 (autoload 'ediff-buffers "ediff" nil t)
 
+(setq ediff-window-setup-function 'ediff-setup-windows-plain)
 
 (defun dino-ediff-buffer-against-file (file)
   "diff the current [edited] buffer and the file of the same name"
