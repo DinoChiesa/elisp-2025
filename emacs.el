@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-12 01:51:27>
+;; Last saved: <2025-March-12 01:55:36>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -901,7 +901,7 @@
   (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
   )
 
-(add-hook 'go-mode-hook 'dino-go-mode-fn)))
+(add-hook 'go-mode-hook 'dino-go-mode-fn)
 
 
 (use-package go-ts-mode
