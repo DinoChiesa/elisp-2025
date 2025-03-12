@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-12 01:55:36>
+;; Last saved: <2025-March-12 03:06:30>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -254,23 +254,25 @@
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; rego - OPA configuration language
-(when (file-exists-p "~/elisp/rego-mode.el")
-  ;; rego-mode on MELPA is out of date and unmaintained.
-  ;; I do not think use-package can be co-erced to loading a local
-  ;; file when a package exists on ELPA.  So use-package is out.
-  ;; just use old-fashioned autoload.
-  (autoload 'rego-mode "~/elisp/rego-mode.el" "Major mode for editing REGO configurations." t)
+;; rego
+;;
+;; OPA configuration language. As of 20250312-0217,
+;; rego-mode on MELPA is out of date and unmaintained.
 
-  (eval-after-load "rego-mode"
-    '(progn
-       (when (boundp 'apheleia-formatters)
-         (when (not (alist-get 'opa-fmt apheleia-formatters))
-           (push '(opa-fmt . ("opa" "fmt"))
-                 apheleia-formatters))
-         (when (not (alist-get 'rego-mode apheleia-mode-alist))
-           (push '(rego-mode . opa-fmt) apheleia-mode-alist)))))
+(use-package rego-mode
+  :if (file-exists-p "~/elisp/rego-mode.el")
+  :load-path "~/elisp"
+  :pin manual
+  :defer t
+  :commands (rego-repl-show rego-mode)
 
+  :config
+  (when (boundp 'apheleia-formatters)
+    (when (not (alist-get 'opa-fmt apheleia-formatters))
+      (push '(opa-fmt . ("opa" "fmt"))
+            apheleia-formatters))
+    (when (not (alist-get 'rego-mode apheleia-mode-alist))
+      (push '(rego-mode . opa-fmt) apheleia-mode-alist)))
 
   (defun dino-rego-mode-fn ()
     (display-line-numbers-mode)
@@ -291,7 +293,6 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; treesit
 (use-package treesit
   :defer t
   :config
@@ -356,10 +357,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; icomplete
 ;;
-;; icomplete is old.  icomplete-vertical WAS a third-party thing:
-;; https://github.com/oantolin/icomplete-vertical .  As of emacs 28, it is
-;; builtin.  It seems to be exactly equivalent, though the configuration options
-;; are different.  Beware when searching for configuration hints!
+;; icomplete is old but good and actively maintained.  icomplete-vertical WAS a
+;; third-party thing: https://github.com/oantolin/icomplete-vertical , and it's
+;; also still available on MELPA.  As of emacs 28, icomplete-vertical-mode is
+;; just a feature of the builtin icomplete-mode.  It seems to be exactly
+;; equivalent to the old independent module, though the configuration options
+;; are different. Beware when searching for configuration hints!
 
 (use-package icomplete ;; -vertical
   ;;:ensure t ;; it's builtin!
@@ -419,6 +422,9 @@
 ;; WSD mode - fontifications for editing websequence diagrams
 ;;
 (use-package wsd-mode
+  :if (file-exists-p "~/elisp/wsd-mode.el")
+  :load-path "~/elisp"
+  :pin manual
   :defer t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -517,7 +523,6 @@
   :after eglot
   :config (eglot-booster-mode))
 
-;; (use-package aider)
 (use-package aidermacs
   :defer 35
   :bind (("C-c a" . aidermacs-transient-menu))
@@ -525,13 +530,13 @@
   ;; Enable minor mode for Aider files
   (aidermacs-setup-minor-mode)
   (setenv "AIDER_WEAK_MODEL" "gemini/gemini-2.0-flash")
-  (setenv "AIDER_EDITOR_MODEL" "gemini/gemini-2.0-flash")
+  (setenv "AIDER_EDITOR_MODEL" "gemini/gemini-2.0-flash-thinking-exp")
 
   :custom
   ;; See the Configuration section below
   (aidermacs-auto-commits t)
   (aidermacs-use-architect-mode t)
-  (aidermacs-default-model "sonnet"))
+  (aidermacs-default-model "gemini/gemini-2.0-flash"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jsonnet
@@ -673,54 +678,10 @@
 
 (use-package dpc-jsonnet-mode-fixups
   :defer t
-  :after (jsonnet-mode)
+  :if (file-exists-p "~/elisp/dpc-jsonnet-mode-fixups.el")
+  :load-path "~/elisp"
   :pin manual)
 
-
-
-;; $ pear config-get php_dir
-;; will show the pear PHP config directory.  Eg /usr/local/share/pear
-;; .. which means the phpcs dir is /usr/local/share/pear/PHP/CodeSniffer
-;; .. and the standards are in     /usr/local/share/pear/PHP/CodeSniffer/src/Standards
-;;
-;; ?? or this?
-;; $ php composer.phar global show -P
-;; which shows
-;; ~/.composer/vendor/squizlabs/php_codesniffer/CodeSniffer/Standards/
-;;
-;; regardless, wherever the Standards live, you can add a new one.
-;;   cd   ${phpcs_dir}/Standards
-;;   mkdir DinoChiesa
-;;
-;; then, place the following content in DinoChiesa/ruleset.xml
-;;
-;; <ruleset name="Custom Standard">
-;;   <description>My custom coding standard</description>
-;;   <rule ref="PEAR">
-;;     <exclude name="PEAR.WhiteSpace.ScopeClosingBrace.BreakIndent"/>
-;;     <exclude name="PEAR.WhiteSpace.ScopeIndent"/>
-;;     <exclude name="Generic.PHP.LowerCaseConstant.Found"/>
-;;     <exclude name="PEAR.NamingConventions.ValidFunctionName.FunctionNoCapital"/>
-;;     <exclude name="Generic.Commenting.DocComment.MissingShort"/>
-;;     <exclude name="PEAR.Commenting.ClassComment"/>
-;;     <exclude name="PEAR.Commenting.FileComment"/>
-;;     <exclude name="PEAR.Commenting.FunctionComment"/>
-;;     <exclude name="PEAR.Commenting.InlineComment"/>
-;;     <exclude name="PEAR.Classes.ClassDeclaration"/>
-;;     <exclude name="PEAR.Functions.FunctionDeclaration.BraceOnSameLine"/>
-;;     <exclude name="PEAR.Functions.FunctionCallSignature.ContentAfterOpenBracket" />
-;;     <exclude name="Generic.Files.LineEndings"/>
-;;     <exclude name="Generic.Files.LineLength.TooLong"/>
-;;     <exclude name="PEAR.ControlStructures.ControlSignature"/>
-;;     <exclude name="PEAR.Functions.FunctionCallSignature.CloseBracketLine"/>
-;;     <exclude name="PEAR.Functions.FunctionCallSignature.Indent"/>
-;;   </rule>
-;;   <rule ref="PEAR.WhiteSpace.ScopeIndent">
-;;     <properties>
-;;       <property name="indent" value="2"/>
-;;     </properties>
-;;   </rule>
-;; </ruleset>
 
 ;; Tips from https://www.youtube.com/watch?v=p3Te_a-AGqM
 ;; for marking ever-larger regions iteratively
@@ -756,10 +717,13 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; wgrep - edit files in a grep output buffer
+;; wgrep - edit files in a grep output buffer. Amazing.
 ;;
 (use-package wgrep
   :defer t
+  :if (file-exists-p "~/elisp/wgrep.el")
+  :load-path "~/elisp"
+  :commands (wgrep-setup)
   :config (keymap-set grep-mode-map "C-c C-p" #'wgrep-change-to-wgrep-mode))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1065,15 +1029,18 @@ then switch to the markdown output buffer."
       (switch-to-buffer-other-window buf-name)
       (browse-url-of-buffer (get-buffer buf-name)))))
 
+(defun dino-markdown-mode-fn ()
+  "My hook for markdown mode"
+  (modify-syntax-entry ?_ "w")
+  (auto-fill-mode -1)
+  (keymap-local-set "C-c m s" #'dc-markdown-standalone)
+  (keymap-local-set "C-c m |" #'markdown-table-align)
+  )
+
 (use-package markdown-mode
   :ensure t
   :defer t
-  :config (defun dino-markdown-mode-fn ()
-            "My hook for markdown mode"
-            (modify-syntax-entry ?_ "w")
-            (auto-fill-mode -1)
-            (keymap-local-set "C-c C-c s" #'dc-markdown-standalone)
-            )
+  :config
   :hook (markdown-mode . dino-markdown-mode-fn))
 
 
@@ -1194,18 +1161,11 @@ then switch to the markdown output buffer."
 (if (file-exists-p abbrev-file-name)
     (quietly-read-abbrev-file))
 (setq save-abbrevs t)              ;; save abbrevs when files are saved
-;; you will be asked before the abbreviations are saved
-
-
-;; (autoload 'csharp-mode "csharp-mode" "Major mode for editing C# code." t)
-;; (autoload 'iirf-mode "iirf-mode" "Major mode for editing IIRF ini files." t)
-;; (autoload 'php-mode "php-mode" "Major mode for editing php code." t)
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; adjustment to mode mappings
-                                        ;
+;;
 ;; NB: In the regexp's, the trailing \\' represents "end of string".
 ;; The $ represents the zero-width place before newline.  They are
 ;; equivalent unless there is a filename with a new line in it (not
@@ -1215,44 +1175,44 @@ then switch to the markdown output buffer."
 (setq auto-mode-alist
       (append
        '(
-         ("\\.yaml$"                          . yaml-mode)
-         ("\\.\\(war\\|ear\\|WAR\\|EAR\\)\\'" . archive-mode)        ; java archives
+         ("\\.yaml\\'"                          . yaml-mode)
+         ("\\.\\(war\\|ear\\|WAR\\|EAR\\)\\'"   . archive-mode)
          ;;("\\.s?html?\\'"                     . nxhtml-mumamo-mode)
-         ("\\(Iirf\\|iirf\\|IIRF\\)\\(Global\\)?\\.ini$"   . iirf-mode)
-         ("\\.css$"                           . css-ts-mode)
-         ("\\.proto$"                         . protobuf-mode)
-         ("\\.\\(php\\|module\\)$"            . php-mode)
-         ("\\.md$"                            . markdown-mode)
-         ("\\.cs$"                            . csharp-ts-mode)
-         ("\\.asp$"                           . html-mode)
-         ;;("\\.aspx$"                        . html-helper-mode)
-         ("\\.aspx$"                          . aspx-mode)
-         ("\\.ashx$"                          . csharp-mode)
-         ("\\.ascx$"                          . csharp-mode)
-         ("\\.s?html?\\'"                     . html-mode)
-         ("\\.html$"                          . web-mode)
-         ("\\.htm$"                           . web-mode)
-         ("\\.md$"                            . markdown-mode)
-         ("\\.py$"                            . python-ts-mode)
-         ("\\.dart$"                          . dart-mode)
-         ("\\.el$"                            . emacs-lisp-mode)
+         ("\\(Iirf\\|iirf\\|IIRF\\)\\(Global\\)?\\.ini\\'"   . iirf-mode)
+         ("\\.css\\'"                           . css-ts-mode)
+         ("\\.proto\\'"                         . protobuf-mode)
+         ("\\.\\(php\\|module\\)\\'"            . php-mode)
+         ("\\.md\\'"                            . markdown-mode)
+         ("\\.cs\\'"                            . csharp-ts-mode)
+         ("\\.asp\\'"                           . html-mode)
+         ;;("\\.aspx\\'"                        . html-helper-mode)
+         ("\\.aspx\\'"                          . aspx-mode)
+         ("\\.ashx\\'"                          . csharp-mode)
+         ("\\.ascx\\'"                          . csharp-mode)
+         ("\\.s?html?\\'"                       . html-mode)
+         ("\\.html\\'"                          . web-mode)
+         ("\\.htm\\'"                           . web-mode)
+         ("\\.md\\'"                            . markdown-mode)
+         ("\\.py\\'"                            . python-ts-mode)
+         ("\\.dart\\'"                          . dart-mode)
+         ("\\.el\\'"                            . emacs-lisp-mode)
          ;;("\\.js$"                            . js-mode)
-         ;;("\\.gs$"                            . js-mode)            ;; google script
-         ("\\.\\(js\\|gs\\|jsi\\)$"           . js-mode)
-         ("\\.\\(avsc\\)$"                    . json-mode)           ;; avro schema
-         ("\\.txt$"                           . text-mode)
-         ("\\.asmx$"                          . csharp-mode)         ; likely, could be another language tho
-         ("\\.\\(vb\\)$"                      . vbnet-mode)
-         ("\\.\\(vbs\\|vba\\)$"               . vbs-mode)
-         ("\\.\\(cs\\|vb\\|shfb\\)proj$"      . xml-mode)            ; msbuild file
-         ("\\.config$"                        . xml-mode)            ; .NET config file
-         ("\\.\\(xsd\\|wsdl\\)$"              . xml-mode)            ; schema or WSDL file
-         ("\\.sln$             "              . xml-mode)            ; VS2008 .sln file
-         ("\\.\\(wxs\\|wxl\\|wixproj\\)$"     . xml-mode)            ; WiX, wixproj, etc
-         ("\\.ssml$"                          . xml-mode)            ; Speech markup
-         ("\\.\\(aml\\|xaml\\)$"              . xml-mode)            ; SHFB markup, XAML
-         ("\\.\\(wsc\\|wsf\\)$"               . xml-mode)            ; Windows Script Component, WSCript file.
-         ("\\.\\(xjb\\)$"                     . xml-mode)            ; JAXB bindings file
+         ;;("\\.gs$"                            . js-mode)             ;; google apps-script
+         ("\\.\\(js\\|gs\\|jsi\\)\\'"           . js-mode)
+         ("\\.\\(avsc\\)\\'"                    . json-mode)           ;; avro schema
+         ("\\.txt\\'"                           . text-mode)
+         ("\\.asmx\\'"                          . csharp-mode)         ; likely, could be another language tho
+         ("\\.\\(vb\\)\\'"                      . vbnet-mode)
+         ("\\.\\(vbs\\|vba\\)\\'"               . vbs-mode)
+         ("\\.\\(cs\\|vb\\|shfb\\)proj\\'"      . xml-mode)            ; msbuild file
+         ("\\.config\\'"                        . xml-mode)            ; .NET config file
+         ("\\.\\(xsd\\|wsdl\\)\\'"              . xml-mode)            ; schema or WSDL file
+         ("\\.sln\\'"                           . xml-mode)            ; VS2008 .sln file
+         ("\\.\\(wxs\\|wxl\\|wixproj\\)\\'"     . xml-mode)            ; WiX, wixproj, etc
+         ("\\.ssml\\'"                          . xml-mode)            ; Speech markup
+         ("\\.\\(aml\\|xaml\\)\\'"              . xml-mode)            ; SHFB markup, XAML
+         ("\\.\\(wsc\\|wsf\\)\\'"               . xml-mode)            ; Windows Script Component, WSCript file.
+         ("\\.\\(xjb\\)\\'"                     . xml-mode)            ; JAXB bindings file
          ) auto-mode-alist ))
 
 
@@ -1820,8 +1780,8 @@ This function is used with:
 
 (use-package chatgpt-shell
   :defer t
-  :load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
-  ;; :load-path "~/newdev/elisp-projects/chatgpt-shell"
+  ;;:load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
+  :load-path "~/newdev/elisp-projects/chatgpt-shell" ;; linux
   :commands (chatgpt-shell)
   ;; :ensure t ;; restore this later
 
@@ -1841,6 +1801,9 @@ This function is used with:
               (keymap-local-set "C-c t" #'chatgpt-shell-google-toggle-grounding-with-google-search)
               (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models)
               (keymap-local-set "C-c p" #'chatgpt-shell-prompt-compose)
+              (keymap-local-set "C-c r" #'chatgpt-shell-refactor-code)
+              (keymap-local-set "C-c d" #'chatgpt-shell-describe-code)
+              (keymap-local-set "C-c f" #'chatgpt-shell-proofread-regoin)
               )
             (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn)
             )
@@ -2836,8 +2799,6 @@ This function is used with:
   ;; with point inside the block, use these keys to hide/show
   (keymap-local-set "C-c >"  #'hs-hide-block)
   (keymap-local-set "C-c <"  #'hs-show-block)
-
-  (define-key csharp-ts-mode-map (kbd "C-c C-c") 'comment-region)
 
   ;; autorevert.el is built-in to emacs; if files
   ;; are changed outside of emacs, the buffer auto-reverts.
@@ -4278,7 +4239,13 @@ color ready for next time.
 (keymap-global-set "C->"         #'end-of-defun)
 (keymap-global-set "C-c C-x C-c" #'calendar)
 (keymap-global-set "ESC C-\\"    #'help-for-help)
-(keymap-global-set "C-c d"       #'delete-trailing-whitespace)
+(keymap-global-set "C-c C-d"     #'delete-trailing-whitespace)
+
+
+(define-key prog-mode-map (kbd "C-c d")   #'chatgpt-shell-describe-code)
+(define-key prog-mode-map (kbd "C-c C-c") #'comment-region)
+
+
 
 
 ;; unicode helpers
