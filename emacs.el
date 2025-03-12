@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-12 01:48:56>
+;; Last saved: <2025-March-12 01:51:27>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -388,12 +388,15 @@
   (icomplete-mode)
   (icomplete-vertical-mode)
 
-  :bind (:map  icomplete-vertical-mode-minibuffer-map ;; icomplete-minibuffer-map <== for the gh version
+  :bind (:map  icomplete-vertical-mode-minibuffer-map
+               ;; icomplete-minibuffer-map <== for the non-vertical version
+
                ;; these are defaults, unnecessary
                ;; ("<down>" . icomplete-forward-completions)
                ;; ("C-n" . icomplete-forward-completions)
                ;; ("<up>" . icomplete-backward-completions)
                ;; ("C-p" . icomplete-backward-completions)
+               ("TAB"   . icomplete-force-complete)
                ("RET"   . icomplete-force-complete-and-exit)
                ("TAB"   . icomplete-force-complete)
                ("C-v"   . icomplete-vertical-mode) ;; toggle
@@ -859,6 +862,48 @@
 ;; golang
 ;;
 
+(defun dino-go-mode-fn ()
+  ;; 20250310-2243
+  ;; not sure, but this does not appear to get executed with go-mode or go-ts-mode
+  ;;(setq-default)
+  (setq tab-width 2
+        standard-indent 2
+        indent-tabs-mode t) ;; golang prefers tabs, ugh
+
+  (keymap-local-set "ESC C-R" #'indent-region)
+  (keymap-local-set "ESC #"   #'dino-indent-buffer)
+  (keymap-local-set "C-c C-w" #'compare-windows)
+  (keymap-local-set "C-c C-c" #'comment-region)
+
+  (eval-after-load "smarter-compile"
+    '(progn
+       (add-to-list
+        'smart-compile-compile-command-in-comments-extension-list
+        ".go")))
+
+  (eval-after-load "flycheck"
+    '(progn
+       (add-to-list
+        'flycheck-disabled-checkers 'go-build))) ;; go-gofmt?
+
+  (display-line-numbers-mode)
+
+  ;; 20230918-1015
+  (when (boundp 'apheleia-formatters)
+    (apheleia-mode)
+    (setq apheleia-log-debug-info t)
+    (setq apheleia-remote-algorithm 'local))
+
+  ;; still need this? 20241203-0215
+  (require 'goflycheck)
+  (flycheck-mode 1)
+
+  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
+  )
+
+(add-hook 'go-mode-hook 'dino-go-mode-fn)))
+
+
 (use-package go-ts-mode
   :defer t
   :ensure t
@@ -867,43 +912,6 @@
             ;;(require 'go-mode-autoloads) ;; editing mode
             (load "go-mode-autoloads") ;; editing mode; there is no provide statement!
             ;; for flycheck or compile support, I need the go binary on the path
-
-            (defun dino-go-mode-fn ()
-              ;;(setq-default)
-              (setq tab-width 2
-                    standard-indent 2
-                    indent-tabs-mode t) ;; golang prefers tabs, ugh
-
-              (keymap-local-set "ESC C-R" #'indent-region)
-              (keymap-local-set "ESC #"   #'dino-indent-buffer)
-              (keymap-local-set "C-c C-w" #'compare-windows)
-              (keymap-local-set "C-c C-c" #'comment-region)
-
-              (eval-after-load "smarter-compile"
-                '(progn
-                   (add-to-list
-                    'smart-compile-compile-command-in-comments-extension-list
-                    ".go")))
-
-              (eval-after-load "flycheck"
-                '(progn
-                   (add-to-list
-                    'flycheck-disabled-checkers 'go-build))) ;; go-gofmt?
-
-              (display-line-numbers-mode)
-
-              ;; 20230918-1015
-              (when (boundp 'apheleia-formatters)
-                (apheleia-mode)
-                (setq apheleia-log-debug-info t)
-                (setq apheleia-remote-algorithm 'local))
-
-              ;; still need this? 20241203-0215
-              (require 'goflycheck)
-              (flycheck-mode 1)
-
-              (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
-              )
             (add-hook 'go-ts-mode-hook 'dino-go-mode-fn)))
 
 
