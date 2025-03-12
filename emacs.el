@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-10 21:19:59>
+;; Last saved: <2025-March-12 01:48:56>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -236,7 +236,7 @@
 (use-package company
   :defer 31
   :config
-  (define-key company-mode-map "TAB" 'company-complete))
+  (define-key company-mode-map "<TAB>" 'company-complete))
 
 (use-package company-box
   :defer t
@@ -395,6 +395,7 @@
                ;; ("<up>" . icomplete-backward-completions)
                ;; ("C-p" . icomplete-backward-completions)
                ("RET"   . icomplete-force-complete-and-exit)
+               ("TAB"   . icomplete-force-complete)
                ("C-v"   . icomplete-vertical-mode) ;; toggle
                ("C-c ," . embark-act)
                ("C-x"   . embark-export) ;; temporarily in the minibuffer
@@ -1755,29 +1756,17 @@ then switch to the markdown output buffer."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; gemini
+;; dpc-gemini
 ;;
-;; 20241223-2051
-;; google-gemini.el is available on https://github.com/emacs-openai/google-gemini,
-;; but it is not distributed on Melpa, so all the dependencies do not get
-;; managed in the right way.  It needs request, pp, auth-lib, and a bunch of
-;; other things.
-;;
-;; At this point I think I am better off rolling my own. It's a simple matter of
-;; sending a POST to an endpoint with a json payload, then parsing and extracting
-;; the response from a JSON blob.
-;;
-;; 20250214-1118
-;; At this point I have learned that google-gemini IS available on jcs-emacs elpa repository,
-;; which means the problem with dependencies is no longer, assuming jcs-emacs is in
-;; the list of elpa repositories.
-;;
+;; my own little package. Defines an "ask gemini" command that prompts in the
+;; minibuffer. It inserts whatever is in the marked region as the default prompt.
+;; Also retrieves a key from a keyfile.
 
 (use-package dpc-gemini
   :defer t
   :load-path "~/elisp"
   :ensure nil
-  ;; autoloads for local modules don't work. That mechanism works only if the
+  ;; autoloads defined in local modules don't work. That mechanism works only if the
   ;; package is published via elpa.
   :commands (dpc-gemini/set-api-key-from-file dpc-gemini/get-gemini-api-key dpc-gemini/ask-gemini)
 
@@ -1789,6 +1778,38 @@ then switch to the markdown output buffer."
             (keymap-global-set "C-c g s" #'dpc-gemini/select-model)
             ))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; chatgpt-shell
+;;
+;; A chatbot interface to any LLM, including Gemini, via comint in emacs.
+;;
+
+(defun dpc-cgs--model-sort (candidates) (sort candidates :lessp #'string<))
+
+(defun dpc--cgs--model-completion-table (candidates)
+  "Returns a function to be used as the COMPLETIONS parameter in
+`completing-read'.
+This is a closure around CANDIDATES.
+When using icomplete or icomplete-vertical, `completing-read' uses a
+default of 'sort first by length and then alphabetically.' That is
+inappropriate when presenting the list of models.
+
+To override this, users of chatgpt-shell can set
+`chatgpt-shell-swap-model-selector' to provide a different experience.
+
+This function is used with:
+  (setq chatgpt-shell-swap-model-selector
+        (lambda (candidates)
+          (completing-read \"New model: \"
+                           (dpc--cgs--model-completion-table candidates) nil t)))"
+  (lexical-let ((candidates candidates))
+    (lambda (string pred action)
+      (if (eq action 'metadata)
+          `(metadata
+            (cycle-sort-function . ,#'dpc-cgs--model-sort)
+            (display-sort-function . ,#'dpc-cgs--model-sort))
+        (complete-with-action action candidates string pred)))))
+
 (use-package chatgpt-shell
   :defer t
   :load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
@@ -1799,15 +1820,20 @@ then switch to the markdown output buffer."
   ;; The :requires keyword specifies a dependency, but _does not_ force load it.
   ;; Rather, it prevents loading of THIS package unless the required feature is
   ;; already loaded.
-  ;; :requires (dpc-gemini) ;;
+  ;; :requires (dpc-gemini)
   :config (progn
             (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
-            (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key)
-                  chatgpt-shell-model-sort (lambda (candidates) (sort candidates :lessp #'string<)))
+            (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
+            (setq chatgpt-shell-swap-model-selector
+                  (lambda (candidates)
+                    (completing-read "Swap to: "
+                                     (dpc--cgs--model-completion-table candidates) nil t)))
 
             (defun dino-chatgpt-shell-mode-fn ()
               (keymap-local-set "C-c t" #'chatgpt-shell-google-toggle-grounding-with-google-search)
-              (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models))
+              (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models)
+              (keymap-local-set "C-c p" #'chatgpt-shell-prompt-compose)
+              )
             (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn)
             )
 
@@ -1815,16 +1841,40 @@ then switch to the markdown output buffer."
   (lambda (keyword err)
     (message (format "chatgpt-shell init: %s" (error-message-string err)))))
 
-(use-package gemini-code-completion
-  :defer t
-  :commands (gemini-code-completion)
-  :requires (dpc-gemini google-gemini)
-  :config
-  (progn
-    (setq google-gemini-key (dpc-gemini/get-gemini-api-key))
-    (keymap-global-set "C-c ." #'gemini-code-completion)
-    )
-  )
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; google-gemini
+;; ;;
+;; ;; A library for gemini. It supports "generate content" and listing available
+;; ;; models, and maybe some other things. Designed to be a library.  It is homed
+;; ;; here: https://github.com/emacs-openai/google-gemini , and is distributed on
+;; ;; the jcs-emacs elpa repository.
+;; ;;
+;;
+;; (use-package google-gemini
+;;   :defer t
+;;   :ensure t
+;;   :commands (google-gemini-content-generate)
+;;   )
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; gemini-code-completion
+;; ;;
+;; ;; Does code completion around point in a code buffer.
+;; ;;
+;; ;; It is not on an elpa repo. Depends on google-gemini.el. This is not very
+;; ;; sophisticated. Not even close to aider.
+;; ;;
+;; (use-package gemini-code-completion
+;;   :load-path "~/elisp"
+;;   :defer t
+;;   :commands (gemini-complete)
+;;   :requires (dpc-gemini google-gemini)
+;;   :config
+;;   (progn
+;;     (setq google-gemini-key (dpc-gemini/get-gemini-api-key))
+;;     (keymap-global-set "C-c g c" #'gemini-complete)
+;;     )
+;;   )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1915,8 +1965,8 @@ then switch to the markdown output buffer."
 
 (defun dino-fix-abbrev-table ()
   "set up a custom abbrev table. The normal
-saving isn't allowed on my computer. Really these are
-just auto-corrects on common mis-spellings by me."
+            saving isn't allowed on my computer. Really these are
+            just auto-corrects on common mis-spellings by me."
 
   (define-abbrev-table 'text-mode-abbrev-table
     '(
@@ -2094,23 +2144,23 @@ just auto-corrects on common mis-spellings by me."
 (defun dino-c-get-value-from-comments (marker-string line-limit)
   "gets a string from the header comments in the current buffer.
 
-    This is used to extract the compile command from the comments. It
-    could be used for other purposes too.
+            This is used to extract the compile command from the comments. It
+            could be used for other purposes too.
 
-    It looks for \"marker-string:\" and returns the string that
-    follows it, or returns nil if that string is not found.
+            It looks for \"marker-string:\" and returns the string that
+            follows it, or returns nil if that string is not found.
 
-    eg, when marker-string is \"compile\", and the following
-    string is found at the top of the buffer:
+            eg, when marker-string is \"compile\", and the following
+            string is found at the top of the buffer:
 
-         compile: cl.exe /I uthash
+            compile: cl.exe /I uthash
 
-    ...then this command will return the string
+            ...then this command will return the string
 
-         \"cl.exe /I uthash\"
+            \"cl.exe /I uthash\"
 
-It's ok to have whitespace between the marker and the following
-colon."
+            It's ok to have whitespace between the marker and the following
+            colon."
   (let (start search-limit found)
     ;; determine what lines to look in
     (save-excursion
@@ -2498,21 +2548,21 @@ colon."
 
   "I set hs-forward-sexp-func to this function.
 
-I found this customization necessary to do the hide/show magic in C#
-code, when dealing with region/endregion. This routine
-goes forward one s-expression, whether it is defined by curly braces
-or region/endregion. It handles nesting, too.
+  I found this customization necessary to do the hide/show magic in C#
+  code, when dealing with region/endregion. This routine
+  goes forward one s-expression, whether it is defined by curly braces
+  or region/endregion. It handles nesting, too.
 
-The forward-sexp method takes an arg which can be negative, which
-indicates the move should be backward.  Therefore, to be fully
-correct this function should also handle a negative arg. However,
-the hideshow.el package never uses negative args to its
-hs-forward-sexp-func, so it doesn't matter that this function does not
-do negative numbers.
+  The forward-sexp method takes an arg which can be negative, which
+  indicates the move should be backward.  Therefore, to be fully
+  correct this function should also handle a negative arg. However,
+  the hideshow.el package never uses negative args to its
+  hs-forward-sexp-func, so it doesn't matter that this function does not
+  do negative numbers.
 
-The arg can also be greater than 1, which means go forward
-multiple times. This function doesn't handle that EITHER.  But
-again, I haven't see that as a problem."
+  The arg can also be greater than 1, which means go forward
+  multiple times. This function doesn't handle that EITHER.  But
+  again, I haven't see that as a problem."
 
   (let ((nestlevel 0)
         (mark1 (point))
@@ -2812,9 +2862,9 @@ again, I haven't see that as a problem."
 
 (defun dino-maybe-eglot-reconnect ()
   "At least in emacxs 29.4, when apheleia reformats a C# buffer it seems to
-confuse the language server. This function will force a reconnect in
-that case. This is overkill and slow, but I have not yet figured out a way
-around it."
+  confuse the language server. This function will force a reconnect in
+  that case. This is overkill and slow, but I have not yet figured out a way
+  around it."
   (when (and
          (or (eq major-mode 'csharp-mode) (eq major-mode 'csharp-ts-mode))
          (eglot-managed-p))
@@ -2917,10 +2967,10 @@ around it."
 
 (defun mark-current-word ()
   "Select the word under cursor.
-'word' here is considered any alphanumeric sequence or _ .
+  'word' here is considered any alphanumeric sequence or _ .
 
-Does not consider word syntax tables.
-"
+  Does not consider word syntax tables.
+  "
   (interactive)
   (let (pt)
     (skip-chars-backward "_A-Za-z0-9")
@@ -2931,10 +2981,10 @@ Does not consider word syntax tables.
 
 (defun un-camelcase-word-at-point ()
   "Un-camelcase the word at point, replacing uppercase chars with
-the lowercase version preceded by an underscore.
+  the lowercase version preceded by an underscore.
 
-The first char, if capitalized (eg, PascalCase) is just downcased, no
-preceding underscore."
+  The first char, if capitalized (eg, PascalCase) is just downcased, no
+  preceding underscore."
   (interactive)
   (save-excursion
     (let ((bounds (bounds-of-thing-at-point 'word)))
