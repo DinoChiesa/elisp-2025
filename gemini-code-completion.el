@@ -35,6 +35,9 @@ each of your suggestions to a few lines of code, no more than 10 lines each. And
 more than 5 suggestions. Take care with proper indentation in suggestions you offer."
   "Default prompt to input into Google Gemini.")
 
+(defvar gemini-code-completion-model "gemini-2.0-flash"
+  "The short name of the model to use.")
+
 (defun gemini-code-completion-extract-completion (response)
   "Extract and clean completion text from the RESPONSE returned by Google Gemini.
 This currently just selects the first suggestion of all the candidates.
@@ -68,7 +71,7 @@ TODO: integration with a completion framework to present a completion list."
     (goto-char current-position))) ; Restore cursor position
 
 ;;;###autoload
-(defun gemini-code-completion (prefix)
+(defun gemini-complete (prefix)
   "Get completion from Google Gemini for current buffer or a selected region.
 If called with a PREFIX argument (\\[universal-argument]), prompt for additional
 text to customize the completion."
@@ -85,15 +88,15 @@ text to customize the completion."
             (point))))
     (if (not google-gemini-key)
         (error "must specify `google-gemini-key'")
-    (save-excursion
-      (goto-char end)
-      (google-gemini-content-generate
-       (concat
-        user-prompt gemini-code-completion-default-prompt selected-text)
-       #'gemini-code-completion-handler
-       :model "gemini-2.0-flash"
-       :key google-gemini-key
-       )))))
+      (save-excursion
+        (goto-char end)
+        (google-gemini-content-generate
+         (concat
+          user-prompt gemini-code-completion-default-prompt selected-text)
+         #'gemini-code-completion-handler
+         :model gemini-code-completion-model
+         :key google-gemini-key
+         )))))
 
 
 (provide 'gemini-code-completion)

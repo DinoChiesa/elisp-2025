@@ -1526,27 +1526,25 @@ The first line is indented with INDENT-STRING."
 ;; understanding what this was doing, so it now verbosely logs everything.
 
 (defun dino-maybe-add-to-exec-path (paths)
-  "Add each item from PATHS to exec-path and PATH environment if the
-item exists as a directory, and is not already present."
-  (let (exec-path-was-modified path-was-modified)
+  "Add each item from PATHS to `exec-path' and the PATH environment variable
+if the item exists as a directory and is not already present."
+  (let (exec-path-was-modified
+        path-was-modified
+        (env-paths (split-string (getenv "PATH") ":")))
     (dolist (path paths)
       (when (and path (file-directory-p path))
-        ;;(message (format "examining path %s for inclusion in exec-path and PATH" path))
-        (when (not (member path exec-path))
-          (message (format "  adding %s to exec-path" path))
-          (add-to-list 'exec-path path)
-          (setq exec-path-was-modified t)
-          )
-        ;; I am not sure if I need both `exec-path' and the PATH environment variable.
-        (let ((paths (split-string (getenv "PATH") ":")))
-          (when (not (member path paths))
-            (message (format "  adding %s to PATH" path))
-            (add-to-list 'paths path)
-            (setenv "PATH"  (mapconcat 'identity paths ":"))
-            (setq path-was-modified t)
-            ))
-        ))
+        (let ((normalized-path (file-truename path)))
+          ;; I am not sure if I need both `exec-path' and the PATH environment variable.
+          (when (not (member normalized-path exec-path))
+            (message (format "  adding %s to exec-path" normalized-path))
+            (add-to-list 'exec-path normalized-path)
+            (setq exec-path-was-modified t))
+          (when (not (member normalized-path env-paths))
+            (message (format "  adding %s to PATH" normalized-path))
+            (add-to-list 'env-paths normalized-path)
+            (setq path-was-modified t)))))
     (when path-was-modified
+      (setenv "PATH"  (mapconcat 'identity env-paths ":"))
       (message (format "updated PATH %s" (getenv "PATH"))))
     (when exec-path-was-modified
       (if (eq system-type 'windows-nt)

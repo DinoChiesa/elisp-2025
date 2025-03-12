@@ -232,7 +232,7 @@ the model description needed by chatgpt-shell."
         (message msg)
         (browse-url "https://aistudio.google.com/app/apikey")
         nil)
-    (let* ((initial-prompt (if (use-region-p)
+    (let* ((initial-prompt (if (region-active-p)
                                (buffer-substring-no-properties beginning end)
                              ""))
            (gem-url
