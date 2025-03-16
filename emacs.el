@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-12 03:06:30>
+;; Last saved: <2025-March-12 18:48:29>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1780,8 +1780,8 @@ This function is used with:
 
 (use-package chatgpt-shell
   :defer t
-  ;;:load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
-  :load-path "~/newdev/elisp-projects/chatgpt-shell" ;; linux
+  :load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
+  ;;:load-path "~/newdev/elisp-projects/chatgpt-shell" ;; linux
   :commands (chatgpt-shell)
   ;; :ensure t ;; restore this later
 
