@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-12 03:06:30>
+;; Last saved: <2025-March-30 14:24:56>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1929,17 +1929,14 @@ This function is used with:
 (setq ls-lisp-verbosity '(links uid))
 
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Text mode
+;; Prog mode - general
 
-(defun dino-fix-abbrev-table ()
-  "set up a custom abbrev table. The normal
-            saving isn't allowed on my computer. Really these are
-            just auto-corrects on common mis-spellings by me."
+(defun dino-define-global-abbrev-table ()
+  "Define a custom global abbrev table. Really these are
+just auto-corrects on common mis-spellings by me."
 
-  (define-abbrev-table 'text-mode-abbrev-table
+  (define-abbrev-table 'global-abbrev-table
     '(
       ("teh" "the" nil 1)
       ("somehting" "something" nil 1)
@@ -1971,11 +1968,21 @@ This function is used with:
       )
     ))
 
+(dino-define-global-abbrev-table)
+
+(defun dino-prog-mode-hook-fn ()
+  (abbrev-mode 1))
+
+(add-hook 'prog-mode-hook 'dino-prog-mode-hook-fn)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Text mode
 
 (defun dino-text-mode-hook-fn ()
   (auto-fill-mode 1)
   (abbrev-mode 1)
-  (dino-fix-abbrev-table)
+  (dino-define-global-abbrev-table)
   (keymap-local-set "C-c C-c"  #'center-paragraph)
 
   ;;(variable-pitch-mode)
