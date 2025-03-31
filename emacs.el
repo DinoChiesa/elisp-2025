@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-31 17:24:05>
+;; Last saved: <2025-March-31 11:08:17>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -535,14 +535,14 @@
   :config
   ;; Enable minor mode for Aider files
   (aidermacs-setup-minor-mode)
-  (setenv "AIDER_WEAK_MODEL" "gemini/gemini-2.0-flash")
-  (setenv "AIDER_EDITOR_MODEL" "gemini/gemini-2.0-flash-thinking-exp")
+  (setenv "AIDER_WEAK_MODEL" "gemini/2.5-pro-exp-03-25")
+  (setenv "AIDER_EDITOR_MODEL" "gemini/2.5-pro-exp-03-25")
 
   :custom
   ;; See the Configuration section below
   (aidermacs-auto-commits t)
   (aidermacs-use-architect-mode t)
-  (aidermacs-default-model "gemini/gemini-2.0-flash"))
+  (aidermacs-default-model "gemini/gemini-2.5-pro-exp-03-25"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jsonnet
@@ -1755,7 +1755,8 @@ then switch to the markdown output buffer."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; chatgpt-shell
 ;;
-;; A chatbot interface to any LLM, including Gemini, via comint in emacs.
+;; A chatbot interface to various LLMs, including Gemini, OpenAI/ChatGPT,
+;; Anthropic Claude, DeepSeek Chat, and others via comint in emacs.
 ;;
 
 (defun dpc-cgs--model-sort (candidates) (sort candidates :lessp #'string<))
@@ -1771,7 +1772,7 @@ inappropriate when presenting the list of models.
 To override this, users of chatgpt-shell can set
 `chatgpt-shell-swap-model-selector' to provide a different experience.
 
-This function is used with:
+Use this function this way:
   (setq chatgpt-shell-swap-model-selector
         (lambda (candidates)
           (completing-read \"New model: \"
@@ -1797,6 +1798,7 @@ This function is used with:
   (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
   (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
   (chatgpt-shell-google-load-models) ;; Google models change faster than cgs.
+  (setq chatgpt-shell-model-version "gemini-2.5-pro-exp-03-25") ;; default model
   ;; I proposed a change for sorting in cgs when swapping models, but xenodium
   ;; rejected it, saying people who wanted sorting should D-I-Y. So here is my D-I-Y sorting.
   (setq chatgpt-shell-swap-model-selector
@@ -1821,8 +1823,8 @@ This function is used with:
   :load-path "~/newdev/elisp-projects/chatgpt-shell" ;; linux
   :commands (chatgpt-shell)
   ;; :ensure t ;; restore this later if loading from (M)ELPA
-
   ;; :requires (dpc-gemini) - No. See note above.
+
   :config (dpc-cgs-setup)
   :catch
   (lambda (keyword err)
