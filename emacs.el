@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-30 00:36:23>
+;; Last saved: <2025-March-31 17:24:05>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1784,7 +1784,15 @@ This function is used with:
             (display-sort-function . ,#'dpc-cgs--model-sort))
         (complete-with-action action candidates string pred)))))
 
-(defun dpc-chatgpt-shell-setup ()
+(defun dino-chatgpt-shell-mode-fn ()
+  (keymap-local-set "C-c t" #'chatgpt-shell-google-toggle-grounding-with-google-search)
+  (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models)
+  (keymap-local-set "C-c p" #'chatgpt-shell-prompt-compose)
+  (keymap-local-set "C-c r" #'chatgpt-shell-refactor-code)
+  (keymap-local-set "C-c d" #'chatgpt-shell-describe-code)
+  (keymap-local-set "C-c f" #'chatgpt-shell-proofread-region))
+
+(defun dpc-cgs-setup ()
   "Invoked when chatgpt-shell is loaded."
   (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
   (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
@@ -1795,18 +1803,7 @@ This function is used with:
         (lambda (candidates)
           (completing-read "Swap to: "
                            (dpc--cgs--model-completion-table candidates) nil t)))
-
-  (defun dino-chatgpt-shell-mode-fn ()
-    (keymap-local-set "C-c t" #'chatgpt-shell-google-toggle-grounding-with-google-search)
-    (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models)
-    (keymap-local-set "C-c p" #'chatgpt-shell-prompt-compose)
-    (keymap-local-set "C-c r" #'chatgpt-shell-refactor-code)
-    (keymap-local-set "C-c d" #'chatgpt-shell-describe-code)
-    (keymap-local-set "C-c f" #'chatgpt-shell-proofread-regoin)
-    )
-  (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn)
-  )
-
+  (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn))
 
 ;; NB. In `use-package', The :requires keyword specifies a dependency, but _does not_ force load it.
 ;; Rather, it prevents loading of THIS package unless the required feature is
@@ -1814,13 +1811,19 @@ This function is used with:
 
 (use-package chatgpt-shell
   :defer t
+  ;; 20250331-1721 - it is not possible to have load-path be dynamically evaluated.
+  ;; The value must be known at compile time.
+  ;; see https://github.com/jwiegley/use-package/issues/500#issuecomment-335037197
+  ;;
+  ;; but maybe not? See https://jwiegley.github.io/use-package/keywords/#load-path
+  ;;
   ;;:load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
   :load-path "~/newdev/elisp-projects/chatgpt-shell" ;; linux
   :commands (chatgpt-shell)
   ;; :ensure t ;; restore this later if loading from (M)ELPA
 
   ;; :requires (dpc-gemini) - No. See note above.
-  :config (dpc-chatgpt-shell-setup)
+  :config (dpc-cgs-setup)
   :catch
   (lambda (keyword err)
     (message (format "chatgpt-shell init: %s" (error-message-string err)))))
@@ -1942,17 +1945,14 @@ This function is used with:
 (setq ls-lisp-verbosity '(links uid))
 
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Text mode
+;; Prog mode - general
 
-(defun dino-fix-abbrev-table ()
-  "set up a custom abbrev table. The normal
-            saving isn't allowed on my computer. Really these are
-            just auto-corrects on common mis-spellings by me."
+(defun dino-define-global-abbrev-table ()
+  "Define a custom global abbrev table. Really these are
+just auto-corrects on common mis-spellings by me."
 
-  (define-abbrev-table 'text-mode-abbrev-table
+  (define-abbrev-table 'global-abbrev-table
     '(
       ("teh" "the" nil 1)
       ("somehting" "something" nil 1)
@@ -1984,11 +1984,21 @@ This function is used with:
       )
     ))
 
+(dino-define-global-abbrev-table)
+
+(defun dino-prog-mode-hook-fn ()
+  (abbrev-mode 1))
+
+(add-hook 'prog-mode-hook 'dino-prog-mode-hook-fn)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Text mode
 
 (defun dino-text-mode-hook-fn ()
   (auto-fill-mode 1)
   (abbrev-mode 1)
-  (dino-fix-abbrev-table)
+  (dino-define-global-abbrev-table)
   (keymap-local-set "C-c C-c"  #'center-paragraph)
 
   ;;(variable-pitch-mode)
