@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-12 03:06:30>
+;; Last saved: <2025-March-30 00:36:23>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -153,9 +153,9 @@
  (t   ;; not windows-nt
   (eval-after-load "grep"
     '(progn
-       (setq-default grep-command "grep -l -i -n ")))))
-
-
+       (grep-apply-setting 'grep-command "grep -H -i -n " )
+       ;; (setq-default grep-command "grep -H -i -n ")
+       ))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -523,6 +523,12 @@
   :after eglot
   :config (eglot-booster-mode))
 
+;; 20250324-1743
+;; There are two packages: aider.el and aidermacs.el .
+;; Both are active.
+;; aider.el seems less ambitious. aidermacs aims to integrate with
+;; existing emacs stuff; uses ediff, for example.
+;; Beyond that I don't have a good feel for the differences.
 (use-package aidermacs
   :defer 35
   :bind (("C-c a" . aidermacs-transient-menu))
@@ -1778,36 +1784,43 @@ This function is used with:
             (display-sort-function . ,#'dpc-cgs--model-sort))
         (complete-with-action action candidates string pred)))))
 
+(defun dpc-chatgpt-shell-setup ()
+  "Invoked when chatgpt-shell is loaded."
+  (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
+  (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
+  (chatgpt-shell-google-load-models) ;; Google models change faster than cgs.
+  ;; I proposed a change for sorting in cgs when swapping models, but xenodium
+  ;; rejected it, saying people who wanted sorting should D-I-Y. So here is my D-I-Y sorting.
+  (setq chatgpt-shell-swap-model-selector
+        (lambda (candidates)
+          (completing-read "Swap to: "
+                           (dpc--cgs--model-completion-table candidates) nil t)))
+
+  (defun dino-chatgpt-shell-mode-fn ()
+    (keymap-local-set "C-c t" #'chatgpt-shell-google-toggle-grounding-with-google-search)
+    (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models)
+    (keymap-local-set "C-c p" #'chatgpt-shell-prompt-compose)
+    (keymap-local-set "C-c r" #'chatgpt-shell-refactor-code)
+    (keymap-local-set "C-c d" #'chatgpt-shell-describe-code)
+    (keymap-local-set "C-c f" #'chatgpt-shell-proofread-regoin)
+    )
+  (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn)
+  )
+
+
+;; NB. In `use-package', The :requires keyword specifies a dependency, but _does not_ force load it.
+;; Rather, it prevents loading of THIS package unless the required feature is
+;; already loaded.
+
 (use-package chatgpt-shell
   :defer t
   ;;:load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
   :load-path "~/newdev/elisp-projects/chatgpt-shell" ;; linux
   :commands (chatgpt-shell)
-  ;; :ensure t ;; restore this later
+  ;; :ensure t ;; restore this later if loading from (M)ELPA
 
-  ;; The :requires keyword specifies a dependency, but _does not_ force load it.
-  ;; Rather, it prevents loading of THIS package unless the required feature is
-  ;; already loaded.
-  ;; :requires (dpc-gemini)
-  :config (progn
-            (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
-            (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
-            (setq chatgpt-shell-swap-model-selector
-                  (lambda (candidates)
-                    (completing-read "Swap to: "
-                                     (dpc--cgs--model-completion-table candidates) nil t)))
-
-            (defun dino-chatgpt-shell-mode-fn ()
-              (keymap-local-set "C-c t" #'chatgpt-shell-google-toggle-grounding-with-google-search)
-              (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models)
-              (keymap-local-set "C-c p" #'chatgpt-shell-prompt-compose)
-              (keymap-local-set "C-c r" #'chatgpt-shell-refactor-code)
-              (keymap-local-set "C-c d" #'chatgpt-shell-describe-code)
-              (keymap-local-set "C-c f" #'chatgpt-shell-proofread-regoin)
-              )
-            (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn)
-            )
-
+  ;; :requires (dpc-gemini) - No. See note above.
+  :config (dpc-chatgpt-shell-setup)
   :catch
   (lambda (keyword err)
     (message (format "chatgpt-shell init: %s" (error-message-string err)))))
@@ -1818,7 +1831,7 @@ This function is used with:
 ;; ;; A library for gemini. It supports "generate content" and listing available
 ;; ;; models, and maybe some other things. Designed to be a library.  It is homed
 ;; ;; here: https://github.com/emacs-openai/google-gemini , and is distributed on
-;; ;; the jcs-emacs elpa repository.
+;; ;; the jcs-emacs elpa repository. For now I am happy with chatgpt-shell
 ;; ;;
 ;;
 ;; (use-package google-gemini
