@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-March-31 11:08:17>
+;; Last saved: <2025-April-01 03:13:49>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1752,6 +1752,56 @@ then switch to the markdown output buffer."
             (keymap-global-set "C-c g s" #'dpc-gemini/select-model)
             ))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; gptel
+;;
+;; A multi-LLM porcelain. Uses transient menu.  See also: chatgpt-shell .
+;; Unlike chatgpt-shell I think the intent of gptel is to be available in any
+;; buffer, at any moment, via gptel-send. You don't need a dedicated chat
+;; buffer.
+
+(defun dpc-gptel-setup ()
+  "Invoked when gptel is loaded."
+  (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
+  (gptel-make-gemini "Gemini"
+    :key (dpc-gemini/get-gemini-api-key)
+    :stream t)
+
+  ;; load my prompts
+  (let ((prompt-file "~/elisp/.gptel-prompts"))
+    (when (file-exists-p prompt-file)
+      (condition-case err
+          (let ((prompts-data (with-temp-buffer
+                                (insert-file-contents prompt-file)
+                                (goto-char (point-min))
+                                (read (current-buffer)))))
+            (when (listp prompts-data)
+              (dolist (item prompts-data)
+                (when (and (consp item) (symbolp (car item)) (stringp (cdr item)))
+                  (let* ((symbol (car item))
+                         (prompt-string (cdr item))
+                         (existing-entry (assoc symbol gptel-directives)))
+
+                    (if existing-entry
+                        (setcdr existing-entry prompt-string)
+                      (push (cons symbol prompt-string) gptel-directives)))))))
+        (error (message "[gptel-prompts] Error processing %s: %s" prompt-file err)))))
+
+  ;; remove the builtin chat directive
+  (setq gptel-directives (cl-remove-if (lambda (pair)
+                                         (and (consp pair) (equal (car pair) 'chat)))
+                                       gptel-directives))
+  (keymap-global-set "C-c C-g s" #'gptel-send))
+
+
+(use-package gptel
+  :defer 21
+  :ensure t
+  :commands (gptel-send gptel-make-gemini)
+  :config (dpc-gptel-setup)
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; chatgpt-shell
 ;;
@@ -3250,8 +3300,7 @@ just auto-corrects on common mis-spellings by me."
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
   (apheleia-mode)
-  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
-  )
+  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local))
 
 ;; add (emacs-lisp-mode . lisp-indent) to apheleia-mode-alist
 (add-hook 'emacs-lisp-mode-hook 'dino-elisp-mode-fn)
