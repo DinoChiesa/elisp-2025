@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-01 03:13:49>
+;; Last saved: <2025-April-01 18:40:44>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -204,17 +204,18 @@
   :defer t
   :config (progn
             (setq apheleia-log-debug-info t)
+
             (if (eq system-type 'windows-nt)
                 (cl-dolist (item apheleia-formatters)
                   (when (and (consp (cdr item)) (equal "apheleia-npx" (cadr item)))
-                    (setf (cadr item) "npx"))))
-
+                    (setf (cadr item) "npx.ps1"))))
 
             ;; 20250223-1330
             ;;
-            ;; I learned today that this is unnecessary. In my
-            ;; csharp-ts-mode-fn, I could just (setq-local apheleia-formatter
-            ;; 'csharpier) ... to override the apheleia-mode-alist lookup.
+            ;; I learned today that modifying `apheleia-mode-alist' is
+            ;; unnecessary. In my csharp-ts-mode-fn, I could just (setq-local
+            ;; apheleia-formatter 'csharpier) ... to override the
+            ;; apheleia-mode-alist lookup.
             (let ((cmd-list
                    (if (eq system-type 'windows-nt)
                        '("dotnet" "csharpier" "--write-stdout")
@@ -249,8 +250,13 @@
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; x509-mode
+;;
+;; View certs and CRLs, other stuff, in emacs. It relies on the
+;; openssl utility.  Untested on Windows as yet.
+;;
 (use-package x509-mode
-  :defer t
+  :defer 36
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3154,17 +3160,26 @@ just auto-corrects on common mis-spellings by me."
 ;; XML (nxml-mode)
 ;;
 (when (boundp 'apheleia-formatters)
+
+  ;; TODO: use smarter path resolution here
   (push '(dino-xmlpretty .
                          ("java" "-jar"
                           "/Users/dchiesa/dev/java/XmlPretty/target/com.google.dchiesa-xml-prettifier-20230725.jar"
                           "-"))
         apheleia-formatters)
 
+  ;; TODO: use smarter path resolution here
   (push '(xml-prettier .
                        ("/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"
                         "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
                         "--stdin-filepath" "foo.xml"))
         apheleia-formatters)
+
+  ;; 20250401-1837
+  ;;
+  ;; In the end I stopped using the XML prettier (I thought so anyway) because
+  ;; it was a little too aggressive and disruptive in reformatting my XML files,
+  ;; for my taste.
 
 
   ;; ;; change an existing formatter in the alist (during development only)
@@ -3505,10 +3520,6 @@ color ready for next time.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JavaScript - js-mode (everything old is new again)
 
-;; (setf (alist-get 'prettier-javascript apheleia-formatters)
-;;        '("apheleia-npx" "prettier"
-;;          "--stdin-filepath" filepath "--parser=babel-flow"
-;;          (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))
 
 (when (boundp 'apheleia-mode-alist)
   (push '(js-mode . prettier-javascript) apheleia-mode-alist))
