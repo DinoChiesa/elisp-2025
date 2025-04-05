@@ -5,7 +5,7 @@
 ;; Package-Requires: (package)
 ;; URL:
 ;; X-URL:
-;; Version: 2025.03.08
+;; Version: 2025.04.05
 ;; Keywords: utility
 ;; License: New BSD
 
@@ -1655,7 +1655,36 @@ latest version of node under management by nvm, or nil if none is found.
 
 ;; ====================================================================
 
+(defun dino/camel-to-snakecase-word-at-point ()
+  "Convert camelCase to snake_case for the word at point.
 
+Replaces uppercase chars with the lowercase version preceded by
+an underscore. The first char, if capitalized (eg, PascalCase)
+is just downcased, no preceding underscore."
+  (interactive)
+  (save-excursion
+    (let* ((bounds (bounds-of-thing-at-point 'word))
+           (start (car bounds))
+           (end (cdr bounds)))
+      (goto-char start)
+      (let ((case-fold-search nil))
+        (while (re-search-forward "\\([A-Z]\\)" end t)
+          (let ((lc-char (downcase (match-string 0))))
+            (if (eq (match-beginning 0) start)
+                (replace-match lc-char t t)
+              (replace-match (concat "_" lc-char) t t))))))))
+
+(defun dino/snake-to-camelcase-word-at-point ()
+  "camelCase the snake_case word at point."
+  (interactive)
+  (save-excursion
+    (let* ((bounds (bounds-of-thing-at-point 'word))
+           (start (car bounds))
+           (end (cdr bounds)))
+      (goto-char start)
+      (let ((case-fold-search nil))
+        (while (re-search-forward "_\\([a-z]\\)" end t)
+          (replace-match (upcase (match-string 1)) t t))))))
 
 
 ;; (defun word-as-number-2x ()

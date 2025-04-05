@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-05 15:11:19>
+;; Last saved: <2025-April-05 23:06:36>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -112,6 +112,7 @@
   :if (file-exists-p "~/elisp/dino-utility.el")
   :load-path "~/elisp"
   :pin manual
+  :commands (dino/snake-to-camelcase-word-at-point dino/camel-to-snakecase-word-at-point)
   :config
   (add-hook 'before-save-hook 'dino-untabify-maybe))
 
@@ -481,13 +482,14 @@
   :defer 23
   :config (progn
             ;;(add-hook 'after-init-hook #'global-flycheck-mode)
-            (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc jsonnet))
+            ;;(setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc jsonnet)) ;; why exclude jsonnet?
+            (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
 
             ;; The following is irrelevant because I've switched machines seevral times
             ;; since this last worked.  and I don't use PHP much these days. But in the
             ;; future I might want to start again, so I am leaving this here.
             ;; (setq flycheck-phpcs-standard "Drupal") ;; DinoChiesa
-            (setq flycheck-phpcs-standard "/usr/local/share/pear/PHP/CodeSniffer/src/Standards/DinoChiesa")
+            ;; (setq flycheck-phpcs-standard "/usr/local/share/pear/PHP/CodeSniffer/src/Standards/DinoChiesa")
             ))
 
 ;; ;; for diagnosing flycheck checks (any mode)
@@ -1365,7 +1367,8 @@ then switch to the markdown output buffer."
 ;; image-mode
 
 (defun dino/image-transform-fit-to-window()
-  "Resize the image to fit the width or height based on the image and window ratios."
+  "Resize the image to fit the width or height based on
+the image and window ratios."
   (interactive)
   (let* ( (img-size (image-display-size (image-get-display-property) t))
           (img-width (car img-size))
@@ -1393,20 +1396,27 @@ then switch to the markdown output buffer."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; yaml
-(require 'yaml-mode)
-(require 'yaml-pretty-mode)
-(defun dino-yaml-mode-fn ()
-  "My hook for YAML mode"
-  (interactive)
-  (turn-on-font-lock)
-  (turn-on-auto-revert-mode)
-  ;;(linum-on) ;; marked obsolete in 29.1
-  (display-line-numbers-mode)
-  (yaml-pretty-mode)
-  ;;(make-local-variable 'indent-tabs-mode)
-  (setq indent-tabs-mode nil))
 
-(add-hook 'yaml-mode-hook 'dino-yaml-mode-fn)
+(use-package yaml-pretty-mode
+  :load-path "~/elisp"
+  :commands (yaml-pretty-mode))
+
+(use-package yaml-mode
+  :defer t
+  :config
+  (defun dino-yaml-mode-fn ()
+    "My hook for YAML mode"
+    (interactive)
+    (turn-on-font-lock)
+    (turn-on-auto-revert-mode)
+    ;;(linum-on) ;; marked obsolete in 29.1
+    (display-line-numbers-mode)
+    (yaml-pretty-mode)
+    ;;(make-local-variable 'indent-tabs-mode)
+    (setq indent-tabs-mode nil))
+
+  (add-hook 'yaml-mode-hook 'dino-yaml-mode-fn)
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Typescript
@@ -1597,7 +1607,7 @@ then switch to the markdown output buffer."
   :ensure nil
   :config (progn
             ;;(autoload 'css-mode "css-mode" "Mode for editing Cascading Stylesheets." t)
-
+            (require 'flycheck)
             ;; Overwrite existing scss-stylelint checker to not use --syntax flag
             (flycheck-define-checker scss-stylelint
               "A SCSS syntax and style checker using stylelint. See URL `http://stylelint.io/'."
@@ -1607,7 +1617,7 @@ then switch to the markdown output buffer."
                         (option-flag "--quiet" flycheck-stylelint-quiet)
                         (config-file "--config" flycheck-stylelintrc))
               :standard-input t
-              :error-parser flycheck-parse-stylelint
+              :error-parser #'flycheck-parse-stylelint
               :modes (scss-mode ))
 
             (when (boundp 'apheleia-mode-alist)
@@ -1862,7 +1872,7 @@ then switch to the markdown output buffer."
 `completing-read'.
 This is a closure around CANDIDATES.
 When using icomplete or icomplete-vertical, `completing-read' uses a
-default of 'sort first by length and then alphabetically.' That is
+default of «sort first by length and then alphabetically». That is
 inappropriate when presenting the list of models.
 
 To override this, users of chatgpt-shell can set
@@ -1871,8 +1881,9 @@ To override this, users of chatgpt-shell can set
 Use this function this way:
   (setq chatgpt-shell-swap-model-selector
         (lambda (candidates)
-          (completing-read \"New model: \"
-                           (dpc--cgs--model-completion-table candidates) nil t)))"
+          (completing-read
+            \"New model: \"
+            (dpc--cgs--model-completion-table candidates) nil t)))"
   (lexical-let ((candidates candidates))
     (lambda (string pred action)
       (if (eq action 'metadata)
@@ -1881,28 +1892,9 @@ Use this function this way:
             (display-sort-function . ,#'dpc-cgs--model-sort))
         (complete-with-action action candidates string pred)))))
 
-(defun dino-chatgpt-shell-mode-fn ()
-  (keymap-local-set "C-c t" #'chatgpt-shell-google-toggle-grounding-with-google-search)
-  (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models)
-  (keymap-local-set "C-c p" #'chatgpt-shell-prompt-compose)
-  (keymap-local-set "C-c r" #'chatgpt-shell-refactor-code)
-  (keymap-local-set "C-c d" #'chatgpt-shell-describe-code)
-  (keymap-local-set "C-c f" #'chatgpt-shell-proofread-region))
 
-(defun dpc-cgs-setup ()
-  "Invoked when chatgpt-shell is loaded."
-  (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
-  (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
-  (chatgpt-shell-google-load-models) ;; Google models change faster than cgs.
-  (setq chatgpt-shell-model-version "gemini-2.5-pro-exp-03-25") ;; default model
-  ;; I proposed a change for sorting in cgs when swapping models, but xenodium
-  ;; rejected it, saying people who wanted sorting should D-I-Y. So here is my D-I-Y sorting.
-  (setq chatgpt-shell-swap-model-selector
-        (lambda (candidates)
-          (completing-read "Swap to: "
-                           (dpc--cgs--model-completion-table candidates) nil t)))
-  (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn))
-
+;; 20250405-2235
+;; avoid flycheck warning about the following functions? This seems dumb.
 ;; NB. In `use-package', The :requires keyword specifies a dependency, but _does not_ force load it.
 ;; Rather, it prevents loading of THIS package unless the required feature is
 ;; already loaded.
@@ -1916,12 +1908,38 @@ Use this function this way:
   ;; but maybe not? See https://jwiegley.github.io/use-package/keywords/#load-path
   ;;
   ;;:load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
-  :load-path "~/newdev/elisp-projects/chatgpt-shell" ;; linux
+  ;;:load-path "~/newdev/elisp-projects/chatgpt-shell" ;; linux
   :commands (chatgpt-shell)
   ;; :ensure t ;; restore this later if loading from (M)ELPA
   ;; :requires (dpc-gemini) - No. See note above.
 
-  :config (dpc-cgs-setup)
+  :config
+  (declare-function chatgpt-shell-google-toggle-grounding-with-google-search "ext:chatgpt-shell-google")
+
+  (defun dino-chatgpt-shell-mode-fn ()
+    (keymap-local-set "C-c t" #'chatgpt-shell-google-toggle-grounding-with-google-search)
+    (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models)
+    (keymap-local-set "C-c p" #'chatgpt-shell-prompt-compose)
+    (keymap-local-set "C-c r" #'chatgpt-shell-refactor-code)
+    (keymap-local-set "C-c d" #'chatgpt-shell-describe-code)
+    (keymap-local-set "C-c f" #'chatgpt-shell-proofread-region))
+
+  (defun dpc-cgs-setup ()
+    "Invoked when chatgpt-shell is loaded."
+    (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
+    (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
+    (chatgpt-shell-google-load-models) ;; Google models change faster than cgs.
+    (setq chatgpt-shell-model-version "gemini-2.5-pro-exp-03-25") ;; default model
+    ;; I proposed a change for sorting in cgs when swapping models, but xenodium
+    ;; rejected it, saying people who wanted sorting should D-I-Y. So here is my D-I-Y sorting.
+    (setq chatgpt-shell-swap-model-selector
+          (lambda (candidates)
+            (completing-read "Swap to: "
+                             (dpc--cgs--model-completion-table candidates) nil t)))
+
+    (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn))
+
+  (dpc-cgs-setup)
   :catch
   (lambda (keyword err)
     (message (format "chatgpt-shell init: %s" (error-message-string err)))))
@@ -2635,68 +2653,68 @@ just auto-corrects on common mis-spellings by me."
 
 
 
-;; hideshow stuff for csharp - should this be elsewhere?
-(defun csharp-hs-forward-sexp (&optional arg)
-
-  "I set hs-forward-sexp-func to this function.
-
-  I found this customization necessary to do the hide/show magic in C#
-  code, when dealing with region/endregion. This routine
-  goes forward one s-expression, whether it is defined by curly braces
-  or region/endregion. It handles nesting, too.
-
-  The forward-sexp method takes an arg which can be negative, which
-  indicates the move should be backward.  Therefore, to be fully
-  correct this function should also handle a negative arg. However,
-  the hideshow.el package never uses negative args to its
-  hs-forward-sexp-func, so it doesn't matter that this function does not
-  do negative numbers.
-
-  The arg can also be greater than 1, which means go forward
-  multiple times. This function doesn't handle that EITHER.  But
-  again, I haven't see that as a problem."
-
-  (let ((nestlevel 0)
-        (mark1 (point))
-        (done nil))
-
-    (if (and arg (< arg 0))
-        ;; a negative argument; we want to back up!
-        (message "negative arg (%d) is not supported..." arg)
-
-      ;; else, we have a positive argument, hence move forward.
-      ;; simple case is just move forward one brace
-      (if (looking-at "{")
-          (and
-           (forward-sexp arg)
-           )
-
-        ;; The more complex case is dealing with a "region/endregion" block.
-        ;;We have to deal with nested regions!
-        (and
-         (while (not done)
-           (re-search-forward "^[ \\t]*#[ \\t]*\\(region\\|endregion\\)\\b"
-                              (point-max) 'move)
-           (cond
-
-            ((eobp))                            ; do nothing if at end of buffer
-
-            ((and
-              (match-beginning 1)
-
-              ;; if the match is longer than 6 chars, we know it is "endregion"
-              (if (> (- (match-end 1) (match-beginning 1)) 6)
-                  (setq nestlevel (1- nestlevel))
-                (setq nestlevel (1+ nestlevel))
-                )
-              )))
-
-           (setq done (not (and (> nestlevel 0) (not (eobp)))))
-
-           ) ; while
-
-         (if (= nestlevel 0)
-             (goto-char (match-end 2))))))))
+;; ;; hideshow stuff for csharp - should this be elsewhere?
+;; (defun csharp-hs-forward-sexp (&optional arg)
+;;
+;;   "I set hs-forward-sexp-func to this function.
+;;
+;;   I found this customization necessary to do the hide/show magic in C#
+;;   code, when dealing with region/endregion. This routine
+;;   goes forward one s-expression, whether it is defined by curly braces
+;;   or region/endregion. It handles nesting, too.
+;;
+;;   The forward-sexp method takes an arg which can be negative, which
+;;   indicates the move should be backward.  Therefore, to be fully
+;;   correct this function should also handle a negative arg. However,
+;;   the hideshow.el package never uses negative args to its
+;;   hs-forward-sexp-func, so it doesn't matter that this function does not
+;;   do negative numbers.
+;;
+;;   The arg can also be greater than 1, which means go forward
+;;   multiple times. This function doesn't handle that EITHER.  But
+;;   again, I haven't see that as a problem."
+;;
+;;   (let ((nestlevel 0)
+;;         (mark1 (point))
+;;         (done nil))
+;;
+;;     (if (and arg (< arg 0))
+;;         ;; a negative argument; we want to back up!
+;;         (message "negative arg (%d) is not supported..." arg)
+;;
+;;       ;; else, we have a positive argument, hence move forward.
+;;       ;; simple case is just move forward one brace
+;;       (if (looking-at "{")
+;;           (and
+;;            (forward-sexp arg)
+;;            )
+;;
+;;         ;; The more complex case is dealing with a "region/endregion" block.
+;;         ;;We have to deal with nested regions!
+;;         (and
+;;          (while (not done)
+;;            (re-search-forward "^[ \\t]*#[ \\t]*\\(region\\|endregion\\)\\b"
+;;                               (point-max) 'move)
+;;            (cond
+;;
+;;             ((eobp))                            ; do nothing if at end of buffer
+;;
+;;             ((and
+;;               (match-beginning 1)
+;;
+;;               ;; if the match is longer than 6 chars, we know it is "endregion"
+;;               (if (> (- (match-end 1) (match-beginning 1)) 6)
+;;                   (setq nestlevel (1- nestlevel))
+;;                 (setq nestlevel (1+ nestlevel))
+;;                 )
+;;               )))
+;;
+;;            (setq done (not (and (> nestlevel 0) (not (eobp)))))
+;;
+;;            ) ; while
+;;
+;;          (if (= nestlevel 0)
+;;              (goto-char (match-end 2))))))))
 
 
 ;; more for hideshow.el
@@ -2914,6 +2932,7 @@ just auto-corrects on common mis-spellings by me."
   ;;         (flycheck-select-checker 'csharp)
 
   ;; for hide/show support
+  (require 'hideshow)
   (hs-minor-mode 1)
   (setq hs-isearch-open t)
 
@@ -3057,9 +3076,9 @@ just auto-corrects on common mis-spellings by me."
 
 (defun mark-current-word ()
   "Select the word under cursor.
-  'word' here is considered any alphanumeric sequence or _ .
+«word» here is considered any alphanumeric sequence or _ .
 
-  Does not consider word syntax tables.
+Does not consider word syntax tables.
   "
   (interactive)
   (let (pt)
@@ -3067,34 +3086,6 @@ just auto-corrects on common mis-spellings by me."
     (setq pt (point))
     (skip-chars-forward "_A-Za-z0-9")
     (set-mark pt)))
-
-
-(defun un-camelcase-word-at-point ()
-  "Un-camelcase the word at point, replacing uppercase chars with
-  the lowercase version preceded by an underscore.
-
-  The first char, if capitalized (eg, PascalCase) is just downcased, no
-  preceding underscore."
-  (interactive)
-  (save-excursion
-    (let ((bounds (bounds-of-thing-at-point 'word)))
-      (replace-regexp "\\([A-Z]\\)" "_\\1" nil
-                      (1+ (car bounds)) (cdr bounds))
-      (downcase-region (car bounds) (cdr bounds)))))
-
-
-;; (defun un-camelcase-string (s &optional sep start)
-;;   "Convert CamelCase string S to lower case with word separator SEP.
-;; Default for SEP is a underscore \"_\".
-;;
-;; If third argument START is non-nil, convert words after that
-;; index in STRING."
-;;   (let ((case-fold-search nil))
-;;     (while (string-match "[A-Z]" s (or start 1))
-;;       (setq s (replace-match (concat (or sep "_")
-;;                                      (downcase (match-string 0 s)))
-;;                              t nil s)))
-;;     (downcase s)))
 
 
 (defun dino-php-mode-fn ()
@@ -3109,7 +3100,9 @@ just auto-corrects on common mis-spellings by me."
         c-basic-offset 2)
 
   (keymap-local-set "ESC C-R"  #'indent-region)
-  (keymap-local-set "ESC C-C"  #'un-camelcase-word-at-point)
+  (keymap-local-set "C-c C-c"  #'comment-region)
+  (keymap-local-set "C-c C-k s"    #'dino/camel-to-snakecase-word-at-point)
+  (keymap-local-set "C-c C-k c"    #'dino/snake-to-camelcase-word-at-point)
 
   ;; not sure if necessary or not.
   (modify-syntax-entry ?/ ". 124b" php-mode-syntax-table)
@@ -3571,11 +3564,15 @@ color ready for next time.
   ;; (add-hook 'font-lock-extend-region-functions
   ;;           'js-fixup-font-lock-extend-region)
 
+  (modify-syntax-entry ?_ "w")
   (turn-on-font-lock)
 
   (keymap-local-set "ESC C-R"  #'indent-region)
   (keymap-local-set "ESC #"    #'dino-indent-buffer)
-  (keymap-local-set "C-c c"    #'comment-region)
+  (keymap-local-set "C-c C-c"    #'comment-region)
+
+  (keymap-local-set "C-c C-k s"    #'dino/camel-to-snakecase-word-at-point)
+  (keymap-local-set "C-c C-k c"    #'dino/snake-to-camelcase-word-at-point)
 
   ;; Not sure what I should be doing for autocomplete in js-mode
   ;; Having disabled tern, at the moment I have nothing.
@@ -4364,8 +4361,6 @@ color ready for next time.
 (define-key key-translation-map (kbd "\C-x 8 m") (kbd "µ")) ;; mu / micro - 00B5 / 03BC
 (define-key key-translation-map (kbd "\C-x 8 e") (kbd "ε")) ;; epsilon - 03B5
 (define-key key-translation-map (kbd "\C-x 8 p") (kbd "π")) ;; pi - 03C0
-
-
 
 
 
