@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-05 23:10:43>
+;; Last saved: <2025-April-05 23:13:23>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -109,7 +109,7 @@
 ;; need some utility functions for setting the path
 ;;
 (require 'dino-utility)
-(add-hook 'before-save-hook 'dino-untabify-maybe))
+(add-hook 'before-save-hook 'dino-untabify-maybe)
 
 
 ;; 20250405-2007
