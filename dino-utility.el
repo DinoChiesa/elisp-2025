@@ -215,7 +215,7 @@ provides a set of modes for which no untabify is desired.")
 ;;(setq dino-no-untabify-modes '(makefile-mode BSDmakefile))
 
 
-(defun dino-untabify-maybe ()
+(defun dino/untabify-maybe ()
   "Untabify the current buffer, if the major-mode of the buffer is not
 in the list `dino-no-untabify-modes'
 "
@@ -227,7 +227,7 @@ in the list `dino-no-untabify-modes'
 
     (untabify 0 (point-max))))
 
-(defun dino-untabify-unconditionally ()
+(defun dino/untabify-unconditionally ()
   "Untabify the current buffer completely and unconditionally."
   (interactive)
   (untabify (point-min) (point-max)))
@@ -1525,7 +1525,7 @@ The first line is indented with INDENT-STRING."
 ;; properly. The following functions help with that. I had some problems
 ;; understanding what this was doing, so it now verbosely logs everything.
 
-(defun dino-maybe-add-to-exec-path (paths)
+(defun dino/maybe-add-to-exec-path (paths)
   "Add each item from PATHS to `exec-path' and the PATH environment variable
 if the item exists as a directory and is not already present."
   (let (exec-path-was-modified
@@ -1606,7 +1606,7 @@ is likely to suffice, but on Linux that might not be the case."
           (dino-filename-if-exists
            (concat (getenv "HOME") "/.config/nvm/versions/node")))))))
 
-(defun dino-find-latest-nvm-version-bin-dir ()
+(defun dino/find-latest-nvm-version-bin-dir ()
   "Finds the latest bin directory under management by nvm. This works
 under Windows and Linux.
 

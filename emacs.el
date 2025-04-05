@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-05 23:06:36>
+;; Last saved: <2025-April-05 23:10:43>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -108,13 +108,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; need some utility functions for setting the path
 ;;
-(use-package dino-utility
-  :if (file-exists-p "~/elisp/dino-utility.el")
-  :load-path "~/elisp"
-  :pin manual
-  :commands (dino/snake-to-camelcase-word-at-point dino/camel-to-snakecase-word-at-point)
-  :config
-  (add-hook 'before-save-hook 'dino-untabify-maybe))
+(require 'dino-utility)
+(add-hook 'before-save-hook 'dino-untabify-maybe))
 
 
 ;; 20250405-2007
@@ -184,10 +179,10 @@
 ;; 20241122-1947 - various tools and packages - apheleia, csslint, magit,
 ;; csharpier, shfmt, aider and more - need exec-path AND/or environment PATH to be set.
 ;; Any nodejs tool installed via "npm i -g" (eg ) should be on the path already.
-(dino-maybe-add-to-exec-path
+(dino/maybe-add-to-exec-path
  (list
   "c:/Program Files/Git/usr/bin" ;; needed for diff, for apheleia
-  (dino-find-latest-nvm-version-bin-dir)
+  (dino/find-latest-nvm-version-bin-dir)
   (concat (getenv "HOME") "/.dotnet/tools")
   (concat (getenv "HOME") "/bin")
   (concat (getenv "HOME") "/.local/bin");; aider
