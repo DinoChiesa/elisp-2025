@@ -1,4 +1,4 @@
-;;; dpc-windows-nt.el --- functions for windows-nt, for Dino.
+;;; dpc-sys-windows-nt.el --- functions for windows, for Dino.
 ;;
 ;; Author: Dino Chiesa
 ;; Created: Saturday,  8 March 2025, 19:52
@@ -72,4 +72,4 @@ there (and xargs, etc)."
  '(ls-lisp-use-localized-time-format t)
  '(temporary-file-directory (concat (getenv "HOME") "/AppData/Local/Temp")))
 
-(provide 'dpc-windows-nt)
+(provide 'dpc-sys-windows-nt)

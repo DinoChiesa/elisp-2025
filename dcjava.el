@@ -1,6 +1,6 @@
 ;;; dcjava.el --- utility functions for working with Java
 ;;
-;; Copyright (C) 2014-2016 Dino Chiesa and Apigee Corporation, 2017 Google, Inc.
+;; Copyright (C) 2014-2016 Dino Chiesa and Apigee Corporation, 2017-2025 Google, LLC
 ;;
 ;; Author     : Dino Chiesa
 ;; Maintainer : Dino Chiesa <dpchiesa@hotmail.com>
@@ -11,7 +11,7 @@
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
-;; Last-saved : <2025-January-07 23:18:44>
+;; Last-saved : <2025-April-05 20:02:58>
 ;;
 ;;; Commentary:
 ;;
@@ -92,7 +92,8 @@
 ;;
 
 (require 's) ;; magnars' long lost string library
-(require 'dash) ;; magnars' functional lib
+;; 20250405-2001 - I don't think this is actually used here
+;; (require 'dash) ;; magnars' functional lib
 
 (defcustom dcjava-location-of-gformat-jar
   "~/bin"
@@ -115,11 +116,11 @@
   "a regex that matches a qualified classname (with package prefix)")
 
 (defconst dcjava--import-stmt-regex (concat "import[\t ]+" dcjava--classname-regex
-                                    "[\t ]*;")
+                                            "[\t ]*;")
   "a regex that matches a Java import statement")
 
 (defconst dcjava--package-stmt-regex (concat "package[\t ]+" dcjava--classname-regex
-                                    "[\t ]*;")
+                                             "[\t ]*;")
   "a regex that matches a Java package statement")
 
 (defconst dcjava--edge-of-symbol-regex
@@ -150,7 +151,7 @@
         dcjava-helper-classnames
         (delete-dups
          (dcjava--filter
-          'dcjava--is-class-name
+          #'dcjava--is-class-name
           (with-temp-buffer
             (insert-file-contents (dcjava-cache-filename))
             (split-string (buffer-string) "\n" t))))))
@@ -161,7 +162,7 @@
   (let* ((parts (split-string classname "\\." t))
          (rlist (reverse parts))
          (last (car rlist)))
-    (list last (mapconcat 'identity (reverse (cdr rlist)) "."))))
+    (list last (mapconcat #'identity (reverse (cdr rlist)) "."))))
 
 
 (defun dcjava--xform-alist (lst)
@@ -185,7 +186,7 @@
       (setq dcjava-helper-classname-alist
             (dcjava--xform-alist
              (mapcar
-              'dcjava--list-from-fully-qualified-classname
+              #'dcjava--list-from-fully-qualified-classname
               (or dcjava-helper-classnames (dcjava-reload-classlist)))))))
 
 
@@ -275,7 +276,7 @@ will be something like (\"x.y.z.Class\") .
 
 "
 
-  (let ((items (mapcar #'(lambda (elt) (list (funcall (or format 'identity) elt) elt))
+  (let ((items (mapcar #'(lambda (elt) (list (funcall (or format #'identity) elt) elt))
                        candidates)))
     ;; this works with x-popup-menu
     (setq items (cons "Ignored pane title" items))
@@ -295,8 +296,8 @@ will be something like (\"x.y.z.Class\") .
 (defun dcjava-add-import-statement-from-choice (package-names symbol-name)
   "present a choice for an import statement to add, then add the chosen one."
   (let* ((candidates (mapcar #'(lambda (elt)
-                                (concat elt "." symbol-name))
-                            package-names))
+                                 (concat elt "." symbol-name))
+                             package-names))
          (chosen (x-popup-menu (dcjava--get-menu-position)
                                (dcjava--generate-menu candidates
                                                       #'(lambda (x) (concat "import " x ";"))
@@ -473,7 +474,7 @@ slashes."
                         (setq r (reverse (cdr elts)))
                       (setq elts (cdr elts))))
                   (if r
-                      (mapconcat 'identity r "/") )))))))
+                      (mapconcat #'identity r "/") )))))))
       (and path (file-truename path)))))
 
 (defun dcjava-wacapps-dir ()
@@ -493,11 +494,11 @@ searching from the tree above the given current working directory."
       (let ((smatch (string-match ".+/api_platform/\\(.+\\)" fname)))
         (if smatch
             (let* ((fsuffix (match-string 1 fname))
-                  (the-url
-                   (concat "https://source.corp.google.com/h/edge-internal/featureplatform/api_platform/+/master:"
-                           fsuffix
-                           ";l="
-                           (number-to-string (line-number-at-pos)))))
+                   (the-url
+                    (concat "https://source.corp.google.com/h/edge-internal/featureplatform/api_platform/+/master:"
+                            fsuffix
+                            ";l="
+                            (number-to-string (line-number-at-pos)))))
               (message "open %s" fsuffix)
               (browse-url the-url)))))))
 
@@ -538,9 +539,9 @@ the shell find command. "
          (api-platform-src-root (concat wacapps-dir "api_platform/"))
          (cps-src-root (concat wacapps-dir "cps/"))
          (filename (and classname
-                    (or
-                     (dcjava-find-java-source-in-dir api-platform-src-root classname)
-                     (dcjava-find-java-source-in-dir cps-src-root classname)))))
+                        (or
+                         (dcjava-find-java-source-in-dir api-platform-src-root classname)
+                         (dcjava-find-java-source-in-dir cps-src-root classname)))))
 
     (if filename
         (if (file-exists-p filename)
@@ -582,16 +583,16 @@ or nil if there is none."
         inferred-package-name)
     (while (and elts (not inferred-package-name))
       (let ((current-dir-name (car elts)))
-      (cond
-       ((member current-dir-name package-root-dir-names)
-        (setq inferred-package-name (mapconcat 'identity (push current-dir-name dir-stack) ".")))
-       ((s-equals? current-dir-name "java")
-        (setq inferred-package-name (mapconcat 'identity dir-stack ".")))
-       (t
-        (progn
-          (push (car elts) dir-stack)
-          (setq elts (cdr elts))))
-       )))
+        (cond
+         ((member current-dir-name package-root-dir-names)
+          (setq inferred-package-name (mapconcat #'identity (push current-dir-name dir-stack) ".")))
+         ((s-equals? current-dir-name "java")
+          (setq inferred-package-name (mapconcat #'identity dir-stack ".")))
+         (t
+          (progn
+            (push (car elts) dir-stack)
+            (setq elts (cdr elts))))
+         )))
     inferred-package-name))
 
 (defun dcjava-inferred-package-statement ()

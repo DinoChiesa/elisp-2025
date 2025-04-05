@@ -1,6 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-01 18:40:44>
+;; Last saved: <2025-April-05 20:38:10>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -12,7 +12,7 @@
 (if (fboundp 'tool-bar-mode) (tool-bar-mode -1)) ;; we don't need no steenking icons
 
 (setq inhibit-splash-screen t)
-(setq visible-bell nil) ;; quiet, please! No dinging!
+(setq visible-bell nil)
 (setq ring-bell-function `(lambda ()
                             (set-face-background 'default "DodgerBlue")
                             (sit-for 0.007)
@@ -25,16 +25,11 @@
 (setq edebug-print-length nil)
 (setq read-file-name-completion-ignore-case t)
 (setq default-directory "~/")
-(setq browse-url-browser-function 'browse-url-chrome)
-(setq dictionary-use-single-buffer t)
-(setq dictionary-server "dict.org")
 
+(add-to-list 'load-path "~/elisp")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; setting up faces etc
-;; For some reason, the font-face reverts during load of various elisp
-;; libraries above.  So I set it again, here.
-
 (custom-set-faces
  '(default                         ((t (:background "black" :foreground "white") )))
  '(region                          ((t (:background "gray19"))))
@@ -47,22 +42,12 @@
  '(font-lock-constant-face         ((t (:foreground "DodgerBlue"))))
  '(font-lock-function-name-face    ((t (:foreground "RoyalBlue1"))))
  '(font-lock-variable-name-face    ((t (:foreground "LightGoldenrod"))))
- '(dictionary-word-definition-face ((t (:family "Sans Serif"))))
- '(dictionary-button-button        ((t (:family "Sans Serif"))))
- '(dictionary-button-face          ((t (:background "gray11" :foreground "LightSteelBlue"))))
  '(font-lock-string-face           ((t (:background "gray11" :foreground "MediumOrchid1")))))
-
 
 ;; to try just one:
 ;; (set-face-attribute 'dictionary-button-face nil :background "gray11"  :foreground "LightSteelBlue")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(if (eq system-type 'windows-nt)
-    (let ((path-to-chrome (w32-read-registry 'HKLM "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe" "")))
-      (if path-to-chrome
-          (setq
-           browse-url-chrome-program path-to-chrome))))
-
 ;; for tetris
 (and (boundp 'tetris-score-file)
      (setq tetris-score-file "~/elisp/tetris-scores")
@@ -72,23 +57,22 @@
      ;;        (save-window-excursion ad-do-it))
      )
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; directory to load additional libraries from :
-
-(add-to-list 'load-path "~/elisp")
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gonna need this string utility library
 ;;
-(require 's)
+(use-package s
+  :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; need some utility functions for setting the path
 ;;
-(require 'dino-utility)
-(add-hook 'before-save-hook 'dino-untabify-maybe)
+(use-package dino-utility
+  :if (file-exists-p "~/elisp/dino-utility.el")
+  :load-path "~/elisp"
+  :pin manual
+  :config
+  (add-hook 'before-save-hook 'dino-untabify-maybe))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; package manager
@@ -110,29 +94,35 @@
 (let ((default-directory "~/.emacs.d/elpa"))
   (normal-top-level-add-subdirs-to-load-path))
 
-;; 20250215-1547 - not sure I still need this.
-(dino-ensure-package-installed
- 'auto-complete   ;; i think maybe I do not need this, if I am using company. I think this is legacy now.
- ;; 'company-go
- 'dash
- 'dash-functional
- ;; 'go-autocomplete
- 'dart-mode
- 'logito ;; a tiny logging framework for emacs. Not sure where this is used
- 'path-helper ;; used to set path, just below
- 'popup
- 's
- 'seq
- 'typescript-mode
- 'yaxception
- )
+;; 20250405-2007
+;;
+;; This `dino-ensure-package-installed' predated use-package.  I was manually
+;; keeping track of dependencies and loading them here.  It was never
+;; bulletproof, and I think it's all unnecessary now.
+;;
+;; ;; 20250215-1547 - not sure I still need this.
+;; (dino-ensure-package-installed
+;;  'auto-complete   ;; i think maybe I do not need this, if I am using company. I think this is legacy now.
+;;  ;; 'company-go
+;;  ;; 'dash
+;;  ;; 'dash-functional
+;;  ;; 'go-autocomplete
+;;  ;; 'dart-mode
+;;  ;; 'logito ;; a tiny logging framework for emacs. Not sure where this is used
+;;  ;; 'path-helper ;; used to set path, just below
+;;  'popup
+;;  'seq
+;;  'typescript-mode
+;;  ;;'yaxception
+;;  )
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Some configuration specific for system-types.
 ;; Loads system-type config; e.g. "darwin.el" on Mac
 ;; TODO: for replace slashes in "gnu/linux"  and add in
 ;; customizations there.
-(let ((system-specific-elisp (concat "~/elisp/dpc-" (symbol-name system-type) ".el")))
+(let ((system-specific-elisp (concat "~/elisp/dpc-sys-" (symbol-name system-type) ".el")))
   (if (file-exists-p system-specific-elisp)
       (load system-specific-elisp)))
 
@@ -159,9 +149,14 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; set path correctly on MacOS, based on /etc/paths
-(if (memq window-system '(ns mac))
-    (path-helper-setenv "PATH"))
+;; set path correctly on MacOS, based on /etc/paths.d
+(use-package path-helper
+  :if (eq system-type 'darwin)
+  :ensure t
+  :config
+  (path-helper-setenv "PATH")
+  ;;(path-helper-setenv-all) ;; not sure how this is different
+  )
 
 ;; 20241122-1947 - various tools and packages - apheleia, csslint, magit,
 ;; csharpier, shfmt, aider and more - need exec-path AND/or environment PATH to be set.
@@ -203,6 +198,7 @@
   :ensure t
   :defer t
   :config (progn
+            (require 'apheleia-log)
             (setq apheleia-log-debug-info t)
 
             (if (eq system-type 'windows-nt)
@@ -337,7 +333,9 @@
 ;; - present files matching ja*
 ;; - C-x will be embark-export the list into a new Embark buffer, and you can
 ;;    then C-; (embark-act) on any of those items or a combination of those items.
-
+;;
+;; 20250405-2010 - This sounds neat but so far I am not using it very much.
+;;
 (use-package embark
   :ensure t
   :demand t
@@ -363,12 +361,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; icomplete
 ;;
-;; icomplete is old but good and actively maintained.  icomplete-vertical WAS a
-;; third-party thing: https://github.com/oantolin/icomplete-vertical , and it's
-;; also still available on MELPA.  As of emacs 28, icomplete-vertical-mode is
-;; just a feature of the builtin icomplete-mode.  It seems to be exactly
-;; equivalent to the old independent module, though the configuration options
-;; are different. Beware when searching for configuration hints!
+;; This package is old but good and actively maintained.  icomplete-vertical WAS
+;; a third-party thing: https://github.com/oantolin/icomplete-vertical , and
+;; it's also still available on MELPA.  Be aware when searching for
+;; configuration hints: As of emacs 28, icomplete-vertical-mode is just a
+;; feature of the builtin icomplete-mode.  It seems to be exactly equivalent to
+;; the old independent module, though the configuration options are different.
 
 (use-package icomplete ;; -vertical
   ;;:ensure t ;; it's builtin!
@@ -532,6 +530,7 @@
 ;; 20250324-1743
 ;; There are two packages: aider.el and aidermacs.el .
 ;; Both are active.
+;;
 ;; aider.el seems less ambitious. aidermacs aims to integrate with
 ;; existing emacs stuff; uses ediff, for example.
 ;; Beyond that I don't have a good feel for the differences.
@@ -1404,56 +1403,70 @@ then switch to the markdown output buffer."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Powershell
+;;
+;; There is a powershell package on MELPA, but there's nothing new
+;; there, I think. One day I will convert.
+;;
 
-(autoload 'powershell-mode "powershell-mode" "major mode for editing powershell." t)
-(add-to-list 'auto-mode-alist '("\\.ps1\\'" . powershell-mode))
-(add-to-list 'auto-mode-alist '("\\.psm1\\'" . powershell-mode))
+(use-package powershell-mode
+  :if (file-exists-p "~/elisp/powershell-mode.el")
+  :load-path "~/elisp"
+  :pin manual
+  :defer t
+  :commands (powershell-mode)
+  :config
+  (add-to-list 'auto-mode-alist '("\\.ps1\\'" . powershell-mode))
+  (add-to-list 'auto-mode-alist '("\\.psm1\\'" . powershell-mode))
 
-(eval-after-load "hideshow"
-  '(progn
-     ;; hideshow for powershell
-     (setq dpc-hs-settings-for-powershell-mode
-           '(powershell-mode
-             "{"                                 ;; regexp for start block
-             "}"                                 ;; regexp for end block
-             "[ \\t]*#"                          ;; regexp for comment start
-             forward-sexp                        ;; hs-forward-sexp-func
-             hs-c-like-adjust-block-beginning    ;; c-like adjust (1 char)
-             ))
 
-     (unless (assoc 'powershell-mode hs-special-modes-alist)
-       (push dpc-hs-settings-for-powershell-mode hs-special-modes-alist))))
+  (defun dino-powershell-mode-fn ()
+    (electric-pair-mode 1)
+    (hs-minor-mode t)
+    ;;(linum-on) ;; marked obsolete in 29.1
+    (display-line-numbers-mode)
+    (dino-enable-delete-trailing-whitespace)
+    )
 
-;; replace:
-;;(setf (cdr (rassoc 'powershell-mode hs-special-modes-alist) ) something-here)
+  (add-hook 'powershell-mode-hook 'dino-powershell-mode-fn)
 
-;; shadow:
-;; (add-to-list 'hs-special-modes-alist dpc-hs-settings-for-powershell-mode )
+  (eval-after-load "hideshow"
+    '(progn
+       ;; hideshow for powershell
+       (setq dpc-hs-settings-for-powershell-mode
+             '(powershell-mode
+               "{"                                 ;; regexp for start block
+               "}"                                 ;; regexp for end block
+               "[ \\t]*#"                          ;; regexp for comment start
+               forward-sexp                        ;; hs-forward-sexp-func
+               hs-c-like-adjust-block-beginning    ;; c-like adjust (1 char)
+               ))
 
-;; delete:
-;; (assq-delete-all 'powershell-mode hs-special-modes-alist)
+       ;; replace:
+       ;;(setf (cdr (rassoc 'powershell-mode hs-special-modes-alist) ) something-here)
 
-(defun dino-powershell-mode-fn ()
-  (electric-pair-mode 1)
-  (hs-minor-mode t)
-  ;;(linum-on) ;; marked obsolete in 29.1
-  (display-line-numbers-mode)
-  (dino-enable-delete-trailing-whitespace)
-  )
+       ;; shadow:
+       ;; (add-to-list 'hs-special-modes-alist dpc-hs-settings-for-powershell-mode )
 
-(add-hook 'powershell-mode-hook 'dino-powershell-mode-fn)
+       ;; delete:
+       ;; (assq-delete-all 'powershell-mode hs-special-modes-alist)
+       (unless (assoc 'powershell-mode hs-special-modes-alist)
+         (push dpc-hs-settings-for-powershell-mode hs-special-modes-alist)))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Lua
-
-(autoload 'lua-mode "lua-mode" "major mode for editing Lua." t)
-(add-to-list 'auto-mode-alist '("\\.lua\\'" . lua-mode))
-(add-to-list 'interpreter-mode-alist '("lua" . lua-mode))
-
 ;; 20250224-0130 - it's so rare that I use lua-mode
-;; (if (eq system-type 'windows-nt)
-;;     (setq lua-default-application "c:\\tools\\lua\\lua52.exe")
-;;   )
+
+(use-package lua-mode
+  :defer 36
+  :config
+  ;; (if (eq system-type 'windows-nt)
+  ;;     (setq lua-default-application "c:\\tools\\lua\\lua52.exe")
+  ;;   )
+  (add-to-list 'auto-mode-alist '("\\.lua\\'" . lua-mode))
+  (add-to-list 'interpreter-mode-alist '("lua" . lua-mode)))
+
+
 ;;
 ;; (eval-after-load "lua-mode"
 ;;   '(progn
@@ -1497,7 +1510,6 @@ then switch to the markdown output buffer."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Auto-complete
 ;; (add-to-list 'load-path (file-name-as-directory "~/elisp/auto-complete-1.3.1"))
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1646,8 +1658,6 @@ then switch to the markdown output buffer."
             (defun dino-json-mode-fn ()
               ;;(turn-on-font-lock)
               ;;(flycheck-mode 0)
-
-
               ;; 20250111-1538
               ;;
               ;; The default checker is json-python-json, which has a command "python3".
@@ -1683,8 +1693,6 @@ then switch to the markdown output buffer."
             ))
 
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; thesaurus
 ;; 20241227 - API key is still working
@@ -1697,22 +1705,33 @@ then switch to the markdown output buffer."
     (global-set-key "\C-c\C-t" 'thesaurus-choose-synonym-and-replace)))
 
 
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;; le-thesaurus
-;; ;; 20241227-1853 - tried, but it depends on thesaurus.com which
-;; ;; is not returning valid data.
-;; ;;
-;; ;; divergent
-;; (use-package le-thesaurus
-;;   :config (global-set-key "\C-c\C-t"     'le-thesaurus-get-synonyms)
-;;   :ensure t)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; browse-url
+;;
+(use-package browse-url
+  :defer t
+  :config
+  (setq browse-url-browser-function 'browse-url-chrome)
+  (if (eq system-type 'windows-nt)
+      (let ((path-to-chrome (w32-read-registry 'HKLM "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe" "")))
+        (if path-to-chrome
+            (setq
+             browse-url-chrome-program path-to-chrome))))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dictionary
 ;;
 (use-package dictionary
   :defer t
+  :commands (dictionary-lookup-definition dictionary-search)
   :config (global-set-key "\C-c\C-d"     'dictionary-lookup-definition)
+  (setq dictionary-use-single-buffer t)
+  (setq dictionary-server "dict.org")
+  (custom-set-faces
+   '(dictionary-word-definition-face ((t (:family "Sans Serif"))))
+   '(dictionary-button-button        ((t (:family "Sans Serif"))))
+   '(dictionary-button-face          ((t (:background "gray11" :foreground "LightSteelBlue")))))
   )
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1757,7 +1776,6 @@ then switch to the markdown output buffer."
             (keymap-global-set "C-c g l" #'dpc-gemini/list-models)
             (keymap-global-set "C-c g s" #'dpc-gemini/select-model)
             ))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gptel
@@ -3315,6 +3333,7 @@ just auto-corrects on common mis-spellings by me."
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
   (apheleia-mode)
+  (flycheck-mode)
   (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local))
 
 ;; add (emacs-lisp-mode . lisp-indent) to apheleia-mode-alist
@@ -3627,7 +3646,7 @@ color ready for next time.
     (if gformat-command
         ;; change the existing google-java-format in the builtin aphelia-formatters
         (setf (alist-get 'google-java-format apheleia-formatters)
-              `,(split-string  gformat-command " +")))))
+              `,(split-string gformat-command " +")))))
 
 (defun dino-java-mode-fn ()
   (if c-buffer-is-cc-mode
@@ -3668,7 +3687,8 @@ color ready for next time.
   ;; 20241230 With apheleia-mode, the manual google-java-format is unnecessary. Apheleia does
   ;; the work every time the file is saved.  But it may be that Apheleia is turned off, so having
   ;; the ability to manually invoke google-java-format is still a good idea.
-  (keymap-local-set "C-c C-g"  #'dcjava-gformat-buffer)
+  (keymap-local-set "C-c C-g f"  #'dcjava-gformat-buffer)
+
   (dino-enable-delete-trailing-whitespace)
   (display-line-numbers-mode)
   )
@@ -3699,7 +3719,7 @@ color ready for next time.
   (dino-java-mode-fn)
   )
 
-(add-hook 'java-ts-mode-hook 'dino-java-ts-mode-fn)
+(add-hook 'java-ts-mode-hook #'dino-java-ts-mode-fn)
 
 
 (c-add-style "myJavaStyle"
@@ -3785,14 +3805,6 @@ color ready for next time.
   :config
   (progn
     (require 'dino-netrc)
-
-    ;; 20250223-1428 - defadvice is now deprecated
-    ;;
-    ;; (defadvice restclient-http-do (around dino-restclient-eliminate-giant-useless-header activate)
-    ;;   "make emacs be less chatty when sending requests"
-    ;;   (let (url-mime-charset-string url-user-agent url-extensions-header)
-    ;;     ad-do-it))
-
     (defun dpc--around-restclient-http-do (orig-fn &rest args)
       "make emacs be less chatty when sending requests"
       (let (url-mime-charset-string url-user-agent url-extensions-header)
@@ -3825,7 +3837,7 @@ color ready for next time.
 (defalias 'perl-mode 'cperl-mode)
 
 (use-package cperl-mode
-  :ensure t
+  ;;:ensure t
   :defer t
   :init
   :mode ("\.pl$" . cperl-mode)
@@ -3990,7 +4002,6 @@ color ready for next time.
     (delete-region (car bounds) (cdr bounds))
     (insert (format "%d" (+ old-num amount)))))
 
-
 (defun buffer-mode-histogram ()
   "Display a histogram of emacs buffer modes."
   (interactive)
@@ -4019,16 +4030,6 @@ color ready for next time.
               (setq key (substring key 0 -5)))
           (princ (format "%2d %20s %s\n" count key
                          (make-string count ?+))))))))
-
-
-
-(if (eq system-type 'darwin)
-    (progn
-      (defun open-in-finder ()
-        "Open current folder in Finder. Works on Mac, in dired mode."
-        (interactive)
-        (shell-command "open ."))
-      (keymap-global-set "<f8>" #'open-in-finder)))
 
 
 
@@ -4331,17 +4332,15 @@ color ready for next time.
 (define-key prog-mode-map (kbd "C-c C-c") #'comment-region)
 
 
-
-
 ;; unicode helpers
-(define-key key-translation-map (kbd "\C-x 8 i") (kbd " ")) ;; infinity
-(define-key key-translation-map (kbd "\C-x 8 y") (kbd " ")) ;; lambda
-(define-key key-translation-map (kbd "\C-x 8 a") (kbd " ")) ;; alpha
-(define-key key-translation-map (kbd "\C-x 8 b") (kbd " ")) ;; beta
-(define-key key-translation-map (kbd "\C-x 8 d") (kbd " ")) ;; delta
+(define-key key-translation-map (kbd "\C-x 8 i") (kbd "∞")) ;; infinity - 221E
+(define-key key-translation-map (kbd "\C-x 8 y") (kbd "λ")) ;; lambda - 03BB
+(define-key key-translation-map (kbd "\C-x 8 a") (kbd "α")) ;; alpha - 03B1
+(define-key key-translation-map (kbd "\C-x 8 b") (kbd "β")) ;; beta - 03B2
+(define-key key-translation-map (kbd "\C-x 8 d") (kbd "δ")) ;; delta - 03B4
 (define-key key-translation-map (kbd "\C-x 8 m") (kbd "µ")) ;; mu / micro
-(define-key key-translation-map (kbd "\C-x 8 e") (kbd " ")) ;; epsilon
-(define-key key-translation-map (kbd "\C-x 8 p") (kbd " ")) ;; pi
+(define-key key-translation-map (kbd "\C-x 8 e") (kbd "ε")) ;; epsilon - 03B5
+(define-key key-translation-map (kbd "\C-x 8 p") (kbd "π")) ;; pi - 03C0
 
 
 (message "Done with emacs.el...")
