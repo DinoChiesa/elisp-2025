@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-05 23:13:23>
+;; Last saved: <2025-April-05 23:40:12>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -47,6 +47,18 @@
 (setq edebug-print-length nil)
 (setq read-file-name-completion-ignore-case t)
 (setq default-directory "~/")
+;; helpful for debugging lisp code:
+(setq messages-buffer-max-lines 2500)
+(setq completion-auto-help nil)
+(put 'eval-expression 'disabled nil)
+
+;; set truncation on side-by-side windows to nil.
+(setq truncate-partial-width-windows nil)
+
+(setq-default fill-column 80)
+(setq auto-save-interval 500)
+(setq case-fold-search nil)
+(setq comment-empty-lines t)
 
 (add-to-list 'load-path "~/elisp")
 
@@ -106,34 +118,14 @@
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; need some utility functions for setting the path
+;; dino's utility functions
 ;;
-(require 'dino-utility)
-(add-hook 'before-save-hook 'dino-untabify-maybe)
-
-
-;; 20250405-2007
-;;
-;; This `dino-ensure-package-installed' predated use-package.  I was manually
-;; keeping track of dependencies and loading them here.  It was never
-;; bulletproof, and I think it's all unnecessary now.
-;;
-;; ;; 20250215-1547 - not sure I still need this.
-;; (dino-ensure-package-installed
-;;  'auto-complete   ;; i think maybe I do not need this, if I am using company. I think this is legacy now.
-;;  ;; 'company-go
-;;  ;; 'dash
-;;  ;; 'dash-functional
-;;  ;; 'go-autocomplete
-;;  ;; 'dart-mode
-;;  ;; 'logito ;; a tiny logging framework for emacs. Not sure where this is used
-;;  ;; 'path-helper ;; used to set path, just below
-;;  'popup
-;;  'seq
-;;  'typescript-mode
-;;  ;;'yaxception
-;;  )
-
+(use-package dino-utility
+  :load-path "~/elisp"
+  :commands (dino/camel-to-snakecase-word-at-point dino/snake-to-camelcase-word-at-point dino/indent-buffer)
+  :autoload (dino/maybe-add-to-exec-path dino/find-latest-nvm-version-bin-dir)
+  :config
+  (add-hook 'before-save-hook 'dino/untabify-maybe))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Some configuration specific for system-types.
@@ -865,7 +857,7 @@
         indent-tabs-mode t) ;; golang prefers tabs, ugh
 
   (keymap-local-set "ESC C-R" #'indent-region)
-  (keymap-local-set "ESC #"   #'dino-indent-buffer)
+  (keymap-local-set "ESC #"   #'dino/indent-buffer)
   (keymap-local-set "C-c C-w" #'compare-windows)
   (keymap-local-set "C-c C-c" #'comment-region)
 
@@ -975,6 +967,8 @@
 (use-package yasnippet
   :defer 13
   :ensure t
+  :defines (yas-snippet-dirs yas-prompt-functions)
+  :functions (yas-global-mode yas-expand-snippet)
   :config (progn
             (setq yas-snippet-dirs (list "~/elisp/yasnippets"))
             (yas-global-mode 1)
@@ -1020,6 +1014,7 @@
 (use-package auto-complete-config
   :init (require 'yasnippet)
   :defer t
+  :functions (ac-config-default)
   :config (ac-config-default))
 
 
@@ -1045,7 +1040,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; markdown
-(defun dc-markdown-standalone ()
+(defun dpc-markdown-standalone ()
   "process the MD buffer with the markdown command-line tool,
 then switch to the markdown output buffer."
   (interactive)
@@ -1063,7 +1058,7 @@ then switch to the markdown output buffer."
   "My hook for markdown mode"
   (modify-syntax-entry ?_ "w")
   (auto-fill-mode -1)
-  (keymap-local-set "C-c m s" #'dc-markdown-standalone)
+  (keymap-local-set "C-c m s" #'dpc-markdown-standalone)
   (keymap-local-set "C-c m |" #'markdown-table-align)
   )
 
@@ -1092,22 +1087,9 @@ then switch to the markdown output buffer."
 (setq font-lock-maximum-decoration t)
 (global-font-lock-mode 1) ;;  'ON
 
-(setq-default fill-column 80)
-(setq auto-save-interval 500)
-(setq case-fold-search nil)
-(setq comment-empty-lines t)
-
 ;; fringe (between line numbers and buffer text)
 (setq-default left-fringe-width  10)
 (set-face-attribute 'fringe nil :background "black")
-
-;; helpful for debugging lisp code:
-(setq messages-buffer-max-lines 2500)
-(setq completion-auto-help nil)
-(put 'eval-expression 'disabled nil)
-
-;; set truncation on side-by-side windows to nil.
-(setq truncate-partial-width-windows nil)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1292,11 +1274,12 @@ then switch to the markdown output buffer."
 (use-package sr-speedbar ;; put speedbar in same frame
   :ensure t
   :defer t
+  :defines (speedbar-use-images)
   :config
   (setq speedbar-use-images nil))
 
-
 (use-package hideshow  ;; builtin
+  :autoload (hs-hide-block hs-show-block)
   :defer t )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1304,6 +1287,7 @@ then switch to the markdown output buffer."
 
 (use-package htmlize
   :defer t
+  :defines (htmlize-output-type)
   :config
   (progn
     (setq htmlize-output-type 'inline-css)
@@ -1360,33 +1344,40 @@ then switch to the markdown output buffer."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; image-mode
+(use-package image-mode
+  :defer t
+  :autoload (image-transform-fit-to-window)
+  :config
+  ;;
+  ;; 20250405-2339
+  ;;
+  ;; Supposedly the image-transform-fit-to-{width,height} are now obsolete,
+  ;; which I guess means `image-transform-fit-to-window' does the right thing automatically.
+  ;;
+  ;; (defun dino/image-transform-fit-to-window()
+  ;;     "Resize the image to fit the width or height based on
+  ;; the image and window ratios."
+  ;;     (interactive)
+  ;;     (let* ( (img-size (image-display-size (image-get-display-property) t))
+  ;;             (img-width (car img-size))
+  ;;             (img-height (cdr img-size))
+  ;;             (img-h/w-ratio (/ (float img-height) (float img-width)))
+  ;;             (win-width (- (nth 2 (window-inside-pixel-edges))
+  ;;                           (nth 0 (window-inside-pixel-edges))))
+  ;;             (win-height (- (nth 3 (window-inside-pixel-edges))
+  ;;                            (nth 1 (window-inside-pixel-edges))))
+  ;;             (win-h/w-ratio (/ (float win-height) (float win-width))))
+  ;;       ;; Fit image by width if the h/w ratio of window is > h/w ratio of the image
+  ;;       (if (> win-h/w-ratio img-h/w-ratio)
+  ;;           (image-transform-fit-to-width)
+  ;;         ;; Else fit by height
+  ;;         (image-transform-fit-to-height))))
 
-(defun dino/image-transform-fit-to-window()
-  "Resize the image to fit the width or height based on
-the image and window ratios."
-  (interactive)
-  (let* ( (img-size (image-display-size (image-get-display-property) t))
-          (img-width (car img-size))
-          (img-height (cdr img-size))
-          (img-h/w-ratio (/ (float img-height) (float img-width)))
-          (win-width (- (nth 2 (window-inside-pixel-edges))
-                        (nth 0 (window-inside-pixel-edges))))
-          (win-height (- (nth 3 (window-inside-pixel-edges))
-                         (nth 1 (window-inside-pixel-edges))))
-          (win-h/w-ratio (/ (float win-height) (float win-width))))
-    ;; Fit image by width if the h/w ratio of window is > h/w ratio of the image
-    (if (> win-h/w-ratio img-h/w-ratio)
-        (image-transform-fit-to-width)
-      ;; Else fit by height
-      (image-transform-fit-to-height))))
+  (defun dino-image-mode-fn ()
+    "My hook for image-mode"
+    (image-transform-fit-to-window))
 
-(defun dino-image-mode-fn ()
-  "My hook for image-mode"
-  (dino/image-transform-fit-to-window)
-  (keymap-local-set "h"  #'image-transform-fit-to-height)
-  (keymap-local-set "w"  #'image-transform-fit-to-width))
-
-(add-hook 'image-mode-hook 'dino-image-mode-fn)
+  (add-hook 'image-mode-hook 'dino-image-mode-fn))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1626,7 +1617,7 @@ the image and window ratios."
               (company-mode)
 
               (keymap-local-set "ESC C-R" #'indent-region)
-              (keymap-local-set "ESC #"   #'dino-indent-buffer)
+              (keymap-local-set "ESC #"   #'dino/indent-buffer)
               (keymap-local-set "C-c C-w" #'compare-windows)
               (keymap-local-set "C-c C-c" #'comment-region)
               (keymap-local-set "ESC ." #'company-complete)
@@ -2042,13 +2033,15 @@ Use this function this way:
   ;; ;; (turn-on-auto-revert-mode)
   ;; Anyway, there is a revert-on-timer thing provided in dired-fixups.el
 
-  (local-set-key "\C-c\C-g"  'dino-dired-kill-new-file-contents)
-  (local-set-key "\C-c\C-c"  'dino-dired-copy-file-to-dir-in-other-window)
-  (local-set-key "\C-c\C-m"  'dino-dired-move-file-to-dir-in-other-window)
-  (local-set-key "F" 'dino-dired-do-find)
-  (local-set-key "s" 'dino-dired-sort-cycle)
+  (keymap-local-set "C-c C-g"  #'dino-dired-kill-new-file-contents)
+  (keymap-local-set "C-c C-c"  #'dino-dired-copy-file-to-dir-in-other-window)
+  (keymap-local-set "C-c C-m"  #'dino-dired-move-file-to-dir-in-other-window)
+
+  (keymap-local-set "K" #'dired-kill-subdir) ;; opposite of i (dired-maybe-insert-subdir)
+  (keymap-local-set "F"  #'dino-dired-do-find)
+  (keymap-local-set "s"  #'dino-dired-sort-cycle)
   (dino-dired-sort-cycle "t") ;; by default, sort by time
-  (local-set-key "K" 'dired-kill-subdir)) ;; opposite of i (dired-maybe-insert-subdir)
+  )
 
 (add-hook 'dired-mode-hook 'dino-dired-mode-hook-fn)
 
@@ -2149,11 +2142,12 @@ just auto-corrects on common mis-spellings by me."
     (local-set-key (kbd "RET") 'newline-and-indent)
 
     ;; for re-tabbing a region or buffer of code:
-    (local-set-key "\M-\C-R" 'indent-region)
-    (local-set-key "\M-#"    'dino-indent-buffer)
+    (keymap-local-set "ESC C-R"  #'indent-region)
+    (keymap-local-set "ESC #"    #'dino/indent-buffer)
+
     ;; set this key binding on for c-mode, in lieu of c-subword mode,
     ;; which overwrites my preference
-    (local-set-key "\C-c\C-w"  'compare-windows)
+    (keymap-local-set "C-c C-w"  #'compare-windows)
 
     (hl-line-mode 1)
     (dtrt-indent-mode t)
@@ -2408,29 +2402,26 @@ just auto-corrects on common mis-spellings by me."
 
          (message "setting local key bindings....")
 
-         (local-set-key "\M-\C-R"  'indent-region)
-         (local-set-key "\M-#"     'dino-indent-buffer)
-         (local-set-key "\C-c\C-w" 'compare-windows)
+         (keymap-local-set "ESC C-R"  #'indent-region)
+         (keymap-local-set "ESC #"    #'dino/indent-buffer)
+         (keymap-local-set "C-c C-w"  #'compare-windows)
 
          ;; for skeleton stuff
          (set (make-local-variable 'skeleton-pair) t)
-
-         ;; for commenting
          (setq comment-empty-lines t)
 
-         (local-set-key (kbd "(") 'skeleton-pair-insert-maybe)
-         (local-set-key (kbd "[") 'skeleton-pair-insert-maybe)
+         (local-set-key (kbd "(") #'skeleton-pair-insert-maybe)
+         (local-set-key (kbd "[") #'skeleton-pair-insert-maybe)
          ;;(local-set-key (kbd "\"") 'skeleton-pair-insert-maybe)
 
          ;; these allow typeover of matching brackets
-         (local-set-key (kbd "\"") 'dino-skeleton-pair-end)
+         (local-set-key (kbd "\"") #'dino-skeleton-pair-end)
          (local-set-key (kbd ")") 'dino-skeleton-pair-end)
          (local-set-key (kbd "]") 'dino-skeleton-pair-end)
 
          (local-set-key (kbd "{") 'skeleton-pair-insert-maybe)
          ;;(local-set-key (kbd "{") 'dino-insert-open-brace)
 
-         ;; for snippets support:
          (require 'yasnippet)
          (yas-minor-mode-on)
 
@@ -2439,8 +2430,8 @@ just auto-corrects on common mis-spellings by me."
          (setq hs-isearch-open t)
 
          ;; with point inside the block, use these keys to hide/show
-         (local-set-key "\C-c>"  'hs-hide-block)
-         (local-set-key "\C-c<"  'hs-show-block)
+         (keymap-local-set "C-c >"  #'hs-hide-block)
+         (keymap-local-set "C-c <"  #'hs-show-block)
 
          ;; autorevert.el is built-in to emacs; if files
          ;; are changed outside of emacs, the buffer auto-reverts.
@@ -2456,17 +2447,8 @@ just auto-corrects on common mis-spellings by me."
          ;;(make-local-variable 'indent-tabs-mode)
          (setq indent-tabs-mode nil)
 
-         ;; Sun, 20 Apr 2008  20:52
-         ;; semantic stuff for code completion?
-         ;;     (message "fiddling with semantic....")
-         ;;      (semantic-load-enable-gaudy-code-helpers)
-
-         ;; the above was throwing errors on Tue, 12 May 2009  03:15
-
          (message "dino-cpp-mode-fn: done.")
          )))
-
-
 (add-hook 'c++-mode-hook 'dino-cpp-mode-fn)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2482,9 +2464,9 @@ just auto-corrects on common mis-spellings by me."
                 (indent-tabs-mode . nil)))
             (defun dino-protobuf-mode-hook-fn ()
               "my mode hook for protobuf-mode"
-              (local-set-key "\M-\C-R"  'indent-region)
-              (local-set-key "\M-#"     'dino-indent-buffer)
-              (local-set-key "\C-c\C-w" 'compare-windows)
+              (keymap-local-set "ESC C-R"  #'indent-region)
+              (keymap-local-set "ESC #"    #'dino/indent-buffer)
+              (keymap-local-set "C-c C-w"  #'compare-windows)
               (display-line-numbers-mode)
 
               (c-add-style "my-style" my-protobuf-style t)
@@ -2745,9 +2727,9 @@ just auto-corrects on common mis-spellings by me."
          (apheleia-mode)
          (message "setting local key bindings....")
 
-         (local-set-key "\M-\C-R"  'indent-region)
-         (local-set-key "\M-#" 'dino-indent-buffer)
-         (local-set-key "\C-c\C-w" 'compare-windows)
+         (keymap-local-set "ESC C-R"  #'indent-region)
+         (keymap-local-set "ESC #"    #'dino/indent-buffer)
+         (keymap-local-set "C-c C-w"  #'compare-windows)
 
          (local-set-key "\C-c\C-y"  'csharp-show-syntax-table-prop)
          (local-set-key "\C-c\C-h"  'csharp-show-parse-state)
@@ -2798,8 +2780,8 @@ just auto-corrects on common mis-spellings by me."
          (setq hs-isearch-open t)
 
          ;; with point inside the block, use these keys to hide/show
-         (local-set-key "\C-c>"  'hs-hide-block)
-         (local-set-key "\C-c<"  'hs-show-block)
+         (keymap-local-set "C-c >"  #'hs-hide-block)
+         (keymap-local-set "C-c <"  #'hs-show-block)
 
          ;; autorevert.el is built-in to emacs; if files
          ;; are changed outside of emacs, the buffer auto-reverts.
@@ -2904,7 +2886,7 @@ just auto-corrects on common mis-spellings by me."
 
   (message "setting local key bindings....")
   (keymap-local-set "ESC C-R"  #'indent-region)
-  (keymap-local-set "ESC #"    #'dino-indent-buffer)
+  (keymap-local-set "ESC #"    #'dino/indent-buffer)
   (keymap-local-set "C-c C-w"  #'compare-windows)
   (keymap-local-set "C-c C-g"  #'dino-csharpier-buffer)
   (keymap-local-set "C-x C-e"     #'compile)
@@ -3364,7 +3346,7 @@ Does not consider word syntax tables.
   ;;(apheleia-mode) ;; never tried this
 
   (keymap-local-set "ESC C-R" #'indent-region)
-  (keymap-local-set "ESC #"   #'dino-indent-buffer)
+  (keymap-local-set "ESC #"   #'dino/indent-buffer)
   (keymap-local-set "C-c C-c" #'comment-region)
 
   ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
@@ -3563,7 +3545,7 @@ color ready for next time.
   (turn-on-font-lock)
 
   (keymap-local-set "ESC C-R"  #'indent-region)
-  (keymap-local-set "ESC #"    #'dino-indent-buffer)
+  (keymap-local-set "ESC #"    #'dino/indent-buffer)
   (keymap-local-set "C-c C-c"    #'comment-region)
 
   (keymap-local-set "C-c C-k s"    #'dino/camel-to-snakecase-word-at-point)
@@ -3667,7 +3649,7 @@ color ready for next time.
       (c-set-style "myJavaStyle"))
   (turn-on-font-lock)
   (keymap-local-set "ESC C-R" #'indent-region)
-  (keymap-local-set "ESC #"   #'dino-indent-buffer)
+  (keymap-local-set "ESC #"   #'dino/indent-buffer)
 
   (modify-syntax-entry ?_ "w")
 

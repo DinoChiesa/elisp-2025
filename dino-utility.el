@@ -183,7 +183,7 @@ replacing any other base filename at point."
   (interactive)
   (dino-replace-filename t))
 
-(defun dino-indent-buffer ()
+(defun dino/indent-buffer ()
   "Dino's function to re-indent an entire buffer; helpful in progmodes
 like XML mode or csharp mode."
   (interactive)
