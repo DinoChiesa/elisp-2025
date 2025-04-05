@@ -54,7 +54,7 @@
 
 (require 's)
 (require 'cl-seq) ; for cl-remove-if-not
-(require 'package)
+;;(require 'package)
 (require 'json)
 
 (defconst dino--short-filename-regex "[A-Za-z]\\S+\\.[-A-Za-z0-9_]+"
@@ -88,15 +88,15 @@
     (call-interactively 'sort-lines)))
 
 
-(defun dino-ensure-package-installed (&rest packages)
-  "For each package in the list of PACKAGES, check if it is installed. If not,
-ask for installation. Return the list of packages."
-  (mapcar
-   (lambda (package)
-     (unless (package-installed-p package)
-       (package-install package))
-     (use-package package))
-   packages))
+;; (defun dino-ensure-package-installed (&rest packages)
+;;   "For each package in the list of PACKAGES, check if it is installed. If not,
+;; ask for installation. Return the list of packages."
+;;   (mapcar
+;;    (lambda (package)
+;;      (unless (package-installed-p package)
+;;        (package-install package))
+;;      (use-package package))
+;;    packages))
 
 
 (defun dino-add-path-if-not-present (pathlist)
@@ -982,37 +982,37 @@ eg,
         (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
 
 
-(defun dino-add-load-path-for-package (pkg)
-  "sets the load-path to load the named package.
-When downloading something from ELPA, the directory that contains
-the .el files is something like \"~/.emacs.d/elpa/org-20140414/\".
-
-But when that package gets updated the directory changes. This
-function finds the latest directory for the named package.
-
-FYI: this is unnecessary if there is only one version
-of each package in the ~/.emacs.d/elpa directory. In that case, you can
-just do
-
-  (let ((default-directory \"~/.emacs.d/elpa\"))
-    (normal-top-level-add-subdirs-to-load-path))
-
-Also FYI: `string-prefix-p' is  built-in, but is not present in the
-version of emacs that is installed by default on MacOS.
-
-Note 20241227-2032:
-This is probably no longer necessary, with the availability of
-`use-package'  and the :load-path option there.
-
-"
-  (let ((pkg-dir "~/.emacs.d/elpa/")
-        ;; in lieu of flet
-        (pkg-match (lambda (dir) (string-prefix-p (concat pkg "-") dir t))))
-    (let ((dirlist (dino-filter-list pkg-match (directory-files pkg-dir))))
-      (setq dirlist (nreverse (sort dirlist 'string<)))
-      (add-to-list 'load-path
-                   (concat pkg-dir (car dirlist))) ;; "~/.emacs.d/elpa/org-20140414/"
-      )))
+;; (defun dino-add-load-path-for-package (pkg)
+;;   "sets the load-path to load the named package.
+;; When downloading something from ELPA, the directory that contains
+;; the .el files is something like \"~/.emacs.d/elpa/org-20140414/\".
+;;
+;; But when that package gets updated the directory changes. This
+;; function finds the latest directory for the named package.
+;;
+;; FYI: this is unnecessary if there is only one version
+;; of each package in the ~/.emacs.d/elpa directory. In that case, you can
+;; just do
+;;
+;;   (let ((default-directory \"~/.emacs.d/elpa\"))
+;;     (normal-top-level-add-subdirs-to-load-path))
+;;
+;; Also FYI: `string-prefix-p' is  built-in, but is not present in the
+;; version of emacs that is installed by default on MacOS.
+;;
+;; Note 20241227-2032:
+;; This is probably no longer necessary, with the availability of
+;; `use-package'  and the :load-path option there.
+;;
+;; "
+;;   (let ((pkg-dir "~/.emacs.d/elpa/")
+;;         ;; in lieu of flet
+;;         (pkg-match (lambda (dir) (string-prefix-p (concat pkg "-") dir t))))
+;;     (let ((dirlist (dino-filter-list pkg-match (directory-files pkg-dir))))
+;;       (setq dirlist (nreverse (sort dirlist 'string<)))
+;;       (add-to-list 'load-path
+;;                    (concat pkg-dir (car dirlist))) ;; "~/.emacs.d/elpa/org-20140414/"
+;;       )))
 
 
 

@@ -1,6 +1,8 @@
+;; -*- coding: utf-8 -*-
+
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-05 20:38:10>
+;; Last saved: <2025-April-05 15:11:19>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -9,9 +11,29 @@
 
 ;;; Code:
 (message "Running emacs.el...")
+;;(debug-on-entry 'package-initialize)
 (if (fboundp 'tool-bar-mode) (tool-bar-mode -1)) ;; we don't need no steenking icons
 
 (setq inhibit-splash-screen t)
+(setq initial-scratch-message ";;;  -*- lexical-binding: t; -*-\n;; scratch buffer\n")
+
+;; not sure why but unicode chars are not being retained in this file.
+(set-language-environment 'utf-8)
+(set-default-coding-systems 'utf-8)
+(set-selection-coding-system 'utf-8)
+(set-locale-environment "en.UTF-8")
+(prefer-coding-system 'utf-8)
+
+;; 20250405-1501
+;;
+;; The Windows API is built entirely on top of UTF-16.
+;; This will not affect the coding system of the buffer, only of
+;; handling of the clipboard.
+(when (eq system-type 'windows-nt)
+  (set-next-selection-coding-system 'utf-16-le)
+  (set-selection-coding-system 'utf-16-le)
+  (set-clipboard-coding-system 'utf-16-le))
+
 (setq visible-bell nil)
 (setq ring-bell-function `(lambda ()
                             (set-face-background 'default "DodgerBlue")
@@ -58,6 +80,26 @@
      )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; package manager
+;;
+(require 'package)
+(dolist (item (list
+               ;; '("MELPA Stable"     . "https://stable.melpa.org/packages/")
+               '("MELPA"     . "https://melpa.org/packages/")
+               '("jcs-elpa"  . "https://jcs-emacs.github.io/jcs-elpa/packages/")
+               '("org"       . "http://orgmode.org/elpa/")))
+  (add-to-list 'package-archives item))
+
+;;(package-initialize)
+
+;; Set the load-path for all packages installed by package. Some of the
+;; package-installed versions over builtin versions, if they are updated more
+;; recently.
+;;
+(let ((default-directory "~/.emacs.d/elpa"))
+  (normal-top-level-add-subdirs-to-load-path))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gonna need this string utility library
 ;;
 (use-package s
@@ -73,26 +115,6 @@
   :config
   (add-hook 'before-save-hook 'dino-untabify-maybe))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; package manager
-;;
-(require 'package)
-(dolist (item (list
-               ;; '("MELPA Stable"     . "https://stable.melpa.org/packages/")
-               '("MELPA"     . "https://melpa.org/packages/")
-               '("jcs-elpa"  . "https://jcs-emacs.github.io/jcs-elpa/packages/")
-               '("org"       . "http://orgmode.org/elpa/")))
-  (add-to-list 'package-archives item))
-
-(package-initialize)
-
-;; Set the load-path for all packages installed by package. Some of the
-;; package-installed versions over builtin versions, if they are updated more
-;; recently.
-;;
-(let ((default-directory "~/.emacs.d/elpa"))
-  (normal-top-level-add-subdirs-to-load-path))
 
 ;; 20250405-2007
 ;;
@@ -1943,6 +1965,7 @@ Use this function this way:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; auto-insert - 20241206-0142
 ;;
+;; builtin to emaccs
 (use-package autoinsert
   :defer t
   :config (progn
@@ -1951,6 +1974,7 @@ Use this function this way:
             (setq auto-insert-directory "~/elisp/auto-insert-content")
 
             (use-package auto-insert-plus
+              :load-path "~/elisp"
               :ensure nil)
 
             ;; specify the template to use for various filename regexi:
@@ -1989,8 +2013,6 @@ Use this function this way:
                      ("\\.rss$"                     .  "Template.rss" )
                      ("\\.org$"                     .  "Template.org" )
                      ) ))))
-
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -4332,15 +4354,19 @@ color ready for next time.
 (define-key prog-mode-map (kbd "C-c C-c") #'comment-region)
 
 
-;; unicode helpers
+;; unicode helpers - these seem to get stripped when I open this file on Windows?
+;; C-x 8 RET to get prompted for the code point in hex.
 (define-key key-translation-map (kbd "\C-x 8 i") (kbd "∞")) ;; infinity - 221E
 (define-key key-translation-map (kbd "\C-x 8 y") (kbd "λ")) ;; lambda - 03BB
 (define-key key-translation-map (kbd "\C-x 8 a") (kbd "α")) ;; alpha - 03B1
 (define-key key-translation-map (kbd "\C-x 8 b") (kbd "β")) ;; beta - 03B2
 (define-key key-translation-map (kbd "\C-x 8 d") (kbd "δ")) ;; delta - 03B4
-(define-key key-translation-map (kbd "\C-x 8 m") (kbd "µ")) ;; mu / micro
+(define-key key-translation-map (kbd "\C-x 8 m") (kbd "µ")) ;; mu / micro - 00B5 / 03BC
 (define-key key-translation-map (kbd "\C-x 8 e") (kbd "ε")) ;; epsilon - 03B5
 (define-key key-translation-map (kbd "\C-x 8 p") (kbd "π")) ;; pi - 03C0
+
+
+
 
 
 (message "Done with emacs.el...")
