@@ -1,8 +1,8 @@
-;; -*- coding: utf-8 -*-
+;;; -*- coding: utf-8; lexical-binding: t;  -*-
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-05 23:40:12>
+;; Last saved: <2025-April-13 19:39:42>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1202,8 +1202,8 @@ then switch to the markdown output buffer."
          ("\\.ashx\\'"                          . csharp-mode)
          ("\\.ascx\\'"                          . csharp-mode)
          ("\\.s?html?\\'"                       . html-mode)
-         ("\\.html\\'"                          . web-mode)
-         ("\\.htm\\'"                           . web-mode)
+         ("\\.html\\'"                          . html-mode)
+         ("\\.htm\\'"                           . html-mode)
          ("\\.md\\'"                            . markdown-mode)
          ("\\.py\\'"                            . python-ts-mode)
          ("\\.dart\\'"                          . dart-mode)
@@ -1229,11 +1229,18 @@ then switch to the markdown output buffer."
 
 
 
-;; replace all html-mode in this alist with web-mode, which is more betta.
+;; ;; replace all html-mode in this alist with web-mode, which is more betta.
+;; (mapc
+;;  (lambda (pair)
+;;    (if (eq (cdr pair) 'html-mode)
+;;        (setcdr pair 'web-mode)))
+;;  auto-mode-alist)
+
+;; back to html-mode; web-mode is ... not available?
 (mapc
  (lambda (pair)
-   (if (eq (cdr pair) 'html-mode)
-       (setcdr pair 'web-mode)))
+   (if (eq (cdr pair) 'web-mode)
+       (setcdr pair 'html-mode)))
  auto-mode-alist)
 
 ;; 20230828-1703 replace java-mode with java-ts-mode?
@@ -1522,16 +1529,6 @@ then switch to the markdown output buffer."
 (add-hook 'html-mode-hook 'dino-html-mode-fn)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Auto-complete
-;; (add-to-list 'load-path (file-name-as-directory "~/elisp/auto-complete-1.3.1"))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 
 
