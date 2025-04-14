@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-13 19:39:42>
+;; Last saved: <2025-April-13 21:20:35>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -23,6 +23,10 @@
 (set-selection-coding-system 'utf-8)
 (set-locale-environment "en.UTF-8")
 (prefer-coding-system 'utf-8)
+
+;; 20250406 I think this needs to be system-wide. Setting it in a mode hook is too late,
+;; as the file local vars will have already been evaluated and set.
+(setq enable-local-variables t)
 
 ;; 20250405-1501
 ;;
@@ -455,11 +459,10 @@
                 (error "variable 'magit-git-executable' is not bound")
               (if (not magit-git-executable)
                   (error "variable 'magit-git-executable' is not set"))
-              (let ((found-exe (executable-find magit-git-executable)))
-                (if (not found-exe)
-                    (error (format "git executable (%s) cannot be found" magit-git-executable)))
-                (message "found %s at %s" magit-git-executable found-exe)
-                ))))
+              (if (file-exists-p (executable-find magit-git-executable))
+                  (message "found git at %s" magit-git-executable)
+                (error (format "git executable (%s) cannot be found" magit-git-executable)))
+              )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; flycheck
@@ -565,6 +568,7 @@
 ;;
 
 (defun dino-jsonnet-mode-fn ()
+  "buffer-specific jsonnet-mode setups"
   ;; 20241231 - eglot on jsonnet is helpful. Autocomplete ("code assist") works nicely.
   ;;
   ;; The jsonnet-language-server from Grafana, available at
@@ -575,42 +579,48 @@
   ;; startup. It reads from `jsonnet-library-search-directories' to set the
   ;; search directories.
   ;;
+  ;; Surprisingly, flycheck does not yet work for remote files.
+  ;; https://github.com/flycheck/flycheck/pull/1922
   ;;
-  ;;(dino-start-eglot-unless-remote)
+  ;; Also, running both flycheck and eglot on a jsonnet buffer makes for
+  ;; too much feedback when I'm trying to do completion.
+  (flycheck-mode -1)
 
-  ;; I am pretty sure eglot will work only locally.
+  ;; 20250406 At one point I believed that eglot worked reliably, only locally,
+  ;; eg not when editing a remote file via tramp. Now I am not so sure, but I
+  ;; don't edit over tramp commonly, so it's not a pressing issue for me.
   (when (not (file-remote-p default-directory))
+    ;;  (flycheck-mode 1)
     (eglot-ensure)
     (company-mode)
     (keymap-local-set "C-<tab>" #'company-complete)
-    )
-
-  ;; ;; 20241231 - Surprisingly, flycheck does not yet work for remote files.
-  ;; ;; https://github.com/flycheck/flycheck/pull/1922
-  ;;
-  ;; ;; Also I am not sure I like flycheck in an eglot buffer. Too many
-  ;; ;; cooks in the kitchen. Too much feedback when I'm trying to do completion.
-  (flycheck-mode -1)
-  (when (not (file-remote-p default-directory))
-    ;;  (flycheck-mode 1)
 
     (when (boundp 'apheleia-formatters)
       (apheleia-mode))
 
-    ;; the following two variables are used by flycheck for syntax checking
-    (setq-local flycheck-jsonnet-include-paths nil)
-    (setq-local flycheck-jsonnet-command-args nil)
-    ;; Make sure emacs allows file-local variables, in case I want to set the above
-    ;; from a file-local variables decl.
-    (setq enable-local-variables t))
+    ;; Emacs runs major-mode hooks (e.g., those set in jsonnet-mode-hook) after
+    ;; the file-local variables (defined in blocks like Local Variables:
+    ;; ... End:) have been processed and set.
+
+    ;; Interesting variables for jsonnet-mode can be set as file-local variables
+    ;; with a block like so:
+    ;;
+    ;; /* Local Variables:                                  */
+    ;; /* jsonnet-library-search-directories: ("./lib")     */
+    ;; /* jsonnet-command-options:   ("--ext-str" "xy=ab")  */
+    ;; /* End:                                              */
+    ;;
+    ;; This allows 'jsonnet-eval-buffer' to work nicely.
+    )
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (keymap-local-set "C-c C-e" #'jsonnet-eval-buffer)
   (keymap-local-set "C-c C-b" #'browse-url)
   (display-line-numbers-mode))
 
-;; What follows is a fixup scratchpad for jsonnetfmt and jsonnet lang server. For the
-;; latter there are two options, and this will allow switching between them at runtime
-;; while sorting out which is preferred.
+;; The following is a scratchpad for fixups for jsonnetfmt and jsonnet lang
+;; server. For the latter there are two options, and this will allow switching
+;; between them at runtime while sorting out which is preferred.
 ;;
 ;; (let ((jsonnetfmt-cmd '("jsonnetfmt" "--max-blank-lines" "1" "-")))
 ;;   (if (alist-get 'jsonnetfmt apheleia-formatters)
@@ -630,13 +640,9 @@
 
 
 (defun dino-jsonnet-package-config ()
-  "one-time configuration stuff for jsonnet-mode package."
-
-  ;; Get some functions to help with (a) eval-buffer over TRAMP (provided with
-  ;; jsonnet-mode directly), and (b) the arguments to the language server (via
-  ;; eglot).
-  ;; (require 'eglot) ;; should be unnecessary if it is in :after  in use-package?
-  ;; (require 'dpc-jsonnet-mode-fixups)
+  "one-time, buffer independent configuration stuff for
+=jsonnet-mode=, eg, setting the apheleia formatter and eglot
+server program."
 
   (when (boundp 'apheleia-formatters)
     (let ((jsonnetfmt-cmd '("jsonnetfmt" "--max-blank-lines" "1" "-")))
@@ -650,47 +656,93 @@
     (if (alist-get 'jsonnet-mode eglot-server-programs)
         (setf (alist-get 'jsonnet-mode eglot-server-programs) #'dpc/jsonnet-lsp)
       (add-to-list 'eglot-server-programs
-                   `(jsonnet-mode . dpc/jsonnet-lsp)))))
+                   `(jsonnet-mode . dpc/jsonnet-lsp))))
+
+  ;; 20250406-1450
+  ;;
+  ;; When flycheck is enabled, it also
+  ;; invokes jsonnet to perform checks. By default it just passes the file to the
+  ;; jsonnet command. Scripts that import libraries from a different directory
+  ;; will cause the jsonnet command to barf. To fix that, emacs must pass the -J option
+  ;; to specify locations of jsonnet include libraries. There may be other command
+  ;; options, for example specifying external variables. (Not sure that is
+  ;; required for flycheck though). This modified checker command allows
+  ;; specification of those things. I filed a PR https://github.com/flycheck/flycheck/pull/2105
+  ;; but who knows if it will be merged.
+  ;;
+  ;; In the meantime, the following sets the flycheck command to use
+  ;; either the 'jsonnet-library-search-directories', or the special-to-flycheck variable
+  ;; 'flycheck-jsonnet-include-paths'.
+
+  ;; This is what I am not sure of:
+  ;;
+  ;; Does this need to be in the mode function (buffer local)?  or is it system-wide?
+  ;; If the flycheck-checker is evaluated each time in the buffer, then... this change
+  ;; can be made once, system-wide.
+  ;;
+  ;;(dino-fixup-jsonnet-command)
+  ;;(run-with-timer 3 nil #'dino-fixup-jsonnet-command)
+  )
+
+
+;; (defun dino-fixup-jsonnet-command ()
+;;   "For some reason, When I put this in the =dino-jsonnet-package-config= fn
+;; I get an error:
+;; Error (use-package): jsonnet-mode/:config: Symbol’s function definition
+;;    is void: \(setf\ flycheck-checker-get\)
+;;
+;; Putting it in this fn is an attempt to isolate and avoid the problem.
+;; Jeez.
+;; "
+;;   (interactive)
+;;
+;;
+;;   ;; (flycheck-define-checker jsonnet-for-dino
+;;   ;;   "A Python syntax and style checker using flake8"
+;;   ;;          :command ("flake8"
+;;   ;;                     "--format=default"
+;;   ;;                     (config-file "--config" flycheck-flake8rc)
+;;   ;;                     (option "--max-complexity" flycheck-flake8-maximum-complexity nil
+;;   ;;                       flycheck-option-int)
+;;   ;;                     (option "--max-line-length" flycheck-flake8-maximum-line-length nil
+;;   ;;                       flycheck-option-int)
+;;   ;;                     "-")
+;;   ;;          :standard-input t
+;;   ;;          :error-filter fix-flake8
+;;   ;;          :error-patterns
+;;   ;;          ((warning line-start
+;;   ;;             "stdin:" line ":" (optional column ":") " "
+;;   ;;             (id (one-or-more (any alpha)) (one-or-more digit)) " "
+;;   ;;             (message (one-or-more not-newline))
+;;   ;;             line-end))
+;;   ;;          :next-checkers ((t . python-pylint))
+;;   ;;          :modes python-mode)
+;;
+;;   ;;         ;; replace flake8 with new chaining one from above
+;;   ;;        (setq flycheck-checkers (cons 'python-flake8-chain (delq 'python-flake8 flycheck-checkers)))
+;;
+;;
+;;   ;; ALL I WANT TO DO IS REDEFINE THE COMMAND for AN EXISTING CHECKER BUT IT SEEMS IMPOSSIBLE.
+;;   ;; ALSO, IT MAY BE IRRELEVANT BECAUSE I AM USING EGLOT AND TURNING OFF FLYCHECK.
+;;
+;;   ;; testing for the function in an attempt to diagnose the weird error.
+;;   (if (functionp 'flycheck-checker-get)
+;;       (setf (flycheck-checker-get 'jsonnet 'command)
+;;             `("jsonnet"
+;;               (option-list "-J"
+;;                            (eval (or jsonnet-library-search-directories flycheck-jsonnet-include-paths)))
+;;               (eval
+;;                (or jsonnet-command-options flycheck-jsonnet-command-args))
+;;               source-inplace)))
+;;   )
 
 
 (use-package jsonnet-mode
-  :init (progn (require 'flycheck) (require 'eglot))
-  :ensure t
+  :init (progn (require 'flycheck) (require 'eglot) (require 'dpc-jsonnet-mode-fixups))
+  ;;:ensure t
   :defer t
-  :after (eglot dpc-jsonnet-mode-fixups flycheck)
-  :config
-  (progn
-    (dino-jsonnet-package-config)
-
-    ;; 20241230-2227
-    ;;
-    ;; flycheck does jsonnet checks. By default it just passes the file to the
-    ;; jsonnet command. Scripts that import libraries from a different directory
-    ;; will cause the jsonnet command to barf. To fix that, must pass the -J option
-    ;; to specify locations of jsonnet include libraries. There may be other command
-    ;; options, for example specifying external variables. (Not sure that is
-    ;; required for flycheck though). This modified checker command allows
-    ;; specification of those things. I filed a PR https://github.com/flycheck/flycheck/pull/2105
-    ;; but who knows if it will be merged. In the meantime, this will work.
-
-    (setf (flycheck-checker-get 'jsonnet 'command)
-          `("jsonnet"
-            (option-list "-J" flycheck-jsonnet-include-paths)
-            (eval flycheck-jsonnet-command-args)
-            source-inplace)))
-  ;; These variables can be set as file-local variables with a block like so:
-  ;;
-  ;; /* Local Variables:                                  */
-  ;; /* jsonnet-library-search-directories: ("./lib")     */
-  ;; /* jsonnet-command-options:   ("--ext-str" "xy=ab")  */
-  ;;
-  ;; /* flycheck-jsonnet-include-paths:  ("./lib")        */
-  ;; /* flycheck-jsonnet-command-args: ()              */
-  ;; /* End:                                              */
-
-  ;; There are actually two sets of variables carrying the same information; one
-  ;; for jsonnet-mode (used when evaluating the buffer), the other for flycheck.
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  :commands (jsonnet-eval-buffer jsonnet-mode jsonnet-reformat-buffer)
+  :config (dino-jsonnet-package-config)
   :mode (
          ("\\.libjsonnet\\'" . jsonnet-mode)
          ("\\.jsonnet\\'" . jsonnet-mode)
@@ -703,7 +755,6 @@
   :if (file-exists-p "~/elisp/dpc-jsonnet-mode-fixups.el")
   :load-path "~/elisp"
   :pin manual)
-
 
 ;; Tips from https://www.youtube.com/watch?v=p3Te_a-AGqM
 ;; for marking ever-larger regions iteratively
