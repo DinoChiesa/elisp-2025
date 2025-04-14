@@ -28,6 +28,28 @@
 ;; (defun ls-lisp-format-time (file-attr time-index now)
 ;;   "################")
 
+(defun dino-dired-available-switches ()
+  ;; On MacOS, the builtin ls program does not do the -X option. (lame)
+  ;; The MacPorts or brew versions of GNU ls does. If it exists, use it.
+  ;; the -X is used by dired-fixups for sorting by extension.
+  (cond
+   ((eq system-type 'darwin)
+    (let ((candidate-dirs (list "/opt/local/bin" "/usr/local/opt/coreutils/bin"))
+          (switches-to-use '("t" "U" "S" "")))
+      (while candidate-dirs
+        (let ((candidate (concat (file-name-as-directory (car candidate-dirs)) "gls")))
+          (if (file-exists-p candidate)
+
+              (setq ls-lisp-use-insert-directory-program t ;; unsure I need this
+                    switches-to-use '("t" "U" "S" "X" "")
+                    insert-directory-program candidate)))
+        (setq candidate-dirs (cdr candidate-dirs)))
+      switches-to-use))
+   ((eq system-type 'gnu/linux)
+    '("t" "U" "S" "X" ""))
+   (t
+    '("t" "U" "S" ""))))
+ 
 (defvar dino-dired-switches-to-cycle (dino-dired-available-switches) ;; eg '("t" "U" "S" "")
   "The one-character switches to cycle through for dired with `dired-toggle-sort'.
 The toggle scheme: cycle through these switches:  -t  -U -S, and (maybe) -X,
@@ -53,29 +75,7 @@ which is up to 10gb.  Some files are larger than that.
               (post-fixes (list "k" "M" "G" "T" "P" "E") (cdr post-fixes)))
           ((< f-size 1024) (format " %10.0f%s"  f-size (car post-fixes)))))))
 
-(defun dino-dired-available-switches ()
-  ;; On MacOS, the builtin ls program does not do the -X option. (lame)
-  ;; The MacPorts or brew versions of GNU ls does. If it exists, use it.
-  ;; the -X is used by dired-fixups for sorting by extension.
-  (cond
-   ((eq system-type 'darwin)
-    (let ((candidate-dirs (list "/opt/local/bin" "/usr/local/opt/coreutils/bin"))
-          (switches-to-use '("t" "U" "S" "")))
-      (while candidate-dirs
-        (let ((candidate (concat (file-name-as-directory (car candidate-dirs)) "gls")))
-          (if (file-exists-p candidate)
-
-              (setq ls-lisp-use-insert-directory-program t ;; unsure I need this
-                    switches-to-use '("t" "U" "S" "X" "")
-                    insert-directory-program candidate)))
-        (setq candidate-dirs (cdr candidate-dirs)))
-      switches-to-use))
-   ((eq system-type 'gnu/linux)
-    '("t" "U" "S" "X" ""))
-   (t
-    '("t" "U" "S" ""))))
-
-
+ 
 (defun dino-dired-next-sorting-switch (old)
   "returns the next sorting switch, a one-character string, after OLD"
   (let ((found (member old dino-dired-switches-to-cycle)))
