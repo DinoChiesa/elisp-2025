@@ -703,3 +703,9 @@ java.util.concurrent.ExecutorService
 java.util.concurrent.atomic.AtomicInteger
 com.google.protobuf.ByteString
 com.apigee.test.framework.utilities.ParallelRunner
+java.lang.InterruptedException
+org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
+org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
+org.bouncycastle.operator.ContentSigner
+org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
+java.security.SignatureException
