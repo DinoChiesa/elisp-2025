@@ -49,7 +49,7 @@
     '("t" "U" "S" "X" ""))
    (t
     '("t" "U" "S" ""))))
- 
+
 (defvar dino-dired-switches-to-cycle (dino-dired-available-switches) ;; eg '("t" "U" "S" "")
   "The one-character switches to cycle through for dired with `dired-toggle-sort'.
 The toggle scheme: cycle through these switches:  -t  -U -S, and (maybe) -X,
@@ -60,6 +60,7 @@ to sort by:
   -X = extension (not always available)
   default = name")
 
+(setf (symbol-function 'dino-dired-available-switches) nil)
 
 (defun ls-lisp-format-file-size (f-size human-readable)
   "This is a redefinition of the function from `dired.el'. This
@@ -75,7 +76,7 @@ which is up to 10gb.  Some files are larger than that.
               (post-fixes (list "k" "M" "G" "T" "P" "E") (cdr post-fixes)))
           ((< f-size 1024) (format " %10.0f%s"  f-size (car post-fixes)))))))
 
- 
+
 (defun dino-dired-next-sorting-switch (old)
   "returns the next sorting switch, a one-character string, after OLD"
   (let ((found (member old dino-dired-switches-to-cycle)))
