@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-13 21:20:35>
+;; Last saved: <2025-April-13 21:35:54>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -2070,13 +2070,11 @@ Use this function this way:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Dired mode
 
-(require 'dired)
-(require 'dino-dired-fixups)
-
 (defun dino-dired-mode-hook-fn ()
+  (require 'dino-dired-fixups)
   (hl-line-mode 1)
 
-  ;; do not want auto-revert.
+  ;; I do not want auto-revert.
   ;; It doesn't work completely, and it may have side effects.
   ;; ;; (turn-on-auto-revert-mode)
   ;; Anyway, there is a revert-on-timer thing provided in dired-fixups.el
@@ -2091,10 +2089,14 @@ Use this function this way:
   (dino-dired-sort-cycle "t") ;; by default, sort by time
   )
 
-(add-hook 'dired-mode-hook 'dino-dired-mode-hook-fn)
-
-;; eliminate the gid in dired on windows
-(setq ls-lisp-verbosity '(links uid))
+;;(add-hook 'dired-mode-hook 'dino-dired-mode-hook-fn)
+(use-package dired
+  :ensure nil
+  :config
+  (require 'dino-dired-fixups)
+  ;; eliminate the gid in dired when using ls-lisp (eg, on windows)
+  (setq ls-lisp-verbosity '(links uid))
+  :hook (dired-mode . dino-dired-mode-hook-fn))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
