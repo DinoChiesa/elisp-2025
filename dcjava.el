@@ -11,7 +11,7 @@
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
-;; Last-saved : <2025-April-05 20:02:58>
+;; Last-saved : <2025-April-19 23:49:01>
 ;;
 ;;; Commentary:
 ;;
@@ -669,7 +669,7 @@ specified directory for the jar file."
 (defun dcjava-gformat-buffer ()
   "runs google-java-format on the current buffer"
   (interactive)
-  (let ((command dcjava-gformat-command))
+  (let ((command (dcjava-gformat-command)))
     (if command
         (let ((savedpoint (point)))
           (dcjava-shell-command-on-buffer command)
