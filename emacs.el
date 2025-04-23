@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-13 21:35:54>
+;; Last saved: <2025-April-23 00:10:58>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -226,10 +226,13 @@
             ;; unnecessary. In my csharp-ts-mode-fn, I could just (setq-local
             ;; apheleia-formatter 'csharpier) ... to override the
             ;; apheleia-mode-alist lookup.
+            (setq apheleia-formatters (cl-remove-if (lambda (element)
+                                                      (eq (car element) 'csharpier))
+                                                    apheleia-formatters))
             (let ((cmd-list
                    (if (eq system-type 'windows-nt)
                        '("dotnet" "csharpier" "--write-stdout")
-                     '("dotnet-csharpier")
+                     '("csharpier" "format")
                      )))
               (push (cons 'csharpier cmd-list) apheleia-formatters))
             ;; To retrieve a formatter by name:
@@ -440,9 +443,6 @@
 ;; WSD mode - fontifications for editing websequence diagrams
 ;;
 (use-package wsd-mode
-  :if (file-exists-p "~/elisp/wsd-mode.el")
-  :load-path "~/elisp"
-  :pin manual
   :defer t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1636,6 +1636,53 @@ then switch to the markdown output buffer."
 ;; I am not sure what it gives me, while I am editing CSS. Completion?
 ;; Also I am not sure what css-ts-mode gives me? or does completion come from TS?
 
+(defun dino-css-mode-fn ()
+  "My hook for CSS mode"
+  (interactive)
+  ;; (turn-on-font-lock) ;; need this?
+  (company-mode)
+
+  (keymap-local-set "ESC C-R" #'indent-region)
+  (keymap-local-set "ESC #"   #'dino/indent-buffer)
+  (keymap-local-set "C-c C-w" #'compare-windows)
+  (keymap-local-set "C-c C-c" #'comment-region)
+  (keymap-local-set "ESC ." #'company-complete)
+
+  (turn-on-auto-revert-mode)
+
+  ;; use autopair for curlies, parens, square brackets.
+  ;; electric-pair-mode works better than autopair.el in 24.4,
+  ;; and is important for use with popup / auto-complete.
+  (electric-pair-mode)
+
+  (setq css-indent-offset 2)
+
+  ;; auto-complete mode is on globally
+  ;; make sure that <RETURN> is not an autocomplete key
+  ;; 20250421-2301
+  ;; (define-key ac-complete-mode-map "\r" nil)
+
+  ;; make auto-complete start only after 2 chars
+  ;; (setq ac-auto-start 2)  ;;or 3?
+  (apheleia-mode)
+
+  ;; to install the external checkers:
+  ;; sudo npm install -g csslint
+  ;; sudo npm install -g stylelint stylelint-config-standard stylelint-scss
+
+  (flycheck-mode)
+  (flycheck-select-checker
+   (if (string= mode-name "SCSS") 'scss-stylelint 'css-stylelint))
+
+  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
+
+  (display-line-numbers-mode)
+
+  ;; "no tabs" -- use only spaces
+  ;;(make-local-variable 'indent-tabs-mode)
+  (setq indent-tabs-mode nil) )
+
+
 (use-package css-mode
   :defer t
   :ensure nil
@@ -1652,58 +1699,11 @@ then switch to the markdown output buffer."
                         (config-file "--config" flycheck-stylelintrc))
               :standard-input t
               :error-parser #'flycheck-parse-stylelint
-              :modes (scss-mode ))
+              :modes (scss-mode css-mode))
 
             (when (boundp 'apheleia-mode-alist)
               (setf (alist-get 'css-mode apheleia-mode-alist) 'prettier-css)
               (setf (alist-get 'css-ts-mode apheleia-mode-alist) 'prettier-css))
-
-            (defun dino-css-mode-fn ()
-              "My hook for CSS mode"
-              (interactive)
-              ;; (turn-on-font-lock) ;; need this?
-              (company-mode)
-
-              (keymap-local-set "ESC C-R" #'indent-region)
-              (keymap-local-set "ESC #"   #'dino/indent-buffer)
-              (keymap-local-set "C-c C-w" #'compare-windows)
-              (keymap-local-set "C-c C-c" #'comment-region)
-              (keymap-local-set "ESC ." #'company-complete)
-
-              (turn-on-auto-revert-mode)
-
-              ;; use autopair for curlies, parens, square brackets.
-              ;; electric-pair-mode works better than autopair.el in 24.4,
-              ;; and is important for use with popup / auto-complete.
-              (if (not (fboundp 'version<))
-                  (progn (require 'autopair) (autopair-mode))
-                (electric-pair-mode))
-
-              (setq css-indent-offset 2)
-
-              ;; auto-complete mode is on globally
-              ;; make sure that <RETURN> is not an autocomplete key
-              (define-key ac-complete-mode-map "\r" nil)
-
-              ;; make auto-complete start only after 2 chars
-              (setq ac-auto-start 2)  ;;or 3?
-              (apheleia-mode)
-
-              ;; to install the external checkers:
-              ;; sudo npm install -g csslint
-              ;; sudo npm install -g stylelint stylelint-config-standard stylelint-scss
-
-              (flycheck-mode)
-              (flycheck-select-checker
-               (if (string= mode-name "SCSS") 'scss-stylelint 'css-csslint))
-
-              (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
-
-              (display-line-numbers-mode)
-
-              ;; "no tabs" -- use only spaces
-              ;;(make-local-variable 'indent-tabs-mode)
-              (setq indent-tabs-mode nil) )
 
             (add-hook 'css-ts-mode-hook 'dino-css-mode-fn)
             (add-hook 'css-mode-hook 'dino-css-mode-fn)))
@@ -4392,3 +4392,6 @@ color ready for next time.
 
 
 (message "Done with emacs.el...")
+;; Local Variables:
+;; byte-compile-warnings: (not free-vars unresolved)
+;; End:
