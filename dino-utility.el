@@ -54,8 +54,9 @@
 
 (require 's)
 (require 'cl-seq) ; for cl-remove-if-not
-;;(require 'package)
+(require 'cl-lib) ; For assoc-if
 (require 'json)
+(require 'memoize)
 
 (defconst dino--short-filename-regex "[A-Za-z]\\S+\\.[-A-Za-z0-9_]+"
   "regexp for a filename")
@@ -65,7 +66,6 @@
 
 (defconst dino--filename-edge-regex "[ \\!\?\"\.'#$%&*+/;<=>@^`|~]"
   "regexp for filename start")
-
 
 ;; ;; when copying binary files into a clipboard buffer
 ;; (fset 'dinoch-b64-copy
@@ -86,18 +86,6 @@
   (interactive)
   (let ((sort-fold-case t))
     (call-interactively 'sort-lines)))
-
-
-;; (defun dino-ensure-package-installed (&rest packages)
-;;   "For each package in the list of PACKAGES, check if it is installed. If not,
-;; ask for installation. Return the list of packages."
-;;   (mapcar
-;;    (lambda (package)
-;;      (unless (package-installed-p package)
-;;        (package-install package))
-;;      (use-package package))
-;;    packages))
-
 
 (defun dino-add-path-if-not-present (pathlist)
   "Add each directory in the PATHLIST to the system path and to `exec-path'.
@@ -611,6 +599,13 @@ filename."
   "return output of $(gcloud auth print-access-token)"
   (dino--gcloud-auth-print-token "access"))
 
+;; ====================================================================
+;; Replace the function value of `dino-gcloud-auth-print-access-token'
+;; with a memoized version. This makes restclient.el faster, for example.
+;; To restore the original:
+;;        (memoize-restore 'dino-gcloud-auth-print-access-token)
+(memoize 'dino-gcloud-auth-print-access-token "8 minutes")
+
 (defun dino-gcloud-auth-print-identity-token ()
   "return output of $(gcloud auth print-access-token)"
   (dino--gcloud-auth-print-token "identity"))
@@ -619,6 +614,8 @@ filename."
   "generate and return a new OAuth token for googleapis.com for a service account"
   ;; There is some problem with emacs and TLS v1.3
   ;; So we try turning it off.
+  ;; TODO 20250424-1831
+  ;; investigate whether this is still a problem in emacs v30
   (setq gnutls-algorithm-priority "NORMAL:-VERS-TLS1.3")
   (let ((project-id (dino-googleapis-project-id json-keyfile)))
     (and
