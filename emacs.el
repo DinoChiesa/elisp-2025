@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-23 00:10:58>
+;; Last saved: <2025-April-24 21:46:29>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -116,9 +116,13 @@
   (normal-top-level-add-subdirs-to-load-path))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; gonna need this string utility library
+;; some must-have utility things
 ;;
 (use-package s
+  :ensure t)
+
+(use-package memoize
+  :defer t
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -176,18 +180,19 @@
 ;; csharpier, shfmt, aider and more - need exec-path AND/or environment PATH to be set.
 ;; Any nodejs tool installed via "npm i -g" (eg ) should be on the path already.
 (dino/maybe-add-to-exec-path
- (list
-  "c:/Program Files/Git/usr/bin" ;; needed for diff, for apheleia
-  (dino/find-latest-nvm-version-bin-dir)
-  (concat (getenv "HOME") "/.dotnet/tools")
-  (concat (getenv "HOME") "/bin")
-  (concat (getenv "HOME") "/.local/bin");; aider
-  (concat (getenv "HOME") "/go/bin")
-  "/usr/local/bin"
-  "/usr/bin"
-  "/usr/lib/google-golang/bin"
-  "/usr/local/git/current/bin"
-  ))
+ (let ((home-dir (getenv "HOME")))
+   (list
+    "c:/Program Files/Git/usr/bin"     ;; for diff, for apheleia
+    (dino/find-latest-nvm-version-bin-dir)
+    (concat home-dir "/.dotnet/tools") ;; csharpier
+    (concat home-dir "/bin")
+    (concat home-dir "/.local/bin")    ;; aider
+    (concat home-dir "/go/bin")        ;; shfmt, jsonnetfmt
+    "/usr/local/bin"
+    "/usr/bin"
+    "/usr/lib/google-golang/bin"
+    "/usr/local/git/current/bin"
+    )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; apheleia - clever code reformatting for multiple languages.
@@ -443,7 +448,9 @@
 ;; WSD mode - fontifications for editing websequence diagrams
 ;;
 (use-package wsd-mode
-  :defer t)
+  :defer 13
+  :ensure t)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; magit
@@ -1257,7 +1264,7 @@ then switch to the markdown output buffer."
          ("\\.htm\\'"                           . html-mode)
          ("\\.md\\'"                            . markdown-mode)
          ("\\.py\\'"                            . python-ts-mode)
-         ("\\.dart\\'"                          . dart-mode)
+         ;;("\\.dart\\'"                          . dart-mode)
          ("\\.el\\'"                            . emacs-lisp-mode)
          ;;("\\.js$"                            . js-mode)
          ;;("\\.gs$"                            . js-mode)             ;; google apps-script
@@ -1944,7 +1951,7 @@ Use this function this way:
   ;;:load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
   ;;:load-path "~/newdev/elisp-projects/chatgpt-shell" ;; linux
   :commands (chatgpt-shell)
-  ;; :ensure t ;; restore this later if loading from (M)ELPA
+  :ensure t ;; restore this later if loading from (M)ELPA
   ;; :requires (dpc-gemini) - No. See note above.
 
   :config
@@ -1975,7 +1982,7 @@ Use this function this way:
 
   (dpc-cgs-setup)
   :catch
-  (lambda (keyword err)
+  (lambda (_keyword err)
     (message (format "chatgpt-shell init: %s" (error-message-string err)))))
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
