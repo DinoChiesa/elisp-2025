@@ -3,7 +3,7 @@
 ;; Author: Dino Chiesa
 ;; Created: Sat, 31 Mar 2012  10:31
 ;; Package-Requires: ()
-;; Version: 2017.03.01
+;; Version: 2025.04.29
 ;; URL: https://github.com/DinoChiesa/dpchiesa-elisp/blob/master/dino-dired-fixups.el
 ;; License: Public Domain
 ;; Keywords: dired
@@ -20,7 +20,7 @@
 ;; (require 'dino-dired-fixups)
 ;;
 
-(require 'cl)
+;;(require 'cl) ;; for?
 (require 'dired)
 (require 'dired-aux)
 (require 'ls-lisp)
@@ -97,9 +97,7 @@ With optional ARG, do not cycle. Instead just use that arg as the
 new switch. It should be one of [tUXS] . X is only legal on a
 platform with gls. Invoking with an optional arg can be useful
 when called from a dired-mode hook fn, to set the default /
-initial sort.
-
-"
+initial sort."
   (interactive)
   (setq dired-actual-switches
         (let (case-fold-search)
@@ -169,15 +167,15 @@ search modes defined in the new `dino-dired-sort-cycle'.
     (setq mode-name
           (let (case-fold-search)
             (cond ((string-match "^-[^t]*t[^t]*$" dired-actual-switches)
-                   "Dired by mtime")
+                   "Dired/mtime")
                   ((string-match "^-[^U]*U[^U]*$" dired-actual-switches)
-                   "Dired by ctime")
+                   "Dired/ctime")
                   ((string-match "^-[^X]*X[^X]*$" dired-actual-switches)
-                   "Dired by ext")
+                   "Dired/ext")
                   ((string-match "^-[^S]*S[^S]*$" dired-actual-switches)
-                   "Dired by sz")
+                   "Dired/sz")
                   ((string-match "^-[^SXUt]*$" dired-actual-switches)
-                   "Dired by name")
+                   "Dired/name")
                   (t
                    (concat "Dired " dired-actual-switches)))))
     (force-mode-line-update)))
@@ -198,8 +196,8 @@ prefix arg, the next N files "
     major-mode))
 
 (defun dino-dired-copy-or-move-other-window (operation)
-  "copy or move the marked files to another directory.
-OPERATION is a symbol, either 'COPY or 'MOVE .
+  "Copy or move the marked files to another directory.
+OPERATION is a symbol, either `COPY' or `MOVE' .
 This works with files or directories."
   (unless (eq major-mode 'dired-mode)
     (error "works only when current-buffer is in dired-mode"))
@@ -262,7 +260,7 @@ and quit.
   (dino-dired-copy-or-move-other-window 'COPY))
 
 
-;; Auto-update capability with timer
+;; Auto-update dired buffers with a timer.
 
 (defvar dired-file-modification-hash (make-hash-table :test 'equal))
 
@@ -303,6 +301,7 @@ for a given file or set of files. This function makes an intelligent guess."
              (initial
               (if (member ext '("png" "jpg" "gif"))
                   ;;(concat "open -a seashore " (car files))
+                  ;; TODO: fix. This works for macos but not other platforms.
                   (concat "open -a preview " (car files))
                 "")))
         (read-shell-command prompt initial))
@@ -331,9 +330,10 @@ for a given file or set of files. This function makes an intelligent guess."
 ;; The current doc string is not helpful.
 (defun dired-do-touch (&optional arg)
   "Change the timestamp of the marked (or next ARG) files.
-This calls touch. With prefix, accepts timestamp in [[CC]YY]MMDDhhmm[.SS] format.
-When invoked interactively, you can pull the current file timestamp of the file at
-point into the minibuffer, by typing M-n ."
+This calls touch. With prefix, accepts timestamp in
+[[CC]YY]MMDDhhmm[.SS] format.  When invoked interactively, you can pull
+the current file timestamp of the file at point into the minibuffer, by
+typing M-n ."
   (interactive "P")
   (dired-do-chxxx "Timestamp" dired-touch-program 'touch arg))
 
