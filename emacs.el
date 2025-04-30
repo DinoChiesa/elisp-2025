@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-30 03:47:42>
+;; Last saved: <2025-April-30 03:54:02>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1933,10 +1933,10 @@ Use this function this way:
 
 
 ;; 20250405-2235
-;; avoid flycheck warning about the following functions? This seems dumb.
-;; NB. In `use-package', The :requires keyword specifies a dependency, but _does not_ force load it.
-;; Rather, it prevents loading of THIS package unless the required feature is
-;; already loaded.
+;;
+;; NB. In `use-package', The :requires keyword specifies a dependency, but _does
+;; not_ force load it.  Rather, it prevents loading of THIS package unless the
+;; required feature is already loaded.
 
 (use-package chatgpt-shell
   :defer t
@@ -1953,6 +1953,7 @@ Use this function this way:
   ;; :requires (dpc-gemini) - No. See note above.
 
   :config
+  ;; avoid flycheck warning about the following functions? This seems dumb.
   (declare-function chatgpt-shell-google-toggle-grounding-with-google-search "ext:chatgpt-shell-google")
 
   (defun dino-chatgpt-shell-mode-fn ()
@@ -2225,19 +2226,6 @@ just auto-corrects on common mis-spellings by me."
     (message "dino-c-mode-common-hook-fn: done."))))
 
 (add-hook 'c-mode-common-hook 'dino-c-mode-common-hook-fn)
-
-
-;;;; This hook does an untabify upon opening.  maybe not desirable,
-;;;; because all newly opened buffers are marked as modified.
-;; (defun dino-c-mode-common-untabify ()
-;;   (save-excursion
-;;     (goto-char (point-min))
-;;     (while (re-search-forward "[ \t]+$" nil t)
-;;       (delete-region (match-beginning 0) (match-end 0)))
-;;     (goto-char (point-min))
-;;     (if (search-forward "\t" nil t)
-;;      (untabify (1- (point)) (point-max))))
-;;   nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
