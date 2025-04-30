@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-24 21:46:29>
+;; Last saved: <2025-April-30 03:47:42>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -390,8 +390,7 @@
 ;; feature of the builtin icomplete-mode.  It seems to be exactly equivalent to
 ;; the old independent module, though the configuration options are different.
 
-(use-package icomplete ;; -vertical
-  ;;:ensure t ;; it's builtin!
+(use-package icomplete
   :demand t
   :custom
   ;; For info: C-h v completion-styles-alist
@@ -419,19 +418,18 @@
 
   :bind (:map  icomplete-vertical-mode-minibuffer-map
                ;; icomplete-minibuffer-map <== for the non-vertical version
-
                ;; these are defaults, unnecessary
                ;; ("<down>" . icomplete-forward-completions)
                ;; ("C-n" . icomplete-forward-completions)
                ;; ("<up>" . icomplete-backward-completions)
                ;; ("C-p" . icomplete-backward-completions)
-               ("TAB"   . icomplete-force-complete)
-               ("RET"   . icomplete-force-complete-and-exit)
-               ("TAB"   . icomplete-force-complete)
-               ("C-v"   . icomplete-vertical-mode) ;; toggle
-               ("C-c ," . embark-act)
-               ("C-x"   . embark-export) ;; temporarily in the minibuffer
-               ("C-c ;" . embark-collect)
+               ("TAB"       . icomplete-force-complete)
+               ("RET"       . icomplete-force-complete-and-exit)
+               ("C-c C-j"   . exit-minibuffer) ;; exit without completion
+               ("C-v"       . icomplete-vertical-mode) ;; toggle
+               ("C-c ,"     . embark-act)
+               ("C-x"       . embark-export) ;; temporarily in the minibuffer
+               ("C-c ;"     . embark-collect)
                )
   )
 
