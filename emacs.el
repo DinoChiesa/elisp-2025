@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-30 03:54:02>
+;; Last saved: <2025-April-30 04:36:33>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -130,7 +130,9 @@
 ;;
 (use-package dino-utility
   :load-path "~/elisp"
-  :commands (dino/camel-to-snakecase-word-at-point dino/snake-to-camelcase-word-at-point dino/indent-buffer)
+  :commands (dino/camel-to-snakecase-word-at-point
+             dino/snake-to-camelcase-word-at-point
+             dino/indent-buffer)
   :autoload (dino/maybe-add-to-exec-path dino/find-latest-nvm-version-bin-dir)
   :config
   (add-hook 'before-save-hook 'dino/untabify-maybe))
@@ -480,7 +482,7 @@
             ;;(setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc jsonnet)) ;; why exclude jsonnet?
             (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
 
-            ;; The following is irrelevant because I've switched machines seevral times
+            ;; The following is irrelevant because I've switched machines several times
             ;; since this last worked.  and I don't use PHP much these days. But in the
             ;; future I might want to start again, so I am leaving this here.
             ;; (setq flycheck-phpcs-standard "Drupal") ;; DinoChiesa
@@ -547,12 +549,16 @@
   :config (eglot-booster-mode))
 
 ;; 20250324-1743
-;; There are two packages: aider.el and aidermacs.el .
+;; For aider, there are two packages: aider.el and aidermacs.el .
 ;; Both are active.
 ;;
 ;; aider.el seems less ambitious. aidermacs aims to integrate with
 ;; existing emacs stuff; uses ediff, for example.
 ;; Beyond that I don't have a good feel for the differences.
+;;
+;; Also, it is possible to use aider side-by-side with emacs with
+;; no elisp package at all.
+
 (use-package aidermacs
   :defer 35
   :bind (("C-c a" . aidermacs-transient-menu))
@@ -665,15 +671,15 @@ server program."
 
   ;; 20250406-1450
   ;;
-  ;; When flycheck is enabled, it also
-  ;; invokes jsonnet to perform checks. By default it just passes the file to the
-  ;; jsonnet command. Scripts that import libraries from a different directory
-  ;; will cause the jsonnet command to barf. To fix that, emacs must pass the -J option
-  ;; to specify locations of jsonnet include libraries. There may be other command
-  ;; options, for example specifying external variables. (Not sure that is
-  ;; required for flycheck though). This modified checker command allows
-  ;; specification of those things. I filed a PR https://github.com/flycheck/flycheck/pull/2105
-  ;; but who knows if it will be merged.
+  ;; When flycheck is enabled, it also invokes jsonnet to perform checks. By
+  ;; default it just passes the file to the jsonnet command. Scripts that import
+  ;; libraries from a different directory will cause the jsonnet command to
+  ;; barf. To fix that, emacs must pass the -J option to specify locations of
+  ;; jsonnet include libraries. There may be other command options, for example
+  ;; specifying external variables. (Not sure that is required for flycheck
+  ;; though). This modified checker command allows specification of those
+  ;; things. I filed a PR https://github.com/flycheck/flycheck/pull/2105 but who
+  ;; knows if it will be merged.
   ;;
   ;; In the meantime, the following sets the flycheck command to use
   ;; either the 'jsonnet-library-search-directories', or the special-to-flycheck variable
@@ -849,9 +855,11 @@ server program."
 ;; sh-mode
 
 (when (boundp 'apheleia-formatters)
-  (setcar (alist-get 'shfmt apheleia-formatters)
-          "~/go/bin/shfmt")
-  (push '(sh-mode . shfmt) apheleia-mode-alist))
+  (let ((shfmt-cmd "~/go/bin/shfmt"))
+    (when (file-exists-p shfmt-cmd)
+      (setcar (alist-get 'shfmt apheleia-formatters)
+              shfmt-cmd)
+      (push '(sh-mode . shfmt) apheleia-mode-alist))))
 
 (defun dino-sh-mode-fn ()
   (display-line-numbers-mode)
@@ -1096,26 +1104,32 @@ server program."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; markdown
+
+;; 20250116-1921
+;;
+;; The markdown utility is very outdated. The pandoc command is more up to date
+;; and more capable.  It is available on cloudtop only for now. (Install from
+;; https://github.com/jgm/pandoc/releases/tag/3.6.2) It would be easier if it
+;; were on the path, but it is not. So this sets the path explicitly.
+(let ((pandoc-path "~/pandoc-3.6.2/bin/pandoc"))
+  (when (file-exists-p pandoc-path)
+    (setq markdown-command pandoc-path)))
+
 (defun dpc-markdown-standalone ()
   "process the MD buffer with the markdown command-line tool,
 then switch to the markdown output buffer."
   (interactive)
-  ;; 20250116-1921
-  ;; The pandoc command is available on cloudtop only for now.
-  ;; Really it should be on the path. Install from
-  ;; https://github.com/jgm/pandoc/releases/tag/3.6.2
-  (let ((markdown-command "~/pandoc-3.6.2/bin/pandoc"))
-    (let ((buf-name (markdown-standalone))
-          (browse-url-browser-function 'eww-browse-url))
-      (switch-to-buffer-other-window buf-name)
-      (browse-url-of-buffer (get-buffer buf-name)))))
+  (let ((buf-name (markdown-standalone))
+        (browse-url-browser-function 'eww-browse-url))
+    (switch-to-buffer-other-window buf-name)
+    (browse-url-of-buffer (get-buffer buf-name))))
 
 (defun dino-markdown-mode-fn ()
   "My hook for markdown mode"
   (modify-syntax-entry ?_ "w")
   (auto-fill-mode -1)
   (keymap-local-set "C-c m s" #'dpc-markdown-standalone)
-  (keymap-local-set "C-c m |" #'markdown-table-align)
+  (keymap-local-set "C-c m |" #'markdown-table-align) ;; my favorite feature
   )
 
 (use-package markdown-mode
@@ -1131,6 +1145,7 @@ then switch to the markdown output buffer."
 (require 'httpget)
 
 
+;; 20250430-0416 - also not sure if I still use this.
 (require 'skeleton)
 
 ;; handle text end-of-line conventions the way it oughta be:
@@ -1245,7 +1260,6 @@ then switch to the markdown output buffer."
        '(
          ("\\.yaml\\'"                          . yaml-mode)
          ("\\.\\(war\\|ear\\|WAR\\|EAR\\)\\'"   . archive-mode)
-         ;;("\\.s?html?\\'"                     . nxhtml-mumamo-mode)
          ("\\(Iirf\\|iirf\\|IIRF\\)\\(Global\\)?\\.ini\\'"   . iirf-mode)
          ("\\.css\\'"                           . css-ts-mode)
          ("\\.proto\\'"                         . protobuf-mode)
@@ -1332,7 +1346,7 @@ then switch to the markdown output buffer."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; speedbar
-;; use sr-speedbar-open to open the speedbar window
+;; use sr-speedbar-open to open the speedbar window.
 
 (use-package sr-speedbar ;; put speedbar in same frame
   :ensure t
@@ -1536,7 +1550,7 @@ then switch to the markdown output buffer."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Lua
-;; 20250224-0130 - it's so rare that I use lua-mode
+;; 20250224-0130 - it's rare that I use lua-mode.
 
 (use-package lua-mode
   :defer 36
@@ -1773,7 +1787,7 @@ then switch to the markdown output buffer."
   :config
   (progn
     (thesaurus-set-bhl-api-key-from-file "~/elisp/.BigHugeLabs.apikey.txt")
-    (global-set-key "\C-c\C-t" 'thesaurus-choose-synonym-and-replace)))
+    (keymap-global-set "C-c C-t" #'thesaurus-choose-synonym-and-replace)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1796,7 +1810,7 @@ then switch to the markdown output buffer."
 (use-package dictionary
   :defer t
   :commands (dictionary-lookup-definition dictionary-search)
-  :config (global-set-key "\C-c\C-d"     'dictionary-lookup-definition)
+  :config (keymap-global-set "C-c C-d"  #'dictionary-lookup-definition)
   (setq dictionary-use-single-buffer t)
   (setq dictionary-server "dict.org")
   (custom-set-faces
@@ -1923,7 +1937,7 @@ Use this function this way:
           (completing-read
             \"New model: \"
             (dpc--cgs--model-completion-table candidates) nil t)))"
-  (lexical-let ((candidates candidates))
+  (let ((candidates candidates)) ;; lexical-let?
     (lambda (string pred action)
       (if (eq action 'metadata)
           `(metadata
@@ -2038,6 +2052,7 @@ Use this function this way:
             ;; specify the template to use for various filename regexi:
             (setq auto-insert-alist
                   (aip/fixup-auto-insert-alist
+                   ;; TODO: generate this alist dynamically from the files found in the directory.
                    '(
                      ("\\.cs$"                      .  "Template.cs" )
                      ("\\.css$"                     .  "Template.css" )
@@ -2077,19 +2092,12 @@ Use this function this way:
 ;; Dired mode
 
 (defun dino-dired-mode-hook-fn ()
-  (require 'dino-dired-fixups)
   (hl-line-mode 1)
-
-  ;; I do not want auto-revert.
-  ;; It doesn't work completely, and it may have side effects.
-  ;; ;; (turn-on-auto-revert-mode)
-  ;; Anyway, there is a revert-on-timer thing provided in dired-fixups.el
-
   (keymap-local-set "C-c C-g"  #'dino-dired-kill-new-file-contents)
   (keymap-local-set "C-c C-c"  #'dino-dired-copy-file-to-dir-in-other-window)
   (keymap-local-set "C-c C-m"  #'dino-dired-move-file-to-dir-in-other-window)
 
-  (keymap-local-set "K" #'dired-kill-subdir) ;; opposite of i (dired-maybe-insert-subdir)
+  (keymap-local-set "K"  #'dired-kill-subdir) ;; opposite of i (dired-maybe-insert-subdir)
   (keymap-local-set "F"  #'dino-dired-do-find)
   (keymap-local-set "s"  #'dino-dired-sort-cycle)
   (dino-dired-sort-cycle "t") ;; by default, sort by time
