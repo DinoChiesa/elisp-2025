@@ -171,19 +171,16 @@ org.apache.commons.codec.DecoderException
 org.apache.commons.codec.binary.Base64
 org.apache.commons.codec.binary.Base64InputStream
 org.apache.commons.codec.binary.Hex
-org.apache.commons.codec.binary.StringUtils
 org.apache.commons.codec.digest.DigestUtils
 org.apache.commons.io.FileUtils
 org.apache.commons.io.IOUtils
 org.apache.commons.lang.ArrayUtils
 org.apache.commons.lang.StringEscapeUtils
-org.apache.commons.lang.StringUtils
 org.apache.commons.lang.exception.ExceptionUtils
 org.apache.commons.lang.text.StrSubstitutor
 org.apache.commons.lang.time.FastDateFormat
 org.apache.commons.lang3.ArrayUtils
 org.apache.commons.lang3.StringEscapeUtils
-org.apache.commons.lang3.StringUtils
 org.apache.commons.lang3.exception.ExceptionUtils
 org.apache.commons.lang3.time.DateParser
 org.apache.commons.lang3.time.FastDateFormat
@@ -715,3 +712,7 @@ org.bouncycastle.asn1.x509.GeneralName
 org.bouncycastle.asn1.x509.GeneralNames
 java.util.Objects
 java.io.BufferedWriter
+org.bouncycastle.asn1.x509.ExtendedKeyUsage
+org.bouncycastle.asn1.x509.KeyUsage
+org.bouncycastle.asn1.x509.BasicConstraints
+org.bouncycastle.asn1.x509.KeyPurposeId
