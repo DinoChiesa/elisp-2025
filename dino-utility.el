@@ -53,8 +53,9 @@
 ;;; Code:
 
 (require 's)
-(require 'cl-seq) ; for cl-remove-if-not
-(require 'cl-lib) ; For assoc-if
+(require 'dash)   ;; for -every
+(require 'cl-seq) ;; for cl-remove-if-not
+(require 'cl-lib) ;; For assoc-if
 (require 'json)
 (require 'memoize)
 
@@ -202,7 +203,6 @@ provides a set of modes for which no untabify is desired.")
 
 ;;(setq dino-no-untabify-modes '(makefile-mode BSDmakefile))
 
-
 (defun dino/untabify-maybe ()
   "Untabify the current buffer, if the major-mode of the buffer is not
 in the list `dino-no-untabify-modes'
@@ -210,8 +210,8 @@ in the list `dino-no-untabify-modes'
   (interactive)
   (when (and (not indent-tabs-mode)
              (or (not dino-no-untabify-modes)
-                 (every '(lambda (m) (not (derived-mode-p m)))
-                        dino-no-untabify-modes)))
+                 (-every '(lambda (m) (not (derived-mode-p m)))
+                         dino-no-untabify-modes)))
 
     (untabify 0 (point-max))))
 
@@ -1707,6 +1707,24 @@ is just downcased, no preceding underscore."
 ;;              (numeric (/ (string-to-int text) 2)))
 ;;         (delete-region (car bounds) (cdr bounds))
 ;;         (insert (int-to-string numeric))))))
+
+
+(defun dino-indent-line-to-current-column ()
+  "Indent the current line to the current column of point.
+This function determines the column of the cursor (point) and
+then re-indents the current line so that its first non-whitespace
+character begins at that column. It effectively moves the
+beginning of the line's text to the cursor's horizontal position."
+  (interactive)
+  (let ((target-column (current-column)))
+    ;; indent-line-to inserts/deletes whitespace at the beginning
+    ;; of the line to make the first non-whitespace character
+    ;; appear at the specified column.
+    (indent-line-to target-column)))
+
+;; Example of how you might bind this to a key sequence, for example, C-c i
+;; (global-set-key (kbd "C-c i") 'indent-line-to-current-column)
+
 
 (provide 'dino-utility)
 
