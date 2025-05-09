@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-April-30 04:36:33>
+;; Last saved: <2025-May-08 17:05:53>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -2168,6 +2168,7 @@ just auto-corrects on common mis-spellings by me."
   (abbrev-mode 1)
   (dino-define-global-abbrev-table)
   (keymap-local-set "C-c C-c"  #'center-paragraph)
+  (keymap-local-set "C-c i"    #'dino-indent-line-to-current-column)
 
   ;;(variable-pitch-mode)
   ;;
@@ -4252,23 +4253,24 @@ color ready for next time.
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; server
+;; 20250508-1705
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; server
+;; ;;
+;; (require 'server)
+;; ;; see https://mina86.com/2021/emacs-remote/
+;; ;; if using server / daemon
+;; (setq server-port 17687
+;;       server-use-tcp t) ;; nil means use socket, not port (server-port is ignored)
+;; ;; If using server-port, tell emacsclient to find it there.
+;; ;;   alias e='emacsclient -f ~/.emacs.d/server/server -t -a ""'
+;; ;; Otherwise, emacsclient will look in /tmp/emacsSOMETHING for the socket.
 ;;
-(require 'server)
-;; see https://mina86.com/2021/emacs-remote/
-;; if using server / daemon
-(setq server-port 17687
-      server-use-tcp t) ;; nil means use socket, not port (server-port is ignored)
-;; If using servewr-port, tell emacsclient to find it there.
-;;   alias e='emacsclient -f ~/.emacs.d/server/server -t -a ""'
-;; Otherwise, emacsclient will look in /tmp/emacsSOMETHING for the socket.
-
-(if (not (eq t (server-running-p server-name)))
-    (server-start)
-  (if server-use-tcp
-      (message "server socket: %s" (expand-file-name server-name server-socket-dir)
-               #'external-debugging-output)))
+;; (if (not (eq t (server-running-p server-name)))
+;;     (server-start)
+;;   (if (not server-use-tcp)
+;;       (message "server socket: %s" (expand-file-name server-name server-socket-dir)
+;;                #'external-debugging-output)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
