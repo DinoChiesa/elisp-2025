@@ -1,9 +1,9 @@
 ;;; salted.el --- functions for opening files encrypted with "salt_file"
 ;;
-;; Copyright (c) 2019 Google LLC
+;; Copyright (c) 2019-2025 Google LLC
 ;;
 ;; Author: Dino Chiesa
-;; Version: 20191029
+;; Version: 20250517
 ;; Created: Monday, 28 October 2019, 16:15
 ;; Url: https://github.com/DinoChiesa/salted
 ;;
@@ -13,7 +13,7 @@
 ;; in .salted , this code will ask you for a passphrase and will decrypt the
 ;; file. Subsequent saves will re-encrypt the file.
 ;;
-;; To use it, get the salt_file utility from
+;; To use it, go get the salt_file utility from
 ;; https://github.com/DinoChiesa/salted. Then put the following in your
 ;; ~/.emacs:
 ;;
@@ -22,19 +22,24 @@
 ;;
 ;; Then just use emacs as normal, to open a file with a .salted extension.
 ;;
+;; To encrypt a file, open a plain text file, then
+;;    M-x salted-save-buffer-to-new-encrypted-file
+;;
 ;; NB: If you have "untabify" set in a before-save-hook, you need to remove or
 ;; disable it for buffers with .salted files; untabifying in the
 ;; before-save-hook can modify the ciphertext byte stream, which makes it
 ;; un-decryptable.
 ;;
-;;; Bugs:
-;;
-;; - there is no function to save an existing file as "salted", eg `salted-save-file'
 ;;
 ;;; Code:
 
+(require 'simple)
 
-(defvar salted--salt-file-utility "~/bin/salt_file"
+(defvar salted--salt-file-utility
+  (if (eq system-type 'windows-nt)
+      "~/bin/salt_file.exe"
+    "~/bin/salt_file")
+
   "The location of the salt_file utilty to encrypt and decrypt")
 
 (defvar salted--salt-file-passphrase ""
@@ -49,20 +54,69 @@
 ;;     (call-process-region (point-min) (point-max) salted--salt-file-utility
 ;;                          t t nil "-in" buffer-file-name "-out" "-" "-passphrase" passwd "-decrypt")))
 
-(defun salted-decrypt-buffer (passwd)
-  "decrypt the region"
+(defun salted-decrypt-buffer (&optional passphrase)
+  "decrypt the buffer"
+  (interactive (list (if current-prefix-arg
+                         ;; If a prefix argument is given (e.g., C-u M-x ...),
+                         ;; force prompting for the passphrase interactively.
+                         (read-passwd "passphrase: ")
+                       ;; Otherwise, provide nil as the initial argument.
+                       nil)))
+
+  ;; Check if the passphrase was provided. If not, prompt the user.
+  (unless (stringp passphrase)
+    (setq passphrase (read-passwd "passphrase: ")))
+
   (let ((coding-system-for-write 'no-conversion)
         (coding-system-for-read 'no-conversion))
     (call-process-region (point-min) (point-max) salted--salt-file-utility
-                         t t nil "-in" "-" "-out" "-" "-passphrase" passwd "-decrypt")))
+                         t t nil "-in" "-" "-out" "-" "-passphrase" passphrase "-decrypt")))
 
-(defun salted-encrypt-buffer-to-file (passwd)
-  "encrypt the region"
+(defun salted-encrypt-buffer-to-file (&optional passphrase)
+  "encrypt the buffer"
+  (interactive (list (if current-prefix-arg
+                         ;; If a prefix argument is given (e.g., C-u M-x ...),
+                         ;; force prompting for the passphrase interactively.
+                         (read-passwd "passphrase: ")
+                       ;; Otherwise, provide nil as the initial argument.
+                       nil)))
+
+  ;; Check if the passphrase was provided. If not, prompt the user.
+  (unless (stringp passphrase)
+    (setq passphrase (read-passwd "passphrase: ")))
+
   (message "encrypting to (%s)" buffer-file-name)
   (let ((coding-system-for-write 'no-conversion)
         (coding-system-for-read 'no-conversion))
     (call-process-region (point-min) (point-max) salted--salt-file-utility
-                         t t nil "-in" "-" "-out" "-" "-passphrase" passwd)))
+                         t t nil "-in" "-" "-out" "-" "-passphrase" passphrase)))
+
+(defun salted-save-buffer-to-new-encrypted-file (&optional passphrase)
+  "save the buffer in encrypted form to a new .salted file"
+  (interactive (list (if current-prefix-arg
+                         ;; If a prefix argument is given (e.g., C-u M-x ...),
+                         ;; force prompting for the passphrase interactively.
+                         (read-passwd "passphrase: ")
+                       ;; Otherwise, provide nil as the initial argument.
+                       nil)))
+
+  (let ((file-path (buffer-file-name)))
+    (if file-path
+        (let ((out-file-path (concat file-path ".salted")))
+
+          ;; Check if the passphrase was provided. If not, prompt the user.
+          (unless (stringp passphrase)
+            (setq passphrase (read-passwd "passphrase: ")))
+
+          (message "encrypting to (%s)" out-file-path)
+          (let ((coding-system-for-write 'no-conversion)
+                (coding-system-for-read 'no-conversion))
+            (call-process-region (point-min) (point-max) salted--salt-file-utility
+                                 t t nil "-in" "-" "-out"
+                                 out-file-path "-passphrase" passphrase)))
+      (message "buffer is not visiting a file - cannot encrypt"))))
+
+
 
 (define-generic-mode 'salted-file-mode
   (list ?#)
