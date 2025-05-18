@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-17 18:06:18>
+;; Last saved: <2025-May-18 12:36:43>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -132,8 +132,10 @@
   :load-path "~/elisp"
   :commands (dino/camel-to-snakecase-word-at-point
              dino/snake-to-camelcase-word-at-point
-             dino/indent-buffer)
-  :autoload (dino/maybe-add-to-exec-path dino/find-latest-nvm-version-bin-dir)
+             dino/indent-buffer
+             dino/indent-line-to-current-column
+             dino-shfmt-buffer)
+  :autoload (dino/maybe-add-to-exec-path dino/find-latest-nvm-version-bin-dir dino/setup-shmode-for-apheleia)
   :config
   (add-hook 'before-save-hook 'dino/untabify-maybe))
 
@@ -854,58 +856,18 @@ server program."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sh-mode
 
-(when (boundp 'apheleia-formatters)
-  (let ((shfmt-cmd "~/go/bin/shfmt"))
-    (when (file-exists-p shfmt-cmd)
-      (setcar (alist-get 'shfmt apheleia-formatters)
-              shfmt-cmd)
-      (push '(sh-mode . shfmt) apheleia-mode-alist))))
-
 (defun dino-sh-mode-fn ()
   (display-line-numbers-mode)
   (setq sh-basic-offset 2)
   (sh-electric-here-document-mode)
-  (when (boundp 'apheleia-formatters)
-    (apheleia-mode))
-  (keymap-local-set "C-c C-g"  #'dino-shfmt-buffer)
-  (keymap-local-set "C-c C-c"  #'comment-region)
-  )
+
+  (apheleia-mode)
+  (dino/setup-shmode-for-apheleia)
+
+  (keymap-local-set "C-c C-g"  #'dino/shfmt-buffer)
+  (keymap-local-set "C-c C-c"  #'comment-region))
+
 (add-hook 'sh-mode-hook 'dino-sh-mode-fn)
-
-(defun dino-shfmt-buffer ()
-  "run shfmt on the current buffer."
-  (interactive)
-  (let ((shfmt-cmd "~/go/bin/shfmt"))
-    (when (file-exists-p shfmt-cmd)
-      (let ((orig-point (point))
-            (command
-             (mapconcat 'identity
-                        `( ,shfmt-cmd
-                           "--filename" ,(buffer-file-name) "-ln"
-                           ,(cl-case
-                                (bound-and-true-p sh-shell)
-                              (sh "posix")
-                              (t "bash"))
-                           "-i"
-                           ,(number-to-string
-                             (cond
-                              ((boundp 'sh-basic-offset)
-                               sh-basic-offset)
-                              (t 4)))
-                           "-")
-                        " "))
-            (output-goes-to-current-buffer t)
-            (output-replaces-current-content t))
-
-        (message "shfmt-buffer command: %s" command)
-        (save-excursion
-          (shell-command-on-region (point-min)
-                                   (point-max)
-                                   command
-                                   output-goes-to-current-buffer
-                                   output-replaces-current-content))
-        (goto-char orig-point)))))
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1472,7 +1434,6 @@ then switch to the markdown output buffer."
     (interactive)
     (turn-on-font-lock)
     (turn-on-auto-revert-mode)
-    ;;(linum-on) ;; marked obsolete in 29.1
     (display-line-numbers-mode)
     (yaml-pretty-mode)
     ;;(make-local-variable 'indent-tabs-mode)
@@ -1490,7 +1451,6 @@ then switch to the markdown output buffer."
   (keymap-local-set "ESC C-R" #'indent-region)
   (turn-on-auto-revert-mode)
   (setq typescript-indent-level 2)
-  ;;(linum-on) ;; marked obsolete in 29.1
   (display-line-numbers-mode)
   (auto-fill-mode -1)
   )
@@ -1517,7 +1477,6 @@ then switch to the markdown output buffer."
   (defun dino-powershell-mode-fn ()
     (electric-pair-mode 1)
     (hs-minor-mode t)
-    ;;(linum-on) ;; marked obsolete in 29.1
     (display-line-numbers-mode)
     (dino-enable-delete-trailing-whitespace)
     )
@@ -2168,7 +2127,7 @@ just auto-corrects on common mis-spellings by me."
   (abbrev-mode 1)
   (dino-define-global-abbrev-table)
   (keymap-local-set "C-c C-c"  #'center-paragraph)
-  (keymap-local-set "C-c i"    #'dino-indent-line-to-current-column)
+  (keymap-local-set "C-c i"    #'dino/indent-line-to-current-column)
 
   ;;(variable-pitch-mode)
   ;;
@@ -3265,7 +3224,6 @@ Does not consider word syntax tables.
   ;; for hide/show support
   (hs-minor-mode 1)
   (setq hs-isearch-open t)
-  ;;(linum-on) ;; marked obsolete in 29.1
   (display-line-numbers-mode)
 
   (keymap-local-set "ESC C-R" #'indent-region)
@@ -3344,12 +3302,15 @@ Does not consider word syntax tables.
 ;; to highlight trailing whitespace
 ;;
 (use-package highlight-chars
+  :load-path "~/elisp"
   :defer t
+  :commands (hc-toggle-highlight-trailing-whitespace)
+  :autoload (hc-highlight-trailing-whitespace)
   :config (progn
             (defun dino-enable-highlight-trailing-ws-based-on-extension ()
               "turns on highlighting of trailing whitespace based on file extension"
               (let ((extension (file-name-extension buffer-file-name))
-                    (extensions-that-get-highlighting '("md" "css" "java" "js" "go") ))
+                    (extensions-that-get-highlighting '("md" "css" "java" "js" "go" "py" "ts") ))
                 (if (member extension extensions-that-get-highlighting)
                     (hc-highlight-trailing-whitespace))))
 
@@ -3374,6 +3335,7 @@ Does not consider word syntax tables.
   (hl-line-mode 1)
   (turn-on-auto-revert-mode)
   (display-line-numbers-mode)
+  (hc-highlight-trailing-whitespace)
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
   (apheleia-mode)
@@ -3400,13 +3362,13 @@ Does not consider word syntax tables.
   (keymap-local-set "ESC C-R" #'indent-region)
   (keymap-local-set "ESC #"   #'dino/indent-buffer)
   (keymap-local-set "C-c C-c" #'comment-region)
-
+  (keymap-local-set "C-c C-d" #'delete-trailing-whitespace)
   ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
   (keymap-local-set "C-c C-w"  #'compare-windows)
 
   (set (make-local-variable 'indent-tabs-mode) nil)
-  ;;(linum-on) ;; marked obsolete in 29.1
   (display-line-numbers-mode)
+  (hc-highlight-trailing-whitespace)
 
   ;; Use autopair for curlies, parens, square brackets.
   ;; electric-pair-mode works better than autopair.el in 24.4,
