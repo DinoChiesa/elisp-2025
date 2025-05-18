@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-08 17:05:53>
+;; Last saved: <2025-May-17 18:06:18>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -3832,8 +3832,13 @@ color ready for next time.
 ;; salted files
 (use-package salted
   :defer t
+  :load-path "~/elisp"
+  :commands (salted-encrypt-buffer-to-new-file salted-file-mode)
   :config
-  (setq salted--salt-file-utility "~/go/src/github.com/DinoChiesa/salted/salt_file"))
+  (setq salted--salt-file-utility
+        (if (eq system-type 'windows-nt)
+            "~/go/src/github.com/DinoChiesa/salted/salt_file.exe"
+          "~/go/src/github.com/DinoChiesa/salted/salt_file")))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
