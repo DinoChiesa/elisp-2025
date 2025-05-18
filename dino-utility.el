@@ -1530,16 +1530,20 @@ if the item exists as a directory and is not already present."
         (env-paths (split-string (getenv "PATH") ":")))
     (dolist (path paths)
       (when (and path (file-directory-p path))
-        (let ((normalized-path (file-truename path)))
+        (let (was-modified
+              (normalized-path (file-truename path)))
           ;; I am not sure if I need both `exec-path' and the PATH environment variable.
           (when (not (member normalized-path exec-path))
-            (message (format "  adding %s to exec-path" normalized-path))
+            (setq was-modified (cons "exec-path" was-modified))
             (add-to-list 'exec-path normalized-path)
             (setq exec-path-was-modified t))
           (when (not (member normalized-path env-paths))
-            (message (format "  adding %s to PATH" normalized-path))
+            (setq was-modified (cons "PATH" was-modified))
             (add-to-list 'env-paths normalized-path)
-            (setq path-was-modified t)))))
+            (setq path-was-modified t))
+          (if was-modified
+              (message (format "add %s to %s" normalized-path was-modified)))
+          )))
     (when path-was-modified
       (setenv "PATH"  (mapconcat 'identity env-paths ":"))
       (message (format "updated PATH %s" (getenv "PATH"))))
