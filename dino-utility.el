@@ -5,7 +5,7 @@
 ;; Package-Requires: (package)
 ;; URL:
 ;; X-URL:
-;; Version: 2025.04.05
+;; Version: 2025.05.18
 ;; Keywords: utility
 ;; License: New BSD
 
@@ -1709,7 +1709,7 @@ is just downcased, no preceding underscore."
 ;;         (insert (int-to-string numeric))))))
 
 
-(defun dino-indent-line-to-current-column ()
+(defun dino/indent-line-to-current-column ()
   "Indent the current line to the current column of point.
 This function determines the column of the cursor (point) and
 then re-indents the current line so that its first non-whitespace
@@ -1723,7 +1723,60 @@ beginning of the line's text to the cursor's horizontal position."
     (indent-line-to target-column)))
 
 ;; Example of how you might bind this to a key sequence, for example, C-c i
-;; (global-set-key (kbd "C-c i") 'indent-line-to-current-column)
+;; (global-set-key (kbd "C-c i") #'dino/indent-line-to-current-column)
+
+
+(defun dino/setup-shmode-for-apheleia ()
+  "make sure shfmt is in the list of `apheleia-formatters' and make sure
+shfmt is the command that will be run."
+  (when (boundp 'apheleia-formatters)
+    (if-let* ((shfmt-cmd "~/go/bin/shfmt")
+              (cmd-exists (file-exists-p shfmt-cmd))
+              (cmd-string (alist-get 'shfmt apheleia-formatters)))
+        (if (not (string= cmd-string shfmt-cmd))
+            (setcar (alist-get 'shfmt apheleia-formatters)
+                    shfmt-cmd))
+      ;; The following isn't quite right. I'd like to use this
+      ;; formatter regardless, I think.  But i dunno, maybe in the future
+      ;; there will be some better formatter and I won't want shfmt.
+      ;; So for now I'll leave this as is.
+      (unless (assq 'sh-mode apheleia-mode-alist)
+        (push '(sh-mode . shfmt) apheleia-mode-alist)))))
+
+(defun dino-shfmt-buffer ()
+  "run shfmt on the current buffer."
+  (interactive)
+  (let ((shfmt-cmd "~/go/bin/shfmt"))
+    (when (file-exists-p shfmt-cmd)
+      (let ((orig-point (point))
+            (command
+             (mapconcat 'identity
+                        `( ,shfmt-cmd
+                           "--filename" ,(buffer-file-name) "-ln"
+                           ,(cl-case
+                                (bound-and-true-p sh-shell)
+                              (sh "posix")
+                              (bash "bash")
+                              (t "bash"))
+                           "-i"
+                           ,(number-to-string
+                             (cond
+                              ((boundp 'sh-basic-offset)
+                               sh-basic-offset)
+                              (t 4)))
+                           "-")
+                        " "))
+            (output-goes-to-current-buffer t)
+            (output-replaces-current-content t))
+
+        (message "shfmt-buffer command: %s" command)
+        (save-excursion
+          (shell-command-on-region (point-min)
+                                   (point-max)
+                                   command
+                                   output-goes-to-current-buffer
+                                   output-replaces-current-content))
+        (goto-char orig-point)))))
 
 
 (provide 'dino-utility)
