@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-08 17:05:53>
+;; Last saved: <2025-May-18 12:28:56>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -854,22 +854,33 @@ server program."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sh-mode
 
-(when (boundp 'apheleia-formatters)
-  (let ((shfmt-cmd "~/go/bin/shfmt"))
-    (when (file-exists-p shfmt-cmd)
-      (setcar (alist-get 'shfmt apheleia-formatters)
-              shfmt-cmd)
-      (push '(sh-mode . shfmt) apheleia-mode-alist))))
+(defun dino-setup-shmode-for-apheleia ()
+  (interactive)
+  (when (boundp 'apheleia-formatters)
+    (if-let* ((shfmt-cmd "~/go/bin/shfmt")
+              (cmd-exists (file-exists-p shfmt-cmd))
+              (cmd-string (alist-get 'shfmt apheleia-formatters)))
+        (if (not (string= cmd-string shfmt-cmd))
+            (setcar (alist-get 'shfmt apheleia-formatters)
+                    shfmt-cmd))
+      ;; The following isn't quite right. I'd like to use this
+      ;; formatter regardless, I think.  But i dunno, maybe in the future
+      ;; there will be some better formatter and I won't want shfmt.
+      ;; So for now I'll leave this as is.
+      (unless (assq 'sh-mode apheleia-mode-alist)
+        (push '(sh-mode . shfmt) apheleia-mode-alist)))))
 
 (defun dino-sh-mode-fn ()
   (display-line-numbers-mode)
   (setq sh-basic-offset 2)
   (sh-electric-here-document-mode)
-  (when (boundp 'apheleia-formatters)
-    (apheleia-mode))
+
+  (apheleia-mode)
+  (dino-setup-shmode-for-apheleia)
+
   (keymap-local-set "C-c C-g"  #'dino-shfmt-buffer)
-  (keymap-local-set "C-c C-c"  #'comment-region)
-  )
+  (keymap-local-set "C-c C-c"  #'comment-region))
+
 (add-hook 'sh-mode-hook 'dino-sh-mode-fn)
 
 (defun dino-shfmt-buffer ()
@@ -885,6 +896,7 @@ server program."
                            ,(cl-case
                                 (bound-and-true-p sh-shell)
                               (sh "posix")
+                              (bash "bash")
                               (t "bash"))
                            "-i"
                            ,(number-to-string
@@ -905,7 +917,6 @@ server program."
                                    output-goes-to-current-buffer
                                    output-replaces-current-content))
         (goto-char orig-point)))))
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1472,7 +1483,6 @@ then switch to the markdown output buffer."
     (interactive)
     (turn-on-font-lock)
     (turn-on-auto-revert-mode)
-    ;;(linum-on) ;; marked obsolete in 29.1
     (display-line-numbers-mode)
     (yaml-pretty-mode)
     ;;(make-local-variable 'indent-tabs-mode)
@@ -1490,7 +1500,6 @@ then switch to the markdown output buffer."
   (keymap-local-set "ESC C-R" #'indent-region)
   (turn-on-auto-revert-mode)
   (setq typescript-indent-level 2)
-  ;;(linum-on) ;; marked obsolete in 29.1
   (display-line-numbers-mode)
   (auto-fill-mode -1)
   )
@@ -1517,7 +1526,6 @@ then switch to the markdown output buffer."
   (defun dino-powershell-mode-fn ()
     (electric-pair-mode 1)
     (hs-minor-mode t)
-    ;;(linum-on) ;; marked obsolete in 29.1
     (display-line-numbers-mode)
     (dino-enable-delete-trailing-whitespace)
     )
@@ -3265,7 +3273,6 @@ Does not consider word syntax tables.
   ;; for hide/show support
   (hs-minor-mode 1)
   (setq hs-isearch-open t)
-  ;;(linum-on) ;; marked obsolete in 29.1
   (display-line-numbers-mode)
 
   (keymap-local-set "ESC C-R" #'indent-region)
@@ -3344,12 +3351,15 @@ Does not consider word syntax tables.
 ;; to highlight trailing whitespace
 ;;
 (use-package highlight-chars
+  :load-path "~/elisp"
   :defer t
+  :commands (hc-toggle-highlight-trailing-whitespace)
+  :autoload (hc-highlight-trailing-whitespace)
   :config (progn
             (defun dino-enable-highlight-trailing-ws-based-on-extension ()
               "turns on highlighting of trailing whitespace based on file extension"
               (let ((extension (file-name-extension buffer-file-name))
-                    (extensions-that-get-highlighting '("md" "css" "java" "js" "go") ))
+                    (extensions-that-get-highlighting '("md" "css" "java" "js" "go" "py" "ts") ))
                 (if (member extension extensions-that-get-highlighting)
                     (hc-highlight-trailing-whitespace))))
 
@@ -3374,6 +3384,7 @@ Does not consider word syntax tables.
   (hl-line-mode 1)
   (turn-on-auto-revert-mode)
   (display-line-numbers-mode)
+  (hc-highlight-trailing-whitespace)
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
   (apheleia-mode)
@@ -3400,13 +3411,13 @@ Does not consider word syntax tables.
   (keymap-local-set "ESC C-R" #'indent-region)
   (keymap-local-set "ESC #"   #'dino/indent-buffer)
   (keymap-local-set "C-c C-c" #'comment-region)
-
+  (keymap-local-set "C-c C-d" #'delete-trailing-whitespace)
   ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
   (keymap-local-set "C-c C-w"  #'compare-windows)
 
   (set (make-local-variable 'indent-tabs-mode) nil)
-  ;;(linum-on) ;; marked obsolete in 29.1
   (display-line-numbers-mode)
+  (hc-highlight-trailing-whitespace)
 
   ;; Use autopair for curlies, parens, square brackets.
   ;; electric-pair-mode works better than autopair.el in 24.4,
