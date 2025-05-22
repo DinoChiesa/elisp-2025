@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-18 12:36:43>
+;; Last saved: <2025-May-21 19:04:14>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -390,9 +390,47 @@
 ;; This package is old but good and actively maintained.  icomplete-vertical WAS
 ;; a third-party thing: https://github.com/oantolin/icomplete-vertical , and
 ;; it's also still available on MELPA.  Be aware when searching for
-;; configuration hints: As of emacs 28, icomplete-vertical-mode is just a
-;; feature of the builtin icomplete-mode.  It seems to be exactly equivalent to
-;; the old independent module, though the configuration options are different.
+;; configuration hints: As of emacs 28, icomplete-vertical-mode is now a feature
+;; of the builtin icomplete-mode.  It gives equivalent or better behavior as
+;; compared to the old independent module, though the configuration options are
+;; different.
+
+;; 20250521-1755
+(defun dpc--sort-alpha-but-dot-slash-last (candidates)
+  "Sort a list of CANDIDATES alphabetically, except that  \"./\"
+always appears at the end.
+
+This is intended for use as a `cycle-sort-function' for
+the `file' category in `completion-category-overrides', like so:
+
+   (setq completion-category-overrides
+         `((buffer
+            (styles . (initials flex))
+            (cycle . 10))
+           (file
+            (styles . (basic substring))
+            (cycle-sort-function . ,#'dpc--sort-alpha-but-dot-slash-last)
+            (cycle . 10))
+           (symbol-help
+            (styles basic shorthand substring))))
+
+Without this, the default behavior of `icomplete-vertical-mode' when
+used with `find-file' is to show the list of candidates sorted by length
+of the filename and then alphabetically, which seems confounding and
+user-hostile to me.  The implementation for that is in
+`completion-all-sorted-completions' which is defined in minibuffer.el;
+it uses a function called `minibuffer--sort-by-length-alpha'. (headslap)
+
+TODO: add key bindings to the `icomplete-vertical-mode-minibuffer-map'
+that invoke commands to alter this sorting. Eg, by file mtime, or by
+filename extension. That might be YAGNI.
+"
+  (sort candidates
+        (lambda (a b)
+          (cond
+           ((string= a "./") nil)
+           ((string= b "./") t)
+           (t (string< a b))))))
 
 (use-package icomplete
   :demand t
@@ -401,15 +439,25 @@
   (completion-styles '(flex partial-completion substring)) ;; flex initials basic
   (completion-category-overrides
    '((buffer
-      (styles initials flex)
-      (cycle . 10)) ;; C-h v completion-cycle-threshold
+      (styles  . (initials flex))
+      (cycle   . 10)) ;; C-h v completion-cycle-threshold
      (file
-      (styles basic substring)
-      (cycle . 10))
+      (styles              . (basic substring))
+      ;; When doing completion using completion tables, there is a concept called
+      ;; "metadata", which includes sorting functions among other stuff; to learn more about
+      ;; that see `completion-metadata'.
+      ;;
+      ;; display-sort-function is not used in find-file. This is not documented AFAICT. I
+      ;; discovered this fact by wallowing in source code specifically in
+      ;; `completion-all-sorted-completions' in minibuffer.el which reads the
+      ;; cycle-sort-function but ignores display-sort-function.  Actually I don't know why
+      ;; there are two sort functions, but it's emacs, so of course there are two different
+      ;; sort functions.
+      (cycle-sort-function . ,#'dpc--sort-alpha-but-dot-slash-last)
+      (cycle               . 10))
      (symbol-help
       (styles basic shorthand substring))))
   (read-file-name-completion-ignore-case t)
-  ;;(icomplete-vertical-prospects-height 10) ;; 10 is the default ;; not supported by BUILTIN module
   (read-buffer-completion-ignore-case t)
   (completion-ignore-case t)
   (max-mini-window-height 0.2)
@@ -421,8 +469,8 @@
   (icomplete-vertical-mode)
 
   :bind (:map  icomplete-vertical-mode-minibuffer-map
-               ;; icomplete-minibuffer-map <== for the non-vertical version
-               ;; these are defaults, unnecessary
+               ;; icomplete-minibuffer-map <== use this for the non-vertical version.
+               ;; The following 4 bindings are defaults, unnecessary to set here:
                ;; ("<down>" . icomplete-forward-completions)
                ;; ("C-n" . icomplete-forward-completions)
                ;; ("<up>" . icomplete-backward-completions)
@@ -430,7 +478,9 @@
                ("TAB"       . icomplete-force-complete)
                ("RET"       . icomplete-force-complete-and-exit)
                ("C-c C-j"   . exit-minibuffer) ;; exit without completion
-               ("C-v"       . icomplete-vertical-mode) ;; toggle
+               ("C-v"       . icomplete-vertical-mode) ;; toggle - need this? I don't remember ever wanting this.
+
+               ;; I installed & enabled embark, but I never use it. (shrug)
                ("C-c ,"     . embark-act)
                ("C-x"       . embark-export) ;; temporarily in the minibuffer
                ("C-c ;"     . embark-collect)
@@ -2085,11 +2135,13 @@ just auto-corrects on common mis-spellings by me."
       ("somehting" "something" nil 1)
       ("deprectaed" "deprecated" nil 0)
       ("APigee" "Apigee" nil 1)
+      ("Gmeini" "Gemini" nil 1)
       ("hting" "thing" nil 1)
       ("rigueur" "rigeuer" nil 1)
       ("riguer" "rigeuer" nil 1)
       ("submint" "submit" nil 1)
       ("rwquest" "request" nil 1)
+      ("request" "requets" nil 1)
       ("hygeine" "hygiene" nil 0)
       ("laucnhed" "launched" nil 0)
       ("supproted" "supported" nil 0)
