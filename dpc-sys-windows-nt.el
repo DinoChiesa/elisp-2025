@@ -2,7 +2,7 @@
 ;;
 ;; Author: Dino Chiesa
 ;; Created: Saturday,  8 March 2025, 19:52
-;; Package-Requires: (package)
+;; Package-Requires: (package s)
 ;; URL:
 ;; X-URL:
 ;; Version: 2025.03.08
@@ -10,6 +10,8 @@
 ;; License: New BSD
 
 ;;; Commentary:
+
+(require 's)
 
 (defun dpc-windows-nt-shortpath (s)
   "Resolves paths containing spaces (like paths starting from \"c:\\program files\")
