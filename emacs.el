@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-21 19:04:14>
+;; Last saved: <2025-May-21 19:39:57>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -438,7 +438,7 @@ filename extension. That might be YAGNI.
   ;; For info: C-h v completion-styles-alist
   (completion-styles '(flex partial-completion substring)) ;; flex initials basic
   (completion-category-overrides
-   '((buffer
+   `((buffer
       (styles  . (initials flex))
       (cycle   . 10)) ;; C-h v completion-cycle-threshold
      (file
