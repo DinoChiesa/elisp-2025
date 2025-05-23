@@ -1736,7 +1736,7 @@ shfmt is the command that will be run."
   (when (boundp 'apheleia-formatters)
     (if-let* ((shfmt-cmd "~/go/bin/shfmt")
               (cmd-exists (file-exists-p shfmt-cmd))
-              (cmd-string (alist-get 'shfmt apheleia-formatters)))
+              (cmd-string (car (alist-get 'shfmt apheleia-formatters))))
         (if (not (string= cmd-string shfmt-cmd))
             (setcar (alist-get 'shfmt apheleia-formatters)
                     shfmt-cmd))
@@ -1745,7 +1745,10 @@ shfmt is the command that will be run."
       ;; there will be some better formatter and I won't want shfmt.
       ;; So for now I'll leave this as is.
       (unless (assq 'sh-mode apheleia-mode-alist)
-        (push '(sh-mode . shfmt) apheleia-mode-alist)))))
+        (push '(sh-mode . shfmt) apheleia-mode-alist))
+      (unless (assq 'bash-ts-mode apheleia-mode-alist)
+        (push '(bash-ts-mode . shfmt) apheleia-mode-alist))
+      )))
 
 (defun dino-shfmt-buffer ()
   "run shfmt on the current buffer."
