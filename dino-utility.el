@@ -76,6 +76,17 @@
 ;; (fset 'dinoch-b64-paste
 ;;       [escape ?x ?r backspace ?e ?r ?a ?s ?e ?- ?b ?u tab return ?\C-y escape ?x ?b ?a ?s ?e ?6 ?4 ?- ?d ?e ?c ?o tab return ?\C-x ?\C-s])
 
+(defun dino/find-executable-in-paths (filename search-paths)
+  "Finds the first fully qualified path of FILENAME within SEARCH-PATHS.
+Returns nil if the executable is not found.
+
+FILENAME is the name of the executable (e.g., \"program.exe\").
+SEARCH-PATHS is a list of directories to search, in order."
+  (-first #'file-executable-p
+          (-map (lambda (dir)
+                  (expand-file-name filename dir))
+                search-paths)))
+
 (defun dino-fixup-linefeeds ()
   "Dino's function to replace the CR-LF of a DOS ASCII file to a LF for Unix."
   (interactive)
@@ -1750,7 +1761,7 @@ shfmt is the command that will be run."
         (push '(bash-ts-mode . shfmt) apheleia-mode-alist))
       )))
 
-(defun dino-shfmt-buffer ()
+(defun dino/shfmt-buffer ()
   "run shfmt on the current buffer."
   (interactive)
   (let ((shfmt-cmd "~/go/bin/shfmt"))

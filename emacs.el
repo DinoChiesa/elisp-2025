@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-22 17:54:36>
+;; Last saved: <2025-May-22 20:02:14>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -134,8 +134,11 @@
              dino/snake-to-camelcase-word-at-point
              dino/indent-buffer
              dino/indent-line-to-current-column
-             dino-shfmt-buffer)
-  :autoload (dino/maybe-add-to-exec-path dino/find-latest-nvm-version-bin-dir dino/setup-shmode-for-apheleia)
+             dino/shfmt-buffer)
+  :autoload (dino/maybe-add-to-exec-path
+             dino/find-latest-nvm-version-bin-dir
+             dino/setup-shmode-for-apheleia
+             dino/find-executable-in-paths)
   :config
   (add-hook 'before-save-hook 'dino/untabify-maybe))
 
@@ -1270,6 +1273,7 @@ then switch to the markdown output buffer."
 (setq auto-mode-alist
       (append
        '(
+         ("\\.salted\\'"                        . salted-file-mode)
          ("\\.yaml\\'"                          . yaml-mode)
          ("\\.\\(war\\|ear\\|WAR\\|EAR\\)\\'"   . archive-mode)
          ("\\(Iirf\\|iirf\\|IIRF\\)\\(Global\\)?\\.ini\\'"   . iirf-mode)
@@ -3851,9 +3855,12 @@ color ready for next time.
   :commands (salted-encrypt-buffer-to-new-file salted-file-mode)
   :config
   (setq salted--salt-file-utility
-        (if (eq system-type 'windows-nt)
-            "~/go/src/github.com/DinoChiesa/salted/salt_file.exe"
-          "~/go/src/github.com/DinoChiesa/salted/salt_file")))
+        (dino/find-executable-in-paths
+         (if (eq system-type 'windows-nt)
+             "salt_file.exe"
+           "salt_file")
+         '("~/bin" "~/go/src/github.com/DinoChiesa/salted"))))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
