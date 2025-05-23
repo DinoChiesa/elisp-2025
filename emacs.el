@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-21 19:39:57>
+;; Last saved: <2025-May-22 17:54:36>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1261,10 +1261,10 @@ then switch to the markdown output buffer."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; adjustment to mode mappings
 ;;
-;; NB: In the regexp's, the trailing \\' represents "end of string".
-;; The $ represents the zero-width place before newline.  They are
-;; equivalent unless there is a filename with a new line in it (not
-;; likely).
+;; NB: In the regexi, the trailing \\' represents "end of string".  The $
+;; represents the zero-width place before newline.  They are equivalent unless
+;; there is a filename with a new line in it, which is possible but dumb, and not
+;; likely. Even so, we use the \\'.
 ;;
 
 (setq auto-mode-alist
@@ -1274,6 +1274,7 @@ then switch to the markdown output buffer."
          ("\\.\\(war\\|ear\\|WAR\\|EAR\\)\\'"   . archive-mode)
          ("\\(Iirf\\|iirf\\|IIRF\\)\\(Global\\)?\\.ini\\'"   . iirf-mode)
          ("\\.css\\'"                           . css-ts-mode)
+         ("\\.\\(bashrc\\|profile\\|bash_aliases\\|bash_functions\\|bash_logout\\)\\'"  . bash-ts-mode)
          ("\\.proto\\'"                         . protobuf-mode)
          ("\\.\\(php\\|module\\)\\'"            . php-mode)
          ("\\.md\\'"                            . markdown-mode)
@@ -3907,7 +3908,7 @@ color ready for next time.
   ;;:ensure t
   :defer t
   :init
-  :mode ("\.pl$" . cperl-mode)
+  :mode ("\\.pl\\'" . cperl-mode)
   :config
   (progn
     (defconst my-cperl-style
