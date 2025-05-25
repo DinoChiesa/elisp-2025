@@ -1678,13 +1678,10 @@ is just downcased, no preceding underscore."
     (let* ((bounds (bounds-of-thing-at-point 'word))
            (start (car bounds))
            (end (cdr bounds)))
-      (goto-char start)
-      (let ((case-fold-search nil))
-        (while (re-search-forward "\\([A-Z]\\)" end t)
-          (let ((lc-char (downcase (match-string 0))))
-            (if (eq (match-beginning 0) start)
-                (replace-match lc-char t t)
-              (replace-match (concat "_" lc-char) t t))))))))
+      (replace-regexp "\\([A-Z]\\)" "_\\1" nil start end)
+      (goto-char (1- end))
+      (downcase-region start
+                       (cdr (bounds-of-thing-at-point 'word))))))
 
 (defun dino/snake-to-camelcase-word-at-point ()
   "camelCase the snake_case word at point."
