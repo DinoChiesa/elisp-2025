@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-25 15:10:46>
+;; Last saved: <2025-May-25 16:18:39>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -678,7 +678,7 @@ filename extension. That might be YAGNI.
   :config
   ;; Enable minor mode for Aider files
   (aidermacs-setup-minor-mode)
-  (setenv "AIDER_WEAK_MODEL" "gemini/2.5-pro-exp-03-25")
+  (setenv "AIDER_WEAK_MODEL" "gemini/2.5-flash-preview-05-20")
   (setenv "AIDER_EDITOR_MODEL" "gemini/2.5-pro-exp-03-25")
 
   :custom
@@ -1935,10 +1935,10 @@ then switch to the markdown output buffer."
   :ensure nil
   ;; autoloads defined in local modules don't work. That mechanism works only if the
   ;; package is published via elpa.
-  :commands (dpc-gemini/set-api-key-from-file dpc-gemini/get-gemini-api-key dpc-gemini/ask-gemini)
+  :commands (dpc-gemini/read-settings-from-properties-file dpc-gemini/get-gemini-api-key dpc-gemini/ask-gemini)
 
   :config (progn
-            (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
+            (dpc-gemini/read-settings-from-properties-file)
             (keymap-global-set "C-c g ?" #'dpc-gemini/ask-gemini)
             (keymap-global-set "C-c g a" #'dpc-gemini/ask-gemini)
             (keymap-global-set "C-c g l" #'dpc-gemini/list-models)
@@ -1955,13 +1955,13 @@ then switch to the markdown output buffer."
 
 (defun dpc-gptel-setup ()
   "Invoked when gptel is loaded."
-  (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
+  (dpc-gemini/read-settings-from-properties-file)
   (gptel-make-gemini "Gemini"
     :key (dpc-gemini/get-gemini-api-key)
     :stream t)
 
   ;; load my prompts
-  (let ((prompt-file "~/elisp/.gptel-prompts"))
+  (let ((prompt-file (expand-file-name "~/elisp/.gptel-prompts")))
     (when (file-exists-p prompt-file)
       (condition-case err
           (let ((prompts-data (with-temp-buffer
@@ -2072,10 +2072,11 @@ Use this function this way:
 
   (defun dpc-cgs-setup ()
     "Invoked when chatgpt-shell is loaded."
-    (dpc-gemini/set-api-key-from-file "~/elisp/.google-gemini-apikey")
+    (dpc-gemini/read-settings-from-properties-file)
     (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
     (chatgpt-shell-google-load-models) ;; Google models change faster than cgs.
-    (setq chatgpt-shell-model-version "gemini-2.5-pro-exp-03-25") ;; default model
+    ;; default model
+    (setq chatgpt-shell-model-version dpc-gemini-selected-model)
 
     ;; I proposed a change for sorting in cgs when swapping models, but xenodium
     ;; rejected it, saying people who wanted sorting should D-I-Y. So here is my D-I-Y sorting.
