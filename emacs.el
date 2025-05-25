@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-24 16:24:57>
+;; Last saved: <2025-May-25 15:10:46>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -272,12 +272,19 @@
   (define-key company-active-map (kbd "S-TAB") (lambda () (interactive) (company-complete-common-or-cycle -1))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; company-box
+;;
+;; front-end for company, for presentation.
+
 (use-package company-box
   :defer t
   :after (company)
   :hook (company-mode . company-box-mode))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; indent-bars
+;; helpful for yaml and json and etc.
 (use-package indent-bars
   :defer 19
   :ensure t)
@@ -454,7 +461,7 @@ filename extension. That might be YAGNI.
   (completion-styles '(flex partial-completion substring)) ;; flex initials basic
 
   (completion-category-overrides
-   ;; I couldn't find where the categories were defined, but Gemini told me this:
+   ;; I couldn't find where the "builtin" categories were defined, but Gemini told me this:
    ;;
    ;;   file: file names (e.g., C-x C-f, find-file)
    ;;   buffer: buffer-names (e.g., C-x b, switch-to-buffer).
@@ -465,6 +472,8 @@ filename extension. That might be YAGNI.
    ;;   symbol: A more general category that might apply to various Emacs Lisp symbols.
    ;;   unicode-name: Used when completing Unicode character names (e.g., C-x 8 RET, insert-char).
    ;;   info-menu: Used when completing Info manual nodes.
+   ;;
+   ;; Also, the use of custom categories is possible.
    `((buffer
       (styles  . (initials flex))
       (cycle   . 10)) ;; C-h v completion-cycle-threshold
@@ -490,7 +499,7 @@ filename extension. That might be YAGNI.
   (read-file-name-completion-ignore-case t)
   (read-buffer-completion-ignore-case t)
   (completion-ignore-case t)
-  (max-mini-window-height 0.2)
+  (max-mini-window-height 0.3)
   (icomplete-prospects-height 15)
   (icomplete-show-matches-on-no-input t)
 
@@ -1992,7 +2001,10 @@ then switch to the markdown output buffer."
 ;; Anthropic Claude, DeepSeek Chat, and others via comint in emacs.
 ;;
 
-(defun dpc-cgs--model-sort (candidates) (sort candidates :lessp #'string<))
+(defun dpc-cgs--model-sort (candidates)
+  "Sorts the model candidate by name"
+  ;;(message "model candidates: %s" (prin1-to-string candidates))
+  (sort candidates :lessp #'string<))
 
 (defun dpc--cgs--model-completion-table (candidates)
   "Returns a function to be used as the COMPLETIONS parameter in
@@ -2011,12 +2023,18 @@ Use this function this way:
           (completing-read
             \"New model: \"
             (dpc--cgs--model-completion-table candidates) nil t)))"
-  (let ((candidates candidates)) ;; lexical-let?
+  (let ((candidates candidates))
     (lambda (string pred action)
       (if (eq action 'metadata)
           `(metadata
-            (cycle-sort-function . ,#'dpc-cgs--model-sort)
-            (display-sort-function . ,#'dpc-cgs--model-sort))
+            ;; 20250525-1500 I thnk all that is necessary to get sort to work is
+            ;; specifying the right category here (llm-model) and having the
+            ;; right cycle sort function in `completion-category-overrides'.
+            (category . llm-model)
+
+            ;;(cycle-sort-function . ,#'dpc-cgs--model-sort)
+            ;;(display-sort-function . ,#'dpc-cgs--model-sort)
+            )
         (complete-with-action action candidates string pred)))))
 
 
@@ -2058,8 +2076,18 @@ Use this function this way:
     (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
     (chatgpt-shell-google-load-models) ;; Google models change faster than cgs.
     (setq chatgpt-shell-model-version "gemini-2.5-pro-exp-03-25") ;; default model
+
     ;; I proposed a change for sorting in cgs when swapping models, but xenodium
     ;; rejected it, saying people who wanted sorting should D-I-Y. So here is my D-I-Y sorting.
+    ;; The completion-table specifies `llm-model' as the category.
+    ;; So I need to add that category to `completion-category-overrides', and the
+    ;; right sorting will happen.  What I found is that sorting after filtering
+    ;; happens correctly only with this category override.
+    (add-to-list 'completion-category-overrides
+                 `(llm-model
+                   (styles . (substring))
+                   (cycle-sort-function . ,#'dpc-cgs--model-sort)))
+
     (setq chatgpt-shell-swap-model-selector
           (lambda (candidates)
             (completing-read "Swap to: "
@@ -3918,6 +3946,35 @@ color ready for next time.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Github GraphQL mode
 (autoload 'gh-graphql-mode "gh-graphql")
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; rfc-mode
+;;
+;; Search & Complete on titles for IETF RFCs in the minibuffer,
+;; and retrieve with a keystroke.
+
+(use-package rfc-mode
+  :defer 38
+  :commands (rfc-mode-browse)
+  :config
+  (setq rfc-mode-directory (expand-file-name "~/ietf-rfcs/"))
+
+  (defun dpc/rfc-mode-browse-advice (orig-fn &rest args)
+    "Advice for `rfc-mode-browse' to temporarily set `max-mini-window-height'."
+    (let ((old-max-mini-window-height max-mini-window-height))
+      (unless (file-directory-p rfc-mode-directory)
+        (message "Directory '%s' does not exist, creating it..." rfc-mode-directory)
+        (make-directory rfc-mode-directory t)       )
+      (setq max-mini-window-height 0.8) ; e.g., 80% of frame height
+      (unwind-protect
+          (apply orig-fn args)
+        ;; Restore the original value after the original function completes
+        (setq max-mini-window-height old-max-mini-window-height))))
+
+  (advice-add 'rfc-mode-browse :around #'dpc/rfc-mode-browse-advice))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
