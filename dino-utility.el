@@ -1127,7 +1127,9 @@ Eg,
 
 
 (defun dino-copy-value-from-key-into-killring (key)
-  "Extract a value from the secure keystore into the killring, using the given KEY to do the lookup."
+  "Extract a value from the secure keystore into the killring, using the
+given KEY to do the lookup. I no longer use this password store. "
+
   ;; eg, (dino-copy-value-from-key-into-killring "box-personal")
   (interactive "skey: ")
   (let ((buf (get-buffer "pwds.txt.gpg"))
@@ -1500,7 +1502,6 @@ The first line is indented with INDENT-STRING."
                    "  ]\n"
                    "}\n"))))))
 
-
 (defun dino-read-globals-from-jshintrc ()
   "read globals from jshintrc file"
   (let ((jshintrc (dino-jshintrc-find)))
@@ -1512,7 +1513,6 @@ The first line is indented with INDENT-STRING."
                  (globals (assoc "globals" json)))
             (mapcar 'car (cdr globals))
             )))))
-
 
 (defun dino-buganizer-open ()
   "Convert buganizer ticket to description"
@@ -1599,9 +1599,9 @@ Compare to `file-exists-p' which returns t or nil."
        (file-exists-p file-or-dir-name)
        file-or-dir-name))
 
-(defun dino-get-or-guess-nvm-dir ()
-  "gets the NVM home directory based on either environment variables, or
-guessing a directory. The env vars and guessing is different,
+(defun dino--get-or-guess-nvm-dir ()
+  "gets the NVM home directory based on either environment variables,
+or guessing a directory. The env vars and guessing is different,
 based on platform. On Windows, the (system) environment variable
 is likely to suffice, but on Linux that might not be the case."
   (cond
@@ -1626,8 +1626,10 @@ There appears to be no easy way to determine where node is
 installed with nvm.  nvm is a shell _function_, so I cannot run
 it as a shell command. (Result: \"nvm: command not found\")
 
- There is a location for NVM.  It is either in $NVM_HOME (Windows) or $NVM_DIR (linux).
- Why they used different environment variables, no one knows. On linux, NVM_DIR holds something like
+There is a location for NVM.  It is either in $NVM_HOME (Windows) or
+$NVM_DIR (linux).  Why they used different environment variables, no
+one knows. On linux, NVM_DIR holds something like
+
    /home/dchiesa/.config/nvm
    /usr/local/google/home/dchiesa/.nvm
 
@@ -1640,12 +1642,11 @@ On Windows, NVM_HOME holds something like
 
 and within there, directories named like vxx.yy.z for v22.11.0 , etc.
 
-This function searches those dirs, sorts those based on the name, and selects
-the last item found. It returns the fully qualified path of the bin directory of the
-latest version of node under management by nvm, or nil if none is found.
-
-"
-  (let ((starting-dir (dino-get-or-guess-nvm-dir))
+This function searches those dirs, sorts those based on the name, and
+selects the last item found. It returns the fully qualified path of the
+bin directory of the latest version of node under management by nvm, or
+nil if none is found."
+  (let ((starting-dir (dino--get-or-guess-nvm-dir))
         (regex
          (dino-escape-braces-in-regex "v[0-9]{2}\\.[0-9]{2}\\.[0-9]+"))
         (map-fn
@@ -1695,6 +1696,57 @@ is just downcased, no preceding underscore."
         (while (re-search-forward "_\\([a-z]\\)" end t)
           (replace-match (upcase (match-string 1)) t t))))))
 
+
+(defun dino/sort-words-in-region (begin end &optional case-insensitive)
+  "Sort words in the region from BEGIN to END.
+Words are separated by any whitespace. The sorted words are
+rejoined with a single space.
+If CASE-INSENSITIVE is non-nil, sorting is case-insensitive.
+
+This command can be called interactively by selecting a region
+and then running `M-x my-sort-words-in-region`.
+Prefix argument `C-u` makes the sort case-insensitive."
+  (interactive "r\nP") ; "r" means region start/end; "P" for prefix argument (C-u)
+
+  ;; If prefix argument is non-nil, set case-insensitive to t
+  (setq case-insensitive (if case-insensitive t nil))
+
+  (when (called-interactively-p 'any)
+    ;; Check if region is active
+    (unless (region-active-p)
+      (error "No region active. Please select a region first.")))
+
+  (let* ((region-string (buffer-substring-no-properties begin end))
+         (words (split-string region-string "[[:space:]]+" t)) ; Split by many spaces, discard empty strings
+         (sorted-words (if case-insensitive
+                           (sort words #'string-lessp) ; Case-insensitive comparison
+                         (sort words #'string<)))     ; Case-sensitive comparison
+         (new-string (string-join sorted-words " "))) ; Join with a single space
+
+    (delete-region begin end)
+    (insert new-string)))
+
+(defun dino/show-packages-considered-removable ()
+  "show packages that `package' thinks are removable.
+It figured this by finding each installed package that is installed
+but is not present in `package-selected-packages' (normally set in .emacs , the
+via customization), and also is not a dependency of one of those packages.
+See also `package-autoremove' which purports to remove the packages.
+There is no function to tell the user _these are the removable packages._
+
+One way for a package to be installed but not present in the variable is
+when it gets installed via `use-package' with \":ensure t\".
+
+"
+  (interactive)
+  (let ((removable (package--removable-packages)))
+    (if removable
+        (message
+         (format "Packages to delete: %d (%s) "
+                 (length removable)
+                 (mapconcat #'symbol-name removable " ")))
+      (message "no packages are 'removable'")
+      )))
 
 ;; (defun word-as-number-2x ()
 ;;   "Convert word (As a number) at point to 2x"
