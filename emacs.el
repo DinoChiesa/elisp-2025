@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-22 20:02:14>
+;; Last saved: <2025-May-24 16:24:57>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -41,7 +41,7 @@
 (setq visible-bell nil)
 (setq ring-bell-function `(lambda ()
                             (set-face-background 'default "DodgerBlue")
-                            (sit-for 0.007)
+                            (sit-for 0.002)
                             (set-face-background 'default "black")))
 
 (setq scroll-error-top-bottom t) ;; move cursor when scrolling not possible
@@ -259,10 +259,18 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; company
+;;
+;; COMPlete-ANYthing.
+
 (use-package company
   :defer 31
   :config
-  (define-key company-mode-map "<TAB>" 'company-complete))
+  ;; Not sure why we need both "TAB" and "<tab>".
+  (define-key company-active-map (kbd "TAB") #'company-complete-common-or-cycle)
+  (define-key company-active-map (kbd "<tab>") #'company-complete-common-or-cycle)
+  (define-key company-active-map (kbd "S-TAB") (lambda () (interactive) (company-complete-common-or-cycle -1))))
+
 
 (use-package company-box
   :defer t
@@ -351,40 +359,40 @@
 
 (global-hl-line-mode)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; embark
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; embark
+;; ;;
+;; ;; This is sort of a helper that provides hints for things you might want to do
+;; ;; with candidates. For examine in a minibuffer presenting a list of buffers or
+;; ;; files or functions, there is a set of things you might want to do with it.
+;; ;; For example, M-x find-file  ja C-x  will
+;; ;; - find file (prompt you)
+;; ;; - present files matching ja*
+;; ;; - C-x will be embark-export the list into a new Embark buffer, and you can
+;; ;;    then C-; (embark-act) on any of those items or a combination of those items.
+;; ;;
+;; ;; 20250405-2010 - This sounds neat but so far I am not using it very much.
+;; ;;
+;; (use-package embark
+;;   :ensure t
+;;   :demand t
+;;   :defer t
 ;;
-;; This is sort of a helper that provides hints for things you might want to do
-;; with candidates. For examine in a minibuffer presenting a list of buffers or
-;; files or functions, there is a set of things you might want to do with it.
-;; For example, M-x find-file  ja C-x  will
-;; - find file (prompt you)
-;; - present files matching ja*
-;; - C-x will be embark-export the list into a new Embark buffer, and you can
-;;    then C-; (embark-act) on any of those items or a combination of those items.
+;;   :bind
+;;   (("C-c ," . embark-act)         ;; pick some comfortable binding
+;;    ("C-c ;" . embark-dwim)        ;; good alternative: M-.
+;;    ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
 ;;
-;; 20250405-2010 - This sounds neat but so far I am not using it very much.
+;;   :init
+;;   ;; Optionally replace the key help with a completing-read interface
+;;   (setq prefix-help-command #'embark-prefix-help-command)
 ;;
-(use-package embark
-  :ensure t
-  :demand t
-  :defer t
-
-  :bind
-  (("C-c ," . embark-act)         ;; pick some comfortable binding
-   ("C-c ;" . embark-dwim)        ;; good alternative: M-.
-   ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
-
-  :init
-  ;; Optionally replace the key help with a completing-read interface
-  (setq prefix-help-command #'embark-prefix-help-command)
-
-  :config
-  ;; Hide the mode line of the Embark live/completions buffers
-  (add-to-list 'display-buffer-alist
-               '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
-                 nil
-                 (window-parameters (mode-line-format . none)))))
+;;   :config
+;;   ;; Hide the mode line of the Embark live/completions buffers
+;;   (add-to-list 'display-buffer-alist
+;;                '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+;;                  nil
+;;                  (window-parameters (mode-line-format . none)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -392,11 +400,11 @@
 ;;
 ;; This package is old but good and actively maintained.  icomplete-vertical WAS
 ;; a third-party thing: https://github.com/oantolin/icomplete-vertical , and
-;; it's also still available on MELPA.  Be aware when searching for
-;; configuration hints: As of emacs 28, icomplete-vertical-mode is now a feature
+;; it's also still available on MELPA, but as of emacs 28, it is now a feature
 ;; of the builtin icomplete-mode.  It gives equivalent or better behavior as
 ;; compared to the old independent module, though the configuration options are
-;; different.
+;; slightly different.
+
 
 ;; 20250521-1755
 (defun dpc--sort-alpha-but-dot-slash-last (candidates)
@@ -410,6 +418,9 @@ the `file' category in `completion-category-overrides', like so:
          `((buffer
             (styles . (initials flex))
             (cycle . 10))
+           (command
+            (styles . (substring))
+            (cycle-sort-function . ,#'dpc--sort-alpha-but-dot-slash-last))
            (file
             (styles . (basic substring))
             (cycle-sort-function . ,#'dpc--sort-alpha-but-dot-slash-last)
@@ -419,10 +430,11 @@ the `file' category in `completion-category-overrides', like so:
 
 Without this, the default behavior of `icomplete-vertical-mode' when
 used with `find-file' is to show the list of candidates sorted by length
-of the filename and then alphabetically, which seems confounding and
-user-hostile to me.  The implementation for that is in
-`completion-all-sorted-completions' which is defined in minibuffer.el;
-it uses a function called `minibuffer--sort-by-length-alpha'. (headslap)
+of the filename and then alphabetically. Similarly for commands, when
+using M-x. This seems counter-intuitive and user-hostile to me. The
+implementation for that is in `completion-all-sorted-completions' which
+is defined in minibuffer.el; it uses a function called
+`minibuffer--sort-by-length-alpha'. (headslap)
 
 TODO: add key bindings to the `icomplete-vertical-mode-minibuffer-map'
 that invoke commands to alter this sorting. Eg, by file mtime, or by
@@ -440,10 +452,25 @@ filename extension. That might be YAGNI.
   :custom
   ;; For info: C-h v completion-styles-alist
   (completion-styles '(flex partial-completion substring)) ;; flex initials basic
+
   (completion-category-overrides
+   ;; I couldn't find where the categories were defined, but Gemini told me this:
+   ;;
+   ;;   file: file names (e.g., C-x C-f, find-file)
+   ;;   buffer: buffer-names (e.g., C-x b, switch-to-buffer).
+   ;;   command: commands (eg, M-x, execute-extended-command).
+   ;;   variable: (e.g., C-h v, describe-variable).
+   ;;   function:  (e.g., C-h f, describe-function).
+   ;;   face: (e.g., M-x customize-face).
+   ;;   symbol: A more general category that might apply to various Emacs Lisp symbols.
+   ;;   unicode-name: Used when completing Unicode character names (e.g., C-x 8 RET, insert-char).
+   ;;   info-menu: Used when completing Info manual nodes.
    `((buffer
       (styles  . (initials flex))
       (cycle   . 10)) ;; C-h v completion-cycle-threshold
+     (command
+      (styles . (substring))
+      (cycle-sort-function . ,#'dpc--sort-alpha-but-dot-slash-last))
      (file
       (styles              . (basic substring))
       ;; When doing completion using completion tables, there is a concept called
@@ -458,7 +485,7 @@ filename extension. That might be YAGNI.
       ;; sort functions.
       (cycle-sort-function . ,#'dpc--sort-alpha-but-dot-slash-last)
       (cycle               . 10))
-     (symbol-help
+     (symbol
       (styles basic shorthand substring))))
   (read-file-name-completion-ignore-case t)
   (read-buffer-completion-ignore-case t)
@@ -483,12 +510,34 @@ filename extension. That might be YAGNI.
                ("C-c C-j"   . exit-minibuffer) ;; exit without completion
                ("C-v"       . icomplete-vertical-mode) ;; toggle - need this? I don't remember ever wanting this.
 
-               ;; I installed & enabled embark, but I never use it. (shrug)
-               ("C-c ,"     . embark-act)
-               ("C-x"       . embark-export) ;; temporarily in the minibuffer
-               ("C-c ;"     . embark-collect)
+               ;; ;; I installed & enabled embark, but I never began using it. (shrug)
+               ;; ("C-c ,"     . embark-act)
+               ;; ("C-x"       . embark-export) ;; temporarily in the minibuffer
+               ;; ("C-c ;"     . embark-collect)
                )
   )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; marginalia
+;;
+;; A complement to icomplete-vertical-mode. Displays annotations adjacent to
+;; completions in the minibuffer.  For commands, it displays the docstring and
+;; key binding if any. For files, it displays the mode and last modified
+;; time. For symbols, docstring.
+
+(use-package marginalia
+  :ensure t
+  ;; `maginalia-cycle' cycles through different annotations available for a
+  ;; particular completion category.  So let's bind this command to a key
+  ;; sequence specifically for use in the minibuffer.  To make a binding in the
+  ;; *Completions* buffer, add it to the `completion-list-mode-map'.
+  :bind (:map minibuffer-local-map
+              ("M-A" . marginalia-cycle))
+
+  :init
+  ;; Enable the mode right away. This forces loading the package.
+  (marginalia-mode))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; electric-operator
@@ -635,7 +684,7 @@ filename extension. That might be YAGNI.
 
 (defun dino-jsonnet-mode-fn ()
   "buffer-specific jsonnet-mode setups"
-  ;; 20241231 - eglot on jsonnet is helpful. Autocomplete ("code assist") works nicely.
+  ;; 20241231 - eglot on jsonnet is helpful. Completion ("code assist") works nicely.
   ;;
   ;; The jsonnet-language-server from Grafana, available at
   ;; https://github.com/grafana/jsonnet-language-server/releases, seems solid,
@@ -1085,16 +1134,16 @@ server program."
             ))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; autocomplete
-;; adds auto-complete to various things like yasnippets or css colors, etc.
-
-;; (add-to-list 'ac-dictionary-directories "/Users/Dino/elisp/autocomplete/ac-dict")
-(use-package auto-complete-config
-  :init (require 'yasnippet)
-  :defer t
-  :functions (ac-config-default)
-  :config (ac-config-default))
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; autocomplete
+;; ;; adds auto-complete to various things like yasnippets or css colors, etc.
+;;
+;; ;; (add-to-list 'ac-dictionary-directories "/Users/Dino/elisp/autocomplete/ac-dict")
+;; (use-package auto-complete-config
+;;   :init (require 'yasnippet)
+;;   :defer t
+;;   :functions (ac-config-default)
+;;   :config (ac-config-default))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1196,8 +1245,6 @@ then switch to the markdown output buffer."
 (set-variable 'backup-by-copying t)
 
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frames preferences: initial and default frames
 ;; see http://www.gnu.org/software/emacs/windows/big.html#windows-frames
@@ -1238,7 +1285,7 @@ then switch to the markdown output buffer."
             '( (top . 100) (left . 640)
                (width . 228) (height . 64)
                ))
-      (set-frame-font "Consolas 11" nil t))
+      (set-frame-font "Consolas 14" nil t))
   (progn
     ;; glinux
     (setq initial-frame-alist
@@ -1246,7 +1293,7 @@ then switch to the markdown output buffer."
              (width . 148) (height . 42)
              )
           )
-    (set-frame-font "Noto Mono 10" nil t))
+    (set-frame-font "Noto Mono 11" nil t))
   )
 
 ;; what should a frame look like
@@ -1673,33 +1720,51 @@ then switch to the markdown output buffer."
   "My hook for CSS mode"
   (interactive)
   ;; (turn-on-font-lock) ;; need this?
-  (company-mode)
+  (setq css-indent-offset 2)
 
   (keymap-local-set "ESC C-R" #'indent-region)
   (keymap-local-set "ESC #"   #'dino/indent-buffer)
   (keymap-local-set "C-c C-w" #'compare-windows)
   (keymap-local-set "C-c C-c" #'comment-region)
-  (keymap-local-set "ESC ." #'company-complete)
+  (keymap-local-set "ESC ."   #'company-complete)
 
   (turn-on-auto-revert-mode)
-
-  ;; use autopair for curlies, parens, square brackets.
-  ;; electric-pair-mode works better than autopair.el in 24.4,
-  ;; and is important for use with popup / auto-complete.
   (electric-pair-mode)
-
-  (setq css-indent-offset 2)
-
-  ;; auto-complete mode is on globally
-  ;; make sure that <RETURN> is not an autocomplete key
-  ;; 20250421-2301
-  ;; (define-key ac-complete-mode-map "\r" nil)
-
-  ;; make auto-complete start only after 2 chars
-  ;; (setq ac-auto-start 2)  ;;or 3?
+  (company-mode)
   (apheleia-mode)
+  (display-line-numbers-mode)
 
-  ;; to install the external checkers:
+  ;; 20250524-1624
+  ;; Microsoft produces a CSS language server as part of (VS)Code OSS.  But they do not
+  ;; *package it* as an independent executable.  It's packaged only as part of VSCode. There
+  ;; have been attempts to extract the CSS Lang server from VSCode and re-package it, for
+  ;; example https://github.com/hrsh7th/vscode-langservers-extracted .  The way it works:
+  ;; the build script clones the VSCode repo and then tries building just what's necessary I
+  ;; guess, for the CSS lang server (and maybe a few others).  but (a) that repo hasn't been
+  ;; updated in a while, and (b) the build doesn't work.
+  ;;
+  ;; I asked Gemini how I could use https://github.com/Microsoft/vscode-css-languageservice,
+  ;; and it advised me to build my own server that packages this library. I tried that, see
+  ;; ~/dev/my-css-language-server , it also didn't work.
+  ;;
+  ;; Finally, resorted to just running the CSS lang server that is packaged in the VSCode
+  ;; installation. This works on Windows; not sure the install location of the CSS Lang
+  ;; Server on Linux.
+
+  ;; This is ugly but works.
+  (let* ((home-dir (getenv "HOME")))
+    (vscode-server-program
+     (concat home-dir
+             "\\AppData\\Local\\Programs\\Microsoft VS Code\\resources\\app\\extensions\\css-language-features\\server\\dist\\node\\cssServerMain.js"))
+    (if (file-exists-p vscode-server-program)
+        (add-to-list 'eglot-server-programs
+                     `((css-mode css-ts-mode)
+                       . ,(list "node" vscode-server-program "--stdio")))
+
+      ))
+
+
+  ;; To install the external flycheck checkers:
   ;; sudo npm install -g csslint
   ;; sudo npm install -g stylelint stylelint-config-standard stylelint-scss
 
@@ -1708,11 +1773,6 @@ then switch to the markdown output buffer."
    (if (string= mode-name "SCSS") 'scss-stylelint 'css-stylelint))
 
   (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
-
-  (display-line-numbers-mode)
-
-  ;; "no tabs" -- use only spaces
-  ;;(make-local-variable 'indent-tabs-mode)
   (setq indent-tabs-mode nil) )
 
 
@@ -2887,11 +2947,6 @@ just auto-corrects on common mis-spellings by me."
          )))
 
 
-;; ;; autocomplete
-;; (defun ac-csharp-mode-setup ()
-;;   (setq ac-sources (list 'ac-source-csharp)))
-;; (add-hook 'csharp-mode-hook 'ac-csharp-mode-setup)
-
 (eval-after-load "csharp-mode"
   '(progn
      (require 'compile)
@@ -3383,7 +3438,8 @@ Does not consider word syntax tables.
   (keymap-local-set "C-c C-c"  #'comment-region)
   (keymap-local-set "ESC C-R"  #'indent-region)
   (keymap-local-set "C-c e"    #'eval-buffer)
-  (keymap-local-set "C-c C-e"  #'eval-region)
+  (keymap-local-set "C-c C-e"  #'eval-last-sexp) ;; trying something new
+  ;; (keymap-local-set "C-c C-e"  #'eval-region)
   (keymap-local-set "C-x C-e"  #'byte-compile-file)
 
   ;; never convert leading spaces to tabs:
@@ -3395,6 +3451,7 @@ Does not consider word syntax tables.
   (hc-highlight-trailing-whitespace)
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
+  (company-mode)
   (apheleia-mode)
   (flycheck-mode)
   (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local))
@@ -3609,37 +3666,23 @@ color ready for next time.
 (defun dino-js-mode-fn ()
   ;; https://stackoverflow.com/a/15239704/48082
   (set (make-local-variable 'font-lock-multiline) t)
+  (set (make-local-variable 'indent-tabs-mode) nil)
+  (set (make-local-variable 'js-indent-level) 2)
+
   ;; (add-hook 'font-lock-extend-region-functions
   ;;           'js-fixup-font-lock-extend-region)
 
   (modify-syntax-entry ?_ "w")
-  (turn-on-font-lock)
+  ;;(turn-on-font-lock) ;; 20250524-1336 not sure this is still necessary with eglot
 
-  (keymap-local-set "ESC C-R"  #'indent-region)
-  (keymap-local-set "ESC #"    #'dino/indent-buffer)
+  (keymap-local-set "ESC C-R"    #'indent-region)
+  (keymap-local-set "ESC #"      #'dino/indent-buffer)
   (keymap-local-set "C-c C-c"    #'comment-region)
-
-  (keymap-local-set "C-c C-k s"    #'dino/camel-to-snakecase-word-at-point)
-  (keymap-local-set "C-c C-k c"    #'dino/snake-to-camelcase-word-at-point)
-
-  ;; Not sure what I should be doing for autocomplete in js-mode
-  ;; Having disabled tern, at the moment I have nothing.
-
-  ;;(local-set-key "\C-c."    'tern-ac-complete)
-  ;;(local-set-key (kbd "C-.")  'tern-ac-complete)
-  ;;(define-key yas-minor-mode-map (kbd "<tab>") nil)
-  ;;(local-set-key (kbd "<M-tab>") 'tern-ac-complete)
-
-  (keymap-local-set "<TAB>"    #'js-indent-line)
-  (keymap-local-set "C-<TAB>"  #'yas-expand)
-
-  (set (make-local-variable 'indent-tabs-mode) nil)
-
-  ;; indent increment
-  (set (make-local-variable 'js-indent-level) 2)
-
-  ;; Use electric-pair for curlies, parens, square brackets.
-  (electric-pair-mode)
+  (keymap-local-unset "C-c C-k")
+  (keymap-local-set "C-c C-k s"  #'dino/camel-to-snakecase-word-at-point)
+  (keymap-local-set "C-c C-k c"  #'dino/snake-to-camelcase-word-at-point)
+  (keymap-local-set "<TAB>"      #'js-indent-line)
+  (keymap-local-set "C-<TAB>"    #'yas-expand)
 
   ;; Dino 20210127-1259 - trying to diagnose flycheck checker errors
   ;;
@@ -3674,15 +3717,24 @@ color ready for next time.
                   (delete-trailing-whitespace)))
               nil 'local))
 
-  ;;(require 'imenu)
-  ;;(imenu-add-menubar-index)
+  ;;
+  ;; eglot by default uses typescript-language-server as the server.
+  ;; Examine `eglot-server-programs' to discover this.
+  ;; To get this program:
+  ;;   npm install -g typescript-language-server typescript
+  ;;
+  ;; Completions via Company from Eglot just work. Enable both company-mode and
+  ;; eglot in the buffer, and completions should work automatically.
+
   (hs-minor-mode t)
+  (company-mode)
+  (eglot-ensure)
   (apheleia-mode)
+  (electric-pair-mode)
   (electric-operator-mode)
   (display-line-numbers-mode)
   (indent-bars-mode)
 
-  (apheleia-mode)
   (setq apheleia-remote-algorithm 'local)
   (setq apheleia-log-debug-info t)
   )
@@ -4408,7 +4460,7 @@ color ready for next time.
 (define-key prog-mode-map (kbd "C-c C-c") #'comment-region)
 
 
-;; unicode helpers - these seem to get stripped when I open this file on Windows?
+;; unicode helpers
 ;; C-x 8 RET to get prompted for the code point in hex.
 (define-key key-translation-map (kbd "\C-x 8 i") (kbd "∞")) ;; infinity - 221E
 (define-key key-translation-map (kbd "\C-x 8 y") (kbd "λ")) ;; lambda - 03BB
