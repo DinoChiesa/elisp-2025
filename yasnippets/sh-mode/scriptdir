@@ -1,5 +1,4 @@
 # key : scriptdir
 # name : scriptdir
 # --
-scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
+scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
