@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-25 16:18:39>
+;; Last saved: <2025-May-26 15:48:42>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1938,6 +1938,7 @@ then switch to the markdown output buffer."
   :commands (dpc-gemini/read-settings-from-properties-file dpc-gemini/get-gemini-api-key dpc-gemini/ask-gemini)
 
   :config (progn
+            (setq dpc-gemini-properties-file "~/.google-gemini-properties")
             (dpc-gemini/read-settings-from-properties-file)
             (keymap-global-set "C-c g ?" #'dpc-gemini/ask-gemini)
             (keymap-global-set "C-c g a" #'dpc-gemini/ask-gemini)
