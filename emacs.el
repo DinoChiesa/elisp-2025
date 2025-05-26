@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-26 15:48:42>
+;; Last saved: <2025-May-26 16:08:25>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -432,7 +432,7 @@ the `file' category in `completion-category-overrides', like so:
             (styles . (basic substring))
             (cycle-sort-function . ,#'dpc--sort-alpha-but-dot-slash-last)
             (cycle . 10))
-           (symbol-help
+           (symbol
             (styles basic shorthand substring))))
 
 Without this, the default behavior of `icomplete-vertical-mode' when
@@ -1291,15 +1291,15 @@ then switch to the markdown output buffer."
 (if (eq system-type 'windows-nt)
     (progn
       (setq initial-frame-alist
-            '( (top . 100) (left . 640)
-               (width . 228) (height . 64)
+            '( (top . 80) (left . 400)
+               (height . 54) (width . 212)
                ))
       (set-frame-font "Consolas 14" nil t))
   (progn
     ;; glinux
     (setq initial-frame-alist
           '( (top . 10) (left . 10)
-             (width . 148) (height . 42)
+             (height . 42) (width . 148)
              )
           )
     (set-frame-font "Noto Mono 11" nil t))
@@ -1761,17 +1761,16 @@ then switch to the markdown output buffer."
   ;; Server on Linux.
 
   ;; This is ugly but works.
-  (let* ((home-dir (getenv "HOME")))
-    (vscode-server-program
-     (concat home-dir
-             "\\AppData\\Local\\Programs\\Microsoft VS Code\\resources\\app\\extensions\\css-language-features\\server\\dist\\node\\cssServerMain.js"))
+  (let* ((home-dir (getenv "HOME"))
+         (vscode-server-program
+          (concat home-dir
+                  "\\AppData\\Local\\Programs\\Microsoft VS Code\\resources\\app\\extensions\\css-language-features\\server\\dist\\node\\cssServerMain.js")))
     (if (file-exists-p vscode-server-program)
         (add-to-list 'eglot-server-programs
                      `((css-mode css-ts-mode)
                        . ,(list "node" vscode-server-program "--stdio")))
 
       ))
-
 
   ;; To install the external flycheck checkers:
   ;; sudo npm install -g csslint
@@ -2028,11 +2027,10 @@ Use this function this way:
     (lambda (string pred action)
       (if (eq action 'metadata)
           `(metadata
-            ;; 20250525-1500 I thnk all that is necessary to get sort to work is
+            ;; 20250525-1500 I think all that is necessary to get sort to work is
             ;; specifying the right category here (llm-model) and having the
             ;; right cycle sort function in `completion-category-overrides'.
             (category . llm-model)
-
             ;;(cycle-sort-function . ,#'dpc-cgs--model-sort)
             ;;(display-sort-function . ,#'dpc-cgs--model-sort)
             )
@@ -4343,11 +4341,55 @@ color ready for next time.
 
 ;; ------------------------------------------------------------------
 ;; recentf - to open recent files.
-;; Near the bottom there is a key binding for `recentf-open'.
+;;
+;; Later in this file, there is a global key binding for `recentf-open'.
 ;;
 ;; ------------------------------------------------------------------
-(require 'recentf)
-(recentf-mode 1)
+(use-package recentf
+  :defer t
+  :commands (recentf-mode recentf-open)
+  :config
+  (recentf-mode 1)
+
+  (defun dpc--fixup-recentf-open ()
+    "fixup `recentf-open' so that it uses a category for
+`completing-read', which means I have control over the sorting.
+Mostly I want the sorting for `completing-read' to be alphabetical, but
+for `recentf-open' I want to not sort at all. The list is already sorted in
+order of recency."
+    (add-to-list 'completion-category-overrides
+                 `(recentf
+                   (styles . (substring))
+                   (cycle-sort-function . ,#'identity)))
+
+    (defun dpc--recentf-completion-table (candidates)
+      "Returns a function to be used as the COMPLETIONS parameter in
+`completing-read' for `recentf-open'. Main purpose is to set metadata."
+      (let ((candidates candidates))
+        (lambda (string pred action)
+          (if (eq action 'metadata)
+              `(metadata (category . recentf))
+            (complete-with-action action candidates string pred)))))
+
+    ;; Redefine `recentf-open' to use a completion table which means I can
+    ;; disable sorting the recent files list, while using sorting for other
+    ;; categories.
+    (defun recentf-open (file)
+      "Prompt for FILE in `recentf-list' and visit it.
+Enable `recentf-mode' if it isn't already."
+      (interactive
+       (list
+        (progn (unless recentf-mode (recentf-mode 1))
+               (completing-read (format-prompt "Open recent?" nil)
+                                (dpc--recentf-completion-table recentf-list)
+                                nil t))))
+      (when file
+        (funcall recentf-menu-action file)))
+    )
+  (dpc--fixup-recentf-open)
+  )
+
+
 
 ;; ;; I think I created this to get completion when opening recent files.
 ;; ;; But with icomplete-vertical, `recentf-open' offers completion without this.
