@@ -1,3 +1,5 @@
+;;; -*- coding: utf-8; lexical-binding: t;  -*-
+
 ;;; dpc-gemini.el --- invoke the Gemini API from emacs
 ;;
 ;; Author: Dino Chiesa
@@ -5,7 +7,7 @@
 ;; Package-Requires: (json.el seq.el subr-x.el s.el)
 ;; URL:
 ;; X-URL:
-;; Version: 2025.05.25
+;; Version: 2025.05.26
 ;; Keywords: gemini llm
 ;; License: New BSD
 
@@ -70,7 +72,7 @@ Get one by visiting  https://aistudio.google.com/app/apikey"
   :type 'string
   :group 'dpc-gemini)
 
-(defcustom dpc-gemini-properties-file  "~/elisp/.google-gemini-properties"
+(defcustom dpc-gemini-properties-file  "~/.google-gemini-properties"
   "File in which to find gemini-related properties like the API key to use
 and the default model, etc. The file should be structured as a properties file.
 Eg,
@@ -101,14 +103,12 @@ See also `dpc-gemini/list-models'"
   "Last modification time of `dpc-gemini-properties-file' when it was last read into cache.
   Used to detect if the file has changed and needs re-reading.")
 
-
-
 (defun dpc-gemini/post-prompt (gem-url gem-prompt)
   "Perform an HTTP POST to GEM-URL with a one-part text prompt given
 in GEM-PROMPT.
 
-Place the result into a newly created buffer, and pop to that buffer
-when complete."
+Places the result into a newly created buffer, and then
+`switch-to-buffer' is called on that buffer when complete."
   ;; curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$YOUR_API_KEY" \
   ;; -H 'Content-Type: application/json' \
   ;; -X POST \
@@ -118,8 +118,9 @@ when complete."
   ;;     }]
   ;;    }'
 
-  (let ((buf (generate-new-buffer "gemini-response")))
+  (let ((buf (get-buffer-create "gemini-response")))
     (switch-to-buffer buf)
+    (erase-buffer)
     (call-process "curl" nil t t
                   "-s"
                   "-X" "POST"
@@ -130,6 +131,16 @@ when complete."
                       [(("parts" . [(("text" . ,gem-prompt))]))]
                       )))
                   gem-url)))
+
+(defun dpc-gemini/-current-generative-model-p (response)
+  "A predicate that looks at a model in RESPONSE and returns non-nil
+if the model is current and supports \"generateContent\"."
+  (when-let*
+      ((cur-model response)
+       (description (gethash "description" cur-model))
+       (supported-methods (gethash "supportedGenerationMethods" cur-model))
+       (is-current (not (string-match-p (rx (or "discontinued" "deprecated")) description))))
+    (seq-contains-p supported-methods "generateContent")))
 
 (defun dpc-gemini/get-generative-models (&optional predicate)
   "Get the available Gemini models that satisfy the optional PREDICATE."
@@ -148,7 +159,7 @@ when complete."
           (json-key-type 'string))
       (let ((pred
              (lambda (model)
-               (and (dpc-gemini/-current-generative-model model)
+               (and (dpc-gemini/-current-generative-model-p model)
                     (if predicate
                         (funcall predicate model)
                       t))))
@@ -165,44 +176,26 @@ members of supportedGenerationMethods.
 Optional arg FULL-TEXT says to return the full text of the response and
 do not filter by supportedGenerationMethods."
   (interactive "P")
-  (let ((buf (generate-new-buffer "gemini-response"))
-        (models (dpc-gemini/get-generative-models)))
-    (switch-to-buffer buf)
-    (insert (json-encode models)))
-  (if full-text
-      (json-pretty-print-buffer)
-    (let ((json-object-type 'hash-table)
-          (json-array-type 'list)
-          (json-key-type 'string))
-      (let* ((models
-              (json-read-from-string
-               (buffer-substring-no-properties (point-min) (point-max))))
-             (modelnames
-              (mapcar (lambda (model) (gethash "name" model))
-                      models)))
-        (when (listp modelnames)
-          (setq modelnames
-                (mapcar (lambda (str)
-                          (if (and (stringp str) (>= (length str) 7))
-                              (substring str 7)
-                            str))
-                        modelnames))
-          (delete-region (point-min) (point-max))
+  (let* ((all-models (dpc-gemini/get-generative-models)) ; Assume this returns the parsed list
+         (buf (get-buffer-create "gemini-models"))) ; Use get-buffer-create
+    (with-current-buffer buf
+      (erase-buffer)
+      (if full-text
+          (progn
+            (insert (json-encode all-models))
+            (json-pretty-print-buffer))
+        (let* ((modelnames
+                (mapcar (lambda (model)
+                          (let ((name (gethash "name" model)))
+                            (if (and (stringp name) (s-starts-with-p "models/" name))
+                                (substring name (length "models/")) ; More robust
+                              name)))
+                        all-models)))
           (insert "Gemini Models that support generateContent:\n\n  ")
-          (insert
-           (mapconcat 'identity modelnames "\n  "))
-          (insert "\n")
-          )))))
+          (insert (mapconcat 'identity modelnames "\n  "))
+          (insert "\n"))))
+    (pop-to-buffer buf)))
 
-(defun dpc-gemini/-current-generative-model (response)
-  "A predicate that looks at a model and returns non-nil if the
-model is current and supports \"generateContent\"."
-  (when-let*
-      ((cur-model response)
-       (description (gethash "description" cur-model))
-       (supported-methods (gethash "supportedGenerationMethods" cur-model))
-       (is-current (not (string-match-p (rx (or "discontinued" "deprecated")) description))))
-    (seq-contains-p supported-methods "generateContent")))
 
 
 ;; 20250308-1828
@@ -228,24 +221,41 @@ the model description needed by chatgpt-shell."
   (if (looking-at "\\(?:^\\|\n\\)```")
       (match-end 0)))
 
+;; (defun dpc-gemini/fill-paragraphs-skipping-codeblocks ()
+;;   "Fill all paragraphs in the current buffer."
+;;   (interactive)
+;;   (save-excursion
+;;     (goto-char (point-min))
+;;     (while (not (eobp))
+;;       (let* ((posn-of-three-backticks (dpc-gemini/looking-at-three-backticks))
+;;              (keep-going
+;;               (or (not posn-of-three-backticks)
+;;                   (progn
+;;                     (goto-char posn-of-three-backticks)
+;;                     (when (search-forward "\n```" nil t)
+;;                       (forward-char)
+;;                       t)))))
+;;         (when keep-going
+;;           (fill-paragraph nil)
+;;           (forward-paragraph))))))
+
 ;;;###autoload
 (defun dpc-gemini/fill-paragraphs-skipping-codeblocks ()
-  "Fill all paragraphs in the current buffer."
+  "Fill all paragraphs in the current buffer, skipping code blocks."
   (interactive)
   (save-excursion
     (goto-char (point-min))
     (while (not (eobp))
-      (let* ((posn-of-three-backticks (dpc-gemini/looking-at-three-backticks))
-             (keep-going
-              (or (not posn-of-three-backticks)
-                  (progn
-                    (goto-char posn-of-three-backticks)
-                    (when (search-forward "\n```" nil t)
-                      (forward-char)
-                      t)))))
-        (when keep-going
-          (fill-paragraph nil)
-          (forward-paragraph))))))
+      (if (looking-at "\\(?:^\\|\n\\)```")
+          (progn ; Skip code block
+            (goto-char (match-end 0)) ; Move past opening ```
+            (unless (search-forward "\n```" nil t) ; Search for closing ```
+              (goto-char (point-max))) ; If not found, go to end
+            (when (looking-at "\n```") (forward-char))) ; Move past closing ``` if found
+        ;; Not in a code block (or just exited one)
+        (fill-paragraph nil)
+        (forward-paragraph)))))
+
 
 ;;;###autoload
 (defun dpc-gemini/ask-gemini (beginning end)
@@ -280,16 +290,27 @@ the model description needed by chatgpt-shell."
              (parsed-response
               (json-read-from-string
                (buffer-substring-no-properties (point-min) (point-max))))
-             (candidates (gethash "candidates" parsed-response))
-             (first-candidate (car candidates))
-             (content (gethash "content" first-candidate))
-             (parts (gethash "parts" content))
-             (first-part (car parts))
-             (text (gethash "text" first-part)))
-        (delete-region (point-min) (point-max))
-        (insert text)
-        (dpc-gemini/fill-paragraphs-skipping-codeblocks)
-        ))))
+             (cond
+              ((gethash "error" parsed-response)
+               (let ((error-obj (gethash "error" parsed-response)))
+                 (error "Gemini API Error: %s (Code: %s)"
+                        (gethash "message" error-obj "Unknown error")
+                        (gethash "code" error-obj "N/A"))))
+              ((null (gethash "candidates" parsed-response))
+               (error "Gemini response missing 'candidates' field."))
+              (t
+               (let* ((candidates (gethash "candidates" parsed-response))
+                      (first-candidate (and (seq-consp candidates) (car candidates)))
+                      (content (and first-candidate (gethash "content" first-candidate)))
+                      (parts (and content (gethash "parts" content)))
+                      (first-part (and (seq-consp parts) (car parts)))
+                      (text (and first-part (gethash "text" first-part))))
+                 (if text
+                     (progn
+                       (delete-region (point-min) (point-max))
+                       (insert text)
+                       (dpc-gemini/fill-paragraphs-skipping-codeblocks))
+                   (error "Could not extract text from Gemini response. Structure: %S" parsed-response))))))))))
 
 ;;;###autoload
 (defun dpc-gemini/select-model ()
@@ -310,20 +331,27 @@ the model description needed by chatgpt-shell."
 
 ;;;###autoload
 (defun dpc-gemini/get-gemini-api-key ()
-  "Return the gemini api key, that was possibly read from a file."
+  "Return the gemini api key that was previously set into `dpc-gemini-api-key'.
+If it has not been previously set, this function will try to read
+`dpc-gemini-properties-file' to extract the key, and will return the value."
   (interactive)
-  (if (and (boundp 'dpc-gemini-api-key)
-           (stringp dpc-gemini-api-key))
-      dpc-gemini-api-key
-    (error "No gemini api key is set yet")))
+  (if (not (and (boundp 'dpc-gemini-api-key)
+                (stringp dpc-gemini-api-key)))
+      (if-let* ((apikey (dpc-gemini/--read-property-value-from-cache "apikey")))
+          (setq dpc-gemini-api-key (s-trim apikey))))
+  (or
+   dpc-gemini-api-key
+   (error "No gemini api key is set yet")))
 
 
 (defun dpc-gemini/--parse-properties-file-into-cache ()
-  "Reads the properties file and populates `dpc-gemini--properties-cache'.
-  Returns t if the file was successfully parsed or re-parsed, nil otherwise.
-  Invalidates cache and re-reads if the file's modification time changes.
-  Handles 'key: value' format, skips empty lines and lines starting with '#'."
-  (let* ((expanded-props-file (expand-file-name dpc-gemini-properties-file (getenv "HOME")))
+  "Reads the properties file `dpc-gemini-properties-file' and
+populates `dpc-gemini--properties-cache'. Returns t if the file was
+successfully parsed or re-parsed, nil otherwise. Invalidates cache and
+re-reads if the file's modification time changes. Within the file, this
+function handles 'key: value' format, skips empty lines and lines
+starting with '#'."
+  (let* ((expanded-props-file (expand-file-name dpc-gemini-properties-file))
          (file-attrs (file-attributes expanded-props-file)))
 
     (if file-attrs
@@ -339,18 +367,17 @@ the model description needed by chatgpt-shell."
               (setq dpc-gemini--properties-cache
                     ;; Filter out nil entries (lines that didn't match the format)
                     (delq nil
-                          (mapcar (lambda (line)
-                                    ;; Use string-match-p for quick check, then string-match to set match-data
-                                    (when (string-match-p "^\\([^:]+\\): *\\(.*\\)$" line)
-                                      (string-match "^\\([^:]+\\): *\\(.*\\)$" line) ; Re-run to set match-data
-                                      ;; Store key as downcased symbol for consistent lookup
-                                      (cons (intern (downcase (match-string 1 line)))
-                                            (match-string 2 line))))
-                                  ;; Split buffer into lines, filtering out empty and comment lines
-                                  (seq-filter (lambda (line)
-                                                (and (> (length line) 0)
-                                                     (not (string-prefix-p "#" line))))
-                                              (split-string (buffer-string) "\n" t))))
+                          (mapcar
+                           ;; Split line into key/value pair, trimming whitespace
+                           (lambda (line)
+                             (when (string-match "^\\([^:]+\\): *\\(.*\\)$" line)
+                               (cons (intern (downcase (s-trim (match-string 1 line))))
+                                     (s-trim (match-string 2 line)))))
+                           ;; Split buffer into lines, filtering out empty and comment lines
+                           (seq-filter (lambda (line)
+                                         (and (> (length line) 0)
+                                              (not (string-prefix-p "#" line))))
+                                       (split-string (buffer-string) "\n" t))))
                     dpc-gemini--properties-file-mtime new-mtime)))
           ;; Return t if we processed (either by parsing or determining cache is fresh)
           t)
@@ -359,20 +386,16 @@ the model description needed by chatgpt-shell."
             dpc-gemini--properties-file-mtime nil)
       nil)))
 
-;; This function replaces your original `dpc-gemini/--read-property-file`
 (defun dpc-gemini/--read-property-value-from-cache (propname)
   "Retrieves a property value by PROPNAME (string) from the cached properties.
-  PROPNAME is converted to a downcased symbol for lookup.
-  Returns nil if not found, or if the file doesn't exist/can't be parsed."
+PROPNAME is converted to a downcased symbol for lookup.
+Returns nil if not found, or if the file doesn't exist/can't be parsed."
   ;; First, ensure the cache is populated and up-to-date.
   ;; `dpc-gemini/--parse-properties-file-into-cache` will handle
   ;; reading the file only when necessary.
   (when (dpc-gemini/--parse-properties-file-into-cache)
     ;; Look up the property in the alist using a downcased symbol key
     (cdr (assoc (intern (downcase propname)) dpc-gemini--properties-cache))))
-
-
-;; --- Optimized Main Function ---
 
 ;;;###autoload
 (defun dpc-gemini/read-settings-from-properties-file ()
@@ -392,26 +415,22 @@ As an alternative to calling this fn, programs can directly set these variables.
       (setq dpc-gemini-selected-model (s-trim model-name))
     (setq dpc-gemini-selected-model nil))
 
-  ;; --- Optional: Provide user feedback for debugging ---
-  (unless (file-exists-p (expand-file-name dpc-gemini-properties-file (getenv "HOME")))
-    (message "Warning: Gemini properties file does not exist: %s"
-             (expand-file-name dpc-gemini-properties-file (getenv "HOME"))))
-  (unless dpc-gemini-api-key
-    (message "Warning: Gemini APIkey not found in %s"
-             (expand-file-name dpc-gemini-properties-file (getenv "HOME"))))
-  (unless dpc-gemini-selected-model
-    (message "Warning: Default Gemini model not found in %s"
-             (expand-file-name dpc-gemini-properties-file (getenv "HOME"))))
+  ;; ;; --- Optional: Provide user feedback for debugging ---
+  ;; (let ((expanded-filename  (expand-file-name dpc-gemini-properties-file)))
+  ;;   (unless (file-exists-p expanded-filename)
+  ;;     (message "Warning: Gemini properties file does not exist: %s" expanded-filename))
+  ;;   (unless dpc-gemini-api-key
+  ;;     (message "Warning: Gemini APIkey not found in %s" expanded-filename))
+  ;;   (unless dpc-gemini-selected-model
+  ;;     (message "Warning: Default Gemini model not found in %s" expanded-filename)))
   )
 
 (defun dpc-gemini/get-config-property (propname)
-  "Returns a property extracted from the gemini properties file,
-`dpc-gemini-properties-file'. You must have previously called
-`dpc-gemini/read-settings-from-properties-file' ."
+  "Returns a property named PROPNAME extracted from the gemini properties
+file, `dpc-gemini-properties-file'. If that file had not been previously
+read, this function reads the file and caches the result."
   (if-let* ((value (dpc-gemini/--read-property-value-from-cache propname)))
       (s-trim value)))
-
-
 
 
 (provide 'dpc-gemini)
