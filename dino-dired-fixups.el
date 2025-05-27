@@ -1,9 +1,11 @@
+;;; -*- coding: utf-8; lexical-binding: t;  -*-
+
 ;;; dino-dired-fixups.el --- fixups for dired mode
 ;;
 ;; Author: Dino Chiesa
 ;; Created: Sat, 31 Mar 2012  10:31
 ;; Package-Requires: ()
-;; Version: 2025.04.29
+;; Version: 2025.05.26
 ;; URL: https://github.com/DinoChiesa/dpchiesa-elisp/blob/master/dino-dired-fixups.el
 ;; License: Public Domain
 ;; Keywords: dired
@@ -14,13 +16,16 @@
 ;; size, in addition to name and timestamp. Use the s key to cycle through
 ;; sort modes.
 
-;; To use it, place this in your .emacs file:
+;; To use it, place something like this in your .emacs file:
 ;;
-;; (require 'dired)
-;; (require 'dino-dired-fixups)
-;;
+;; (use-package dired
+;;   :ensure nil
+;;   :config
+;;   (require 'dino-dired-fixups)
+;;   ;; eliminate the gid in dired when using ls-lisp (eg, on windows)
+;;   (setq ls-lisp-verbosity '(links uid)))
 
-;;(require 'cl) ;; for?
+
 (require 'dired)
 (require 'dired-aux)
 (require 'ls-lisp)
