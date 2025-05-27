@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-26 16:08:25>
+;; Last saved: <2025-May-26 21:33:15>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -174,14 +174,14 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; set path correctly on MacOS, based on /etc/paths.d
+;; Set the path correctly on MacOS, based on /etc/paths.d .
+;; I am unsure whether this helps on linux or Windows, I've never
+;; tested it.
 (use-package path-helper
   :if (eq system-type 'darwin)
   :ensure t
   :config
-  (path-helper-setenv "PATH")
-  ;;(path-helper-setenv-all) ;; not sure how this is different
-  )
+  (path-helper-setenv "PATH"))
 
 ;; 20241122-1947 - various tools and packages - apheleia, csslint, magit,
 ;; csharpier, shfmt, aider and more - need exec-path AND/or environment PATH to be set.
@@ -1260,7 +1260,7 @@ then switch to the markdown output buffer."
 
 (setq default-frame-alist
       '((top . 120) (left . 260)
-        (width . 100) (height . 25)
+        (height . 32) (width . 320)
         (cursor-color . "Orange")
         (cursor-type . box)
         ;;(foreground-color . "White")
