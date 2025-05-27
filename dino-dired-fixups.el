@@ -243,8 +243,7 @@ dired-mode, and one of the others is also dired-mode, then move
 the file under cursor or the marked files to the directory shown
 in the other dired window. If the current buffer is not in
 dired-mode, or if not exactly 2 windows show dired, then message
-and quit.
-"
+and quit."
   (interactive "P")
   (dino-dired-copy-or-move-other-window 'MOVE))
 
@@ -254,8 +253,7 @@ dired-mode, and one of the others is also dired-mode, then copy
 the file under cursor or the marked files to the directory shown
 in the other dired window. If the current buffer is not in
 dired-mode, or if not exactly 2 windows show dired, then message
-and quit.
-"
+and quit."
   (interactive "P")
   (dino-dired-copy-or-move-other-window 'COPY))
 
@@ -313,9 +311,8 @@ for a given file or set of files. This function makes an intelligent guess."
       (read-shell-command prompt))))
 
 
-
 (defun dino-dired-kill-new-file-contents (&optional arg)
-  "copies the contents of the marked file into the kill-ring"
+  "Copies the contents of the marked file into the kill-ring"
   (interactive "P")
   (let ((filename-list (dired-get-marked-files nil arg)))
     (mapc #'(lambda (f)
