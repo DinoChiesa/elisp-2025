@@ -49,8 +49,10 @@ filename extension. That might be YAGNI.
 (defvar dpc-ss-supported-categories '(sorted-sanely unsorted)
   "List of supported completion categories for `dpc-ss-alphasort-completion-fn'.")
 
+;; AI! rename dpc-ss-alphasort-completion-fn to dpc-ss-sort-completion-fn,
+;; and augment the docstring here to describe the two parameters.
 (defun dpc-ss-alphasort-completion-fn (candidates category-symbol)
-  "Returns a function to be used as the COMPLETIONS parameter in
+  "Returns a function to be used as the completions parameter in
 `completing-read'.
 When using icomplete or icomplete-vertical, `completing-read' uses a
 default of «sort first by length and then alphabetically». That is

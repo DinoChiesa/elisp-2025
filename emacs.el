@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-31 14:54:10>
+;; Last saved: <2025-May-31 15:26:11>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -403,6 +403,14 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; dpc-sane-sorting
+;;
+
+(use-package dpc-sane-sorting
+  :load-path "~/elisp"
+  :pin manual )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; icomplete
 ;;
 ;; This package is old but good and actively maintained.  icomplete-vertical WAS
@@ -412,50 +420,11 @@
 ;; compared to the old independent module, though the configuration options are
 ;; slightly different.
 
-
-;; 20250521-1755
-(defun dpc--sort-alpha-but-dot-slash-last (candidates)
-  "Sort a list of CANDIDATES alphabetically, except that  \"./\"
-always appears at the end.
-
-This is intended for use as a `cycle-sort-function' for
-the `file' category in `completion-category-overrides', like so:
-
-   (setq completion-category-overrides
-         `((buffer
-            (styles . (initials flex))
-            (cycle . 10))
-           (command
-            (styles . (substring))
-            (cycle-sort-function . ,#'dpc--sort-alpha-but-dot-slash-last))
-           (file
-            (styles . (basic substring))
-            (cycle-sort-function . ,#'dpc--sort-alpha-but-dot-slash-last)
-            (cycle . 10))
-           (symbol
-            (styles basic shorthand substring))))
-
-Without this, the default behavior of `icomplete-vertical-mode' when
-used with `find-file' is to show the list of candidates sorted by length
-of the filename and then alphabetically. Similarly for commands, when
-using M-x. This seems counter-intuitive and user-hostile to me. The
-implementation for that is in `completion-all-sorted-completions' which
-is defined in minibuffer.el; it uses a function called
-`minibuffer--sort-by-length-alpha'. (headslap)
-
-TODO: add key bindings to the `icomplete-vertical-mode-minibuffer-map'
-that invoke commands to alter this sorting. Eg, by file mtime, or by
-filename extension. That might be YAGNI.
-"
-  (sort candidates
-        (lambda (a b)
-          (cond
-           ((string= a "./") nil)
-           ((string= b "./") t)
-           (t (string< a b))))))
-
 (use-package icomplete
   :demand t
+  :requires (dpc-sane-sorting)
+
+  ;; Gemini says the  order of evaluation is :custom, then :init, then :config.
   :custom
   ;; For info: C-h v completion-styles-alist
   (completion-styles '(flex partial-completion substring)) ;; flex initials basic
@@ -474,28 +443,29 @@ filename extension. That might be YAGNI.
    ;;   info-menu: Used when completing Info manual nodes.
    ;;
    ;; Also, the use of custom categories is possible.
+   ;;
+   ;; When doing completion using a completion function, there is a concept called
+   ;; "metadata", which allows specifying sorting functions among other stuff; to learn more
+   ;; about that see `completion-metadata'.
+   ;;
+   ;; There are two sort functions, `display-sort-function' and
+   ;; `cycle-sort-function'. The former is used for sorting of items displayed in the
+   ;; *Completions* buffer; the latter for sorting candidates shown in the
+   ;; minibuffer.  See `completion-all-sorted-completions' in minibuffer.el which
+   ;; reads the cycle-sort-function but ignores display-sort-function.
+
    `((buffer
       (styles  . (initials flex))
       (cycle   . 10)) ;; C-h v completion-cycle-threshold
      (command
       (styles . (substring))
-      (cycle-sort-function . ,#'dpc--sort-alpha-but-dot-slash-last))
+      (cycle-sort-function . ,#'dpc-ss-sort-alpha))
      (file
       (styles              . (basic substring))
-      ;; When doing completion using completion tables, there is a concept called
-      ;; "metadata", which includes sorting functions among other stuff; to learn more about
-      ;; that see `completion-metadata'.
-      ;;
-      ;; display-sort-function is not used in find-file. This is not documented AFAICT. I
-      ;; discovered this fact by wallowing in source code specifically in
-      ;; `completion-all-sorted-completions' in minibuffer.el which reads the
-      ;; cycle-sort-function but ignores display-sort-function.  Actually I don't know why
-      ;; there are two sort functions, but it's emacs, so of course there are two different
-      ;; sort functions.
-      (cycle-sort-function . ,#'dpc--sort-alpha-but-dot-slash-last)
+      (cycle-sort-function . ,#'dpc-ss-sort-alpha-but-dot-slash-last)
       (cycle               . 10))
      (symbol
-      (styles basic shorthand substring))))
+      (styles . (basic shorthand substring)))))
   (read-file-name-completion-ignore-case t)
   (read-buffer-completion-ignore-case t)
   (completion-ignore-case t)
@@ -2011,8 +1981,6 @@ then switch to the markdown output buffer."
 ;; requires prevents loading of the package unless the required feature is
 ;; already loaded.
 
-(require 'dpc-sane-sorting)
-
 (use-package chatgpt-shell
   :defer t
   ;; 20250331-1721 - it is not possible to have load-path be dynamically evaluated.
@@ -2040,6 +2008,7 @@ then switch to the markdown output buffer."
     (keymap-local-set "C-c f" #'chatgpt-shell-proofread-region))
 
   :config
+  (require 'dpc-sane-sorting)
   (setq chatgpt-shell-google-key (dpc-gemini/get-config-property "apikey"))
   (chatgpt-shell-google-load-models) ;; CGS does not include complete list of Google models
   (setq chatgpt-shell-model-version (dpc-gemini/get-config-property "default-model"))
@@ -4269,6 +4238,7 @@ color ready for next time.
   :defer t
   :commands (recentf-mode recentf-open)
   :config
+  (require 'dpc-sane-sorting)
   (recentf-mode 1)
 
   (defun dpc--fixup-recentf-open ()
@@ -4277,21 +4247,7 @@ color ready for next time.
 Mostly I want the sorting for `completing-read' to be alphabetical, but
 for `recentf-open' I want to not sort at all. The list is already sorted in
 order of recency."
-    (add-to-list 'completion-category-overrides
-                 `(recentf
-                   (styles . (substring))
-                   (cycle-sort-function . ,#'identity)))
-
-    (defun dpc--recentf-completion-table (candidates)
-      "Returns a function to be used as the COMPLETIONS parameter in
-`completing-read' for `recentf-open'. Main purpose is to set metadata."
-      (let ((candidates candidates))
-        (lambda (string pred action)
-          (if (eq action 'metadata)
-              `(metadata (category . recentf))
-            (complete-with-action action candidates string pred)))))
-
-    ;; Redefine `recentf-open' to use a completion table which means I can
+    ;; Redefine `recentf-open' to use a completion function which means I can
     ;; disable sorting the recent files list, while using sorting for other
     ;; categories.
     (defun recentf-open (file)
@@ -4301,7 +4257,7 @@ Enable `recentf-mode' if it isn't already."
        (list
         (progn (unless recentf-mode (recentf-mode 1))
                (completing-read (format-prompt "Open recent?" nil)
-                                (dpc--recentf-completion-table recentf-list)
+                                (dpc-ss-completion-fn recentf-list)
                                 nil t))))
       (when file
         (funcall recentf-menu-action file)))
