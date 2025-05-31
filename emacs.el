@@ -2016,7 +2016,7 @@ then switch to the markdown output buffer."
   (setq chatgpt-shell-swap-model-selector
         (lambda (candidates)
           (completing-read "Swap to: "
-                           (dpc-ss-completion-fn candidates) nil t)))
+                           (dpc-ss-sort-completion-fn candidates 'sorted-sanely) nil t)))
 
   (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn)
 

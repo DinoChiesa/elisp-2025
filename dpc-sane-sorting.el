@@ -47,13 +47,15 @@ filename extension. That might be YAGNI.
            (t (string< a b))))))
 
 (defvar dpc-ss-supported-categories '(sorted-sanely unsorted)
-  "List of supported completion categories for `dpc-ss-alphasort-completion-fn'.")
+  "List of supported completion categories for `dpc-ss-sort-completion-fn'.")
 
-;; AI! rename dpc-ss-alphasort-completion-fn to dpc-ss-sort-completion-fn,
-;; and augment the docstring here to describe the two parameters.
-(defun dpc-ss-alphasort-completion-fn (candidates category-symbol)
-  "Returns a function to be used as the completions parameter in
-`completing-read'.
+(defun dpc-ss-sort-completion-fn (candidates category-symbol)
+  "Returns a function to be used as the COMPLETIONS parameter in `completing-read'.
+
+CANDIDATES is a list of strings, the completion candidates.
+CATEGORY-SYMBOL is a symbol indicating the completion category, which
+influences sorting behavior. It must be a member of `dpc-ss-supported-categories'.
+
 When using icomplete or icomplete-vertical, `completing-read' uses a
 default of «sort first by length and then alphabetically». That is
 inappropriate mostly. Actually this is done in minibuffer.el
@@ -66,7 +68,7 @@ Use this function this way:
         (lambda (candidates)
           (completing-read
             \"New model: \"
-            (dpc-ss--completion-fn candidates) nil t)))"
+            (dpc-ss-sort-completion-fn candidates 'sorted-sanely) nil t)))"
   (unless (memq category-symbol dpc-ss-supported-categories)
     (error "Invalid category symbol: %s. Supported categories are: %s"
            category-symbol dpc-ss-supported-categories))
@@ -91,6 +93,9 @@ Use this function this way:
 (add-to-list 'completion-category-overrides
              `(sorted-sanely
                (styles . (substring))
+               ;; Consider if dpc-ss-sort-alpha is still the desired function or if
+               ;; a more general sorting mechanism tied to the category is needed.
+               ;; For now, this remains as is.
                (cycle-sort-function . ,#'dpc-ss-sort-alpha)))
 
 ;; In some cases we want no sorting; particularly recentf.  Even here,
