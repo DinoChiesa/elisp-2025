@@ -338,7 +338,7 @@ the model description needed by chatgpt-shell."
                       (mapcar (lambda (m) (gethash "name" m)) available-models)))
              (selected-model
               (completing-read "Model?: "
-                               (dpc-ss-completion-fn short-model-names) nil t)))
+                               (dpc-ss-sort-completion-fn short-model-names 'sorted-sanely) nil t)))
         (when selected-model
           (setq dpc-gemini-selected-model selected-model)))))
 
