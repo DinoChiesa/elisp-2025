@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-31 15:26:11>
+;; Last saved: <2025-May-31 15:52:19>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -429,6 +429,13 @@
   ;; For info: C-h v completion-styles-alist
   (completion-styles '(flex partial-completion substring)) ;; flex initials basic
 
+  ;; AI? I would like to modify this logic so that it is not within :custom, but instead in
+  ;; the :config parameter. Also, I would like to modify it so that it does not
+  ;; overwrite completion-category-overrides blindly, but rather, for each category in
+  ;; (buffer command file symbol) , apply the settings shown here, possibly overwriting what might
+  ;; be in place already in completion-category-overrides. But it should not overwrite settings
+  ;; for other categories.  Is `add-to-list' the right thing? Or is it better to use
+  ;; something like setf ?
   (completion-category-overrides
    ;; I couldn't find where the "builtin" categories were defined, but Gemini told me this:
    ;;
@@ -4224,16 +4231,16 @@ color ready for next time.
 ;;             (setq url-using-proxy proxy
 ;;                   url-proxy-services proxy))))))
 
+
+
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-
-;; ------------------------------------------------------------------
 ;; recentf - to open recent files.
 ;;
 ;; Later in this file, there is a global key binding for `recentf-open'.
 ;;
-;; ------------------------------------------------------------------
+
 (use-package recentf
   :defer t
   :commands (recentf-mode recentf-open)
@@ -4241,48 +4248,21 @@ color ready for next time.
   (require 'dpc-sane-sorting)
   (recentf-mode 1)
 
-  (defun dpc--fixup-recentf-open ()
-    "fixup `recentf-open' so that it uses a category for
-`completing-read', which means I have control over the sorting.
-Mostly I want the sorting for `completing-read' to be alphabetical, but
-for `recentf-open' I want to not sort at all. The list is already sorted in
-order of recency."
-    ;; Redefine `recentf-open' to use a completion function which means I can
-    ;; disable sorting the recent files list, while using sorting for other
-    ;; categories.
-    (defun recentf-open (file)
-      "Prompt for FILE in `recentf-list' and visit it.
+  ;; Redefine `recentf-open' to use a completion function which means I can
+  ;; disable sorting the recent files list, while using sorting for other
+  ;; categories.
+  (defun recentf-open (file)
+    "Prompt for FILE in `recentf-list' and visit it.
 Enable `recentf-mode' if it isn't already."
-      (interactive
-       (list
-        (progn (unless recentf-mode (recentf-mode 1))
-               (completing-read (format-prompt "Open recent?" nil)
-                                (dpc-ss-completion-fn recentf-list)
-                                nil t))))
-      (when file
-        (funcall recentf-menu-action file)))
-    )
-  (dpc--fixup-recentf-open)
+    (interactive
+     (list
+      (progn (unless recentf-mode (recentf-mode 1))
+             (completing-read (format-prompt "Open recent?" nil)
+                              (dpc-ss-sort-completion-fn recentf-list 'unsorted)
+                              nil t))))
+    (when file
+      (funcall recentf-menu-action file)))
   )
-
-
-
-;; ;; I think I created this to get completion when opening recent files.
-;; ;; But with icomplete-vertical, `recentf-open' offers completion without this.
-;; (defun dino-recentf-open-files-compl ()
-;;   (interactive)
-;;   (let* ((all-files recentf-list)
-;;          (tocpl (mapcar (function
-;;                          (lambda (x) (cons (file-name-nondirectory x) x)))
-;;                         all-files))
-;;          (prompt (append '("File name: ") tocpl))
-;;          (fname (completing-read (car prompt) (cdr prompt) nil nil)))
-;;     (find-file (cdr (assoc-string fname tocpl)))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
