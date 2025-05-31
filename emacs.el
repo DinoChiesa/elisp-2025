@@ -428,51 +428,6 @@
   :custom
   ;; For info: C-h v completion-styles-alist
   (completion-styles '(flex partial-completion substring)) ;; flex initials basic
-
-  ;; AI? I would like to modify this logic so that it is not within :custom, but instead in
-  ;; the :config parameter. Also, I would like to modify it so that it does not
-  ;; overwrite completion-category-overrides blindly, but rather, for each category in
-  ;; (buffer command file symbol) , apply the settings shown here, possibly overwriting what might
-  ;; be in place already in completion-category-overrides. But it should not overwrite settings
-  ;; for other categories.  Is `add-to-list' the right thing? Or is it better to use
-  ;; something like setf ?
-  (completion-category-overrides
-   ;; I couldn't find where the "builtin" categories were defined, but Gemini told me this:
-   ;;
-   ;;   file: file names (e.g., C-x C-f, find-file)
-   ;;   buffer: buffer-names (e.g., C-x b, switch-to-buffer).
-   ;;   command: commands (eg, M-x, execute-extended-command).
-   ;;   variable: (e.g., C-h v, describe-variable).
-   ;;   function:  (e.g., C-h f, describe-function).
-   ;;   face: (e.g., M-x customize-face).
-   ;;   symbol: A more general category that might apply to various Emacs Lisp symbols.
-   ;;   unicode-name: Used when completing Unicode character names (e.g., C-x 8 RET, insert-char).
-   ;;   info-menu: Used when completing Info manual nodes.
-   ;;
-   ;; Also, the use of custom categories is possible.
-   ;;
-   ;; When doing completion using a completion function, there is a concept called
-   ;; "metadata", which allows specifying sorting functions among other stuff; to learn more
-   ;; about that see `completion-metadata'.
-   ;;
-   ;; There are two sort functions, `display-sort-function' and
-   ;; `cycle-sort-function'. The former is used for sorting of items displayed in the
-   ;; *Completions* buffer; the latter for sorting candidates shown in the
-   ;; minibuffer.  See `completion-all-sorted-completions' in minibuffer.el which
-   ;; reads the cycle-sort-function but ignores display-sort-function.
-
-   `((buffer
-      (styles  . (initials flex))
-      (cycle   . 10)) ;; C-h v completion-cycle-threshold
-     (command
-      (styles . (substring))
-      (cycle-sort-function . ,#'dpc-ss-sort-alpha))
-     (file
-      (styles              . (basic substring))
-      (cycle-sort-function . ,#'dpc-ss-sort-alpha-but-dot-slash-last)
-      (cycle               . 10))
-     (symbol
-      (styles . (basic shorthand substring)))))
   (read-file-name-completion-ignore-case t)
   (read-buffer-completion-ignore-case t)
   (completion-ignore-case t)
@@ -483,6 +438,30 @@
   :config
   (icomplete-mode)
   (icomplete-vertical-mode)
+
+  ;; Set completion-category-overrides for specific categories
+  ;; The `dino-set-alist-entry' function is used to update or add entries
+  ;; without overwriting the entire alist.
+  (setq completion-category-overrides
+        (dino-set-alist-entry completion-category-overrides
+                                'buffer
+                                '((styles  . (initials flex))
+                                  (cycle   . 10))))
+  (setq completion-category-overrides
+        (dino-set-alist-entry completion-category-overrides
+                                'command
+                                (list '(styles . (substring))
+                                      (cons 'cycle-sort-function #'dpc-ss-sort-alpha))))
+  (setq completion-category-overrides
+        (dino-set-alist-entry completion-category-overrides
+                                'file
+                                (list '(styles . (basic substring))
+                                      (cons 'cycle-sort-function #'dpc-ss-sort-alpha-but-dot-slash-last)
+                                      '(cycle . 10))))
+  (setq completion-category-overrides
+        (dino-set-alist-entry completion-category-overrides
+                                'symbol
+                                '((styles . (basic shorthand substring)))))
 
   :bind (:map  icomplete-vertical-mode-minibuffer-map
                ;; icomplete-minibuffer-map <== use this for the non-vertical version.
