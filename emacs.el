@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-31 11:01:42>
+;; Last saved: <2025-May-31 14:54:10>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -891,7 +891,7 @@ server program."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; multiple-cursors - For visually editing similar things with one key sequence.
 ;;
-;; I use this rarely and my fingers don't remember the bindings.
+;; I use this rarely and my fingers don't remember the bindings. But it's neat.
 (use-package multiple-cursors
   :ensure t
   :demand t
@@ -931,7 +931,7 @@ server program."
   :if (file-exists-p "~/elisp/apigee/apigee.el")
   :load-path "~/elisp/apigee"
   :defer t
-  :commands (apigee-new-proxy apigee-lint-asset)
+  :commands (apigee-new-proxy apigee-lint-asset apigee-add-policy apigee-add-target)
   :config
   (progn
     (let* ((apigeecli-path "~/.apigeecli/bin/apigeecli")
@@ -1038,25 +1038,29 @@ server program."
             (add-hook 'go-ts-mode-hook 'dino-go-mode-fn)))
 
 
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;; org mode, including html5 presentations from .org documents
-;; ;;
-;; ;;  (require 'org)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; org mode, including html5 presentations from .org documents
 ;;
-;; ;; (org-babel-do-load-languages
-;; ;;  'org-babel-load-languages
-;; ;;  '(
-;; ;;    (sh . t)
-;; ;;    (python . t)
-;; ;;    (perl . t)
-;; ;;    ))
-;; (defun my-org-confirm-babel-evaluate (lang body)
-;;   (not  ; don't ask for any of the following languages
-;;    (or
-;;     (string= lang "sh")
-;;     )))
-;; (setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
-;;
+(use-package org
+  :defer t
+  :config (org-babel-do-load-languages
+           'org-babel-load-languages
+           '(
+             (shell . t)
+             (python . t)
+             (perl . t)
+             ))
+  (add-hook 'org-mode-hook #'org-babel-result-hide-all)
+  (defun dpc-org-confirm-babel-evaluate (lang _body)
+    (not  ; don't ask for any of the following languages
+     (or
+      (string= lang "sh")
+      (string= lang "bash")
+      (string= lang "shell")
+      )))
+  (setq org-confirm-babel-evaluate 'dpc-org-confirm-babel-evaluate))
+
+
 ;; ;; (require 'ox-taskjuggler)
 ;; ;; (add-to-list 'org-export-backends 'taskjuggler)
 ;;
