@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-26 21:33:15>
+;; Last saved: <2025-May-31 11:01:42>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1934,11 +1934,11 @@ then switch to the markdown output buffer."
   :ensure nil
   ;; autoloads defined in local modules don't work. That mechanism works only if the
   ;; package is published via elpa.
-  :commands (dpc-gemini/read-settings-from-properties-file dpc-gemini/get-gemini-api-key dpc-gemini/ask-gemini)
+  :autoload (dpc-gemini/get-config-property)
+  :commands (dpc-gemini/ask-gemini dpc-gemini/select-model)
 
   :config (progn
             (setq dpc-gemini-properties-file "~/.google-gemini-properties")
-            (dpc-gemini/read-settings-from-properties-file)
             (keymap-global-set "C-c g ?" #'dpc-gemini/ask-gemini)
             (keymap-global-set "C-c g a" #'dpc-gemini/ask-gemini)
             (keymap-global-set "C-c g l" #'dpc-gemini/list-models)
@@ -1955,9 +1955,8 @@ then switch to the markdown output buffer."
 
 (defun dpc-gptel-setup ()
   "Invoked when gptel is loaded."
-  (dpc-gemini/read-settings-from-properties-file)
   (gptel-make-gemini "Gemini"
-    :key (dpc-gemini/get-gemini-api-key)
+    :key (dpc-gemini/get-config-property "apikey")
     :stream t)
 
   ;; load my prompts
@@ -2001,47 +2000,14 @@ then switch to the markdown output buffer."
 ;; Anthropic Claude, DeepSeek Chat, and others via comint in emacs.
 ;;
 
-(defun dpc-cgs--model-sort (candidates)
-  "Sorts the model candidate by name"
-  ;;(message "model candidates: %s" (prin1-to-string candidates))
-  (sort candidates :lessp #'string<))
-
-(defun dpc--cgs--model-completion-table (candidates)
-  "Returns a function to be used as the COMPLETIONS parameter in
-`completing-read'.
-This is a closure around CANDIDATES.
-When using icomplete or icomplete-vertical, `completing-read' uses a
-default of «sort first by length and then alphabetically». That is
-inappropriate when presenting the list of models.
-
-To override this, users of chatgpt-shell can set
-`chatgpt-shell-swap-model-selector' to provide a different experience.
-
-Use this function this way:
-  (setq chatgpt-shell-swap-model-selector
-        (lambda (candidates)
-          (completing-read
-            \"New model: \"
-            (dpc--cgs--model-completion-table candidates) nil t)))"
-  (let ((candidates candidates))
-    (lambda (string pred action)
-      (if (eq action 'metadata)
-          `(metadata
-            ;; 20250525-1500 I think all that is necessary to get sort to work is
-            ;; specifying the right category here (llm-model) and having the
-            ;; right cycle sort function in `completion-category-overrides'.
-            (category . llm-model)
-            ;;(cycle-sort-function . ,#'dpc-cgs--model-sort)
-            ;;(display-sort-function . ,#'dpc-cgs--model-sort)
-            )
-        (complete-with-action action candidates string pred)))))
-
-
 ;; 20250405-2235
 ;;
-;; NB. In `use-package', The :requires keyword specifies a dependency, but _does
-;; not_ force load it.  Rather, it prevents loading of THIS package unless the
-;; required feature is already loaded.
+;; NB. In `use-package', The :requires keyword specifies a dependency, but does
+;; not force load it as in nodejs require.  Instead, within use-package,
+;; requires prevents loading of the package unless the required feature is
+;; already loaded.
+
+(require 'dpc-sane-sorting)
 
 (use-package chatgpt-shell
   :defer t
@@ -2057,7 +2023,7 @@ Use this function this way:
   :ensure t ;; restore this later if loading from (M)ELPA
   ;; :requires (dpc-gemini) - No. See note above.
 
-  :config
+  :init
   ;; avoid flycheck warning about the following functions? This seems dumb.
   (declare-function chatgpt-shell-google-toggle-grounding-with-google-search "ext:chatgpt-shell-google")
 
@@ -2069,71 +2035,21 @@ Use this function this way:
     (keymap-local-set "C-c d" #'chatgpt-shell-describe-code)
     (keymap-local-set "C-c f" #'chatgpt-shell-proofread-region))
 
-  (defun dpc-cgs-setup ()
-    "Invoked when chatgpt-shell is loaded."
-    (dpc-gemini/read-settings-from-properties-file)
-    (setq chatgpt-shell-google-key (dpc-gemini/get-gemini-api-key))
-    (chatgpt-shell-google-load-models) ;; Google models change faster than cgs.
-    ;; default model
-    (setq chatgpt-shell-model-version dpc-gemini-selected-model)
+  :config
+  (setq chatgpt-shell-google-key (dpc-gemini/get-config-property "apikey"))
+  (chatgpt-shell-google-load-models) ;; CGS does not include complete list of Google models
+  (setq chatgpt-shell-model-version (dpc-gemini/get-config-property "default-model"))
 
-    ;; I proposed a change for sorting in cgs when swapping models, but xenodium
-    ;; rejected it, saying people who wanted sorting should D-I-Y. So here is my D-I-Y sorting.
-    ;; The completion-table specifies `llm-model' as the category.
-    ;; So I need to add that category to `completion-category-overrides', and the
-    ;; right sorting will happen.  What I found is that sorting after filtering
-    ;; happens correctly only with this category override.
-    (add-to-list 'completion-category-overrides
-                 `(llm-model
-                   (styles . (substring))
-                   (cycle-sort-function . ,#'dpc-cgs--model-sort)))
+  (setq chatgpt-shell-swap-model-selector
+        (lambda (candidates)
+          (completing-read "Swap to: "
+                           (dpc-ss-completion-fn candidates) nil t)))
 
-    (setq chatgpt-shell-swap-model-selector
-          (lambda (candidates)
-            (completing-read "Swap to: "
-                             (dpc--cgs--model-completion-table candidates) nil t)))
+  (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn)
 
-    (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn))
-
-  (dpc-cgs-setup)
   :catch
   (lambda (_keyword err)
-    (message (format "chatgpt-shell init: %s" (error-message-string err)))))
-
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;; google-gemini
-;; ;;
-;; ;; A library for gemini. It supports "generate content" and listing available
-;; ;; models, and maybe some other things. Designed to be a library.  It is homed
-;; ;; here: https://github.com/emacs-openai/google-gemini , and is distributed on
-;; ;; the jcs-emacs elpa repository. For now I am happy with chatgpt-shell
-;; ;;
-;;
-;; (use-package google-gemini
-;;   :defer t
-;;   :ensure t
-;;   :commands (google-gemini-content-generate)
-;;   )
-
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;; gemini-code-completion
-;; ;;
-;; ;; Does code completion around point in a code buffer.
-;; ;;
-;; ;; It is not on an elpa repo. Depends on google-gemini.el. This is not very
-;; ;; sophisticated. Not even close to aider.
-;; ;;
-;; (use-package gemini-code-completion
-;;   :load-path "~/elisp"
-;;   :defer t
-;;   :commands (gemini-complete)
-;;   :requires (dpc-gemini google-gemini)
-;;   :config
-;;   (progn
-;;     (setq google-gemini-key (dpc-gemini/get-gemini-api-key))
-;;     (keymap-global-set "C-c g c" #'gemini-complete)
-;;     )
-;;   )
+    (message (format "chatgpt-shell use: %s" (error-message-string err)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

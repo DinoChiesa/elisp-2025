@@ -53,6 +53,7 @@
 (require 'seq)
 (require 's)
 (require 'subr-x)
+(require 'dpc-sane-sorting)
 
 ;;; Code:
 
@@ -132,6 +133,22 @@ Places the result into a newly created buffer, and then
                       )))
                   gem-url)))
 
+(defun dpc-gemini/--internal-get-gemini-key ()
+  "reads the key; if none is set, prompts the user."
+  (let ((gemini-apikey (or
+                        (dpc-gemini/get-config-property "apikey")
+                        dpc-gemini-api-key)))
+    (if (not gemini-apikey)
+        (let ((msg (concat "You need to get an \"api key\" from Google.\n"
+                           "You can specify it in the properties file (currently "
+                           dpc-gemini-properties-file
+                           ")\n, or set it in your .emacs with a statement like:\n"
+                           "    (setq dpc-gemini-api-key \"XXXXXXXXXXXX\") \n")))
+          (message msg)
+          (browse-url "https://aistudio.google.com/app/apikey")
+          nil)
+      gemini-apikey)))
+
 (defun dpc-gemini/-current-generative-model-p (response)
   "A predicate that looks at a model in RESPONSE and returns non-nil
 if the model is current and supports \"generateContent\"."
@@ -144,30 +161,31 @@ if the model is current and supports \"generateContent\"."
 
 (defun dpc-gemini/get-generative-models (&optional predicate)
   "Get the available Gemini models that satisfy the optional PREDICATE."
-  (with-temp-buffer
-    (let ((gem-url
-           (concat
-            dpc-gemini-base-url
-            "v1beta/models?key="
-            dpc-gemini-api-key)))
-      (call-process "curl" nil t t
-                    "-s"
-                    "-X" "GET"
-                    gem-url))
-    (let ((json-object-type 'hash-table)
-          (json-array-type 'list)
-          (json-key-type 'string))
-      (let ((pred
-             (lambda (model)
-               (and (dpc-gemini/-current-generative-model-p model)
-                    (if predicate
-                        (funcall predicate model)
-                      t))))
-            (parsed-response
-             (json-read-from-string
-              (buffer-substring-no-properties (point-min) (point-max)))))
-        (seq-filter (lambda (model) (funcall pred model))
-                    (gethash "models" parsed-response))))))
+  (if-let* ((gemini-apikey (dpc-gemini/--internal-get-gemini-key)))
+      (with-temp-buffer
+        (let ((gem-url
+               (concat
+                dpc-gemini-base-url
+                "v1beta/models?key="
+                gemini-apikey)))
+          (call-process "curl" nil t t
+                        "-s"
+                        "-X" "GET"
+                        gem-url))
+        (let ((json-object-type 'hash-table)
+              (json-array-type 'list)
+              (json-key-type 'string))
+          (let ((pred
+                 (lambda (model)
+                   (and (dpc-gemini/-current-generative-model-p model)
+                        (if predicate
+                            (funcall predicate model)
+                          t))))
+                (parsed-response
+                 (json-read-from-string
+                  (buffer-substring-no-properties (point-min) (point-max)))))
+            (seq-filter (lambda (model) (funcall pred model))
+                        (gethash "models" parsed-response)))))))
 
 (defun dpc-gemini/list-models (&optional full-text)
   "List the available Gemini models that have  \"generateContent\" as one of the
@@ -195,7 +213,6 @@ do not filter by supportedGenerationMethods."
           (insert (mapconcat 'identity modelnames "\n  "))
           (insert "\n"))))
     (pop-to-buffer buf)))
-
 
 
 ;; 20250308-1828
@@ -239,6 +256,7 @@ the model description needed by chatgpt-shell."
 ;;           (fill-paragraph nil)
 ;;           (forward-paragraph))))))
 
+
 ;;;###autoload
 (defun dpc-gemini/fill-paragraphs-skipping-codeblocks ()
   "Fill all paragraphs in the current buffer, skipping code blocks."
@@ -261,72 +279,68 @@ the model description needed by chatgpt-shell."
 (defun dpc-gemini/ask-gemini (beginning end)
   "Retrieve a response from Gemini."
   (interactive "r")
-  (if (not (and (boundp 'dpc-gemini-api-key)
-                (stringp dpc-gemini-api-key)))
-      (let ((msg (concat "You need to get an \"api key\" from Google.\n"
-                         "You can set it in your .emacs with a statement like:\n"
-                         "    (setq dpc-gemini-api-key \"XXXXXXXXXXXX\") \n")))
-        (message msg)
-        (browse-url "https://aistudio.google.com/app/apikey")
-        nil)
-    (let* ((initial-prompt (if (region-active-p)
-                               (buffer-substring-no-properties beginning end)
-                             ""))
-           (gem-url
-            (concat
-             dpc-gemini-base-url
-             "v1beta/models/"
-             dpc-gemini-selected-model
-             ":generateContent?key="
-             dpc-gemini-api-key))
-           (gem-prompt
-            ;;(read-from-minibuffer "ask gemini ? " nil nil nil nil initial-prompt)))
-            (read-string "ask gemini ? " initial-prompt)))
-      (message (concat "invoking " gem-url))
-      (dpc-gemini/post-prompt gem-url gem-prompt)
-      (let* ((json-object-type 'hash-table)
-             (json-array-type 'list)
-             (json-key-type 'string)
-             (parsed-response
-              (json-read-from-string
-               (buffer-substring-no-properties (point-min) (point-max))))
-             (cond
-              ((gethash "error" parsed-response)
-               (let ((error-obj (gethash "error" parsed-response)))
-                 (error "Gemini API Error: %s (Code: %s)"
-                        (gethash "message" error-obj "Unknown error")
-                        (gethash "code" error-obj "N/A"))))
-              ((null (gethash "candidates" parsed-response))
-               (error "Gemini response missing 'candidates' field."))
-              (t
-               (let* ((candidates (gethash "candidates" parsed-response))
-                      (first-candidate (and (seq-consp candidates) (car candidates)))
-                      (content (and first-candidate (gethash "content" first-candidate)))
-                      (parts (and content (gethash "parts" content)))
-                      (first-part (and (seq-consp parts) (car parts)))
-                      (text (and first-part (gethash "text" first-part))))
-                 (if text
-                     (progn
-                       (delete-region (point-min) (point-max))
-                       (insert text)
-                       (dpc-gemini/fill-paragraphs-skipping-codeblocks))
-                   (error "Could not extract text from Gemini response. Structure: %S" parsed-response))))))))))
+  (if-let* ((gemini-apikey (dpc-gemini/--internal-get-gemini-key)))
+      (let* ((initial-prompt (if (region-active-p)
+                                 (buffer-substring-no-properties beginning end)
+                               ""))
+             (gem-url
+              (concat
+               dpc-gemini-base-url
+               "v1beta/models/"
+               dpc-gemini-selected-model
+               ":generateContent?key="
+               gemini-apikey))
+             (gem-prompt
+              ;;(read-from-minibuffer "ask gemini ? " nil nil nil nil initial-prompt)))
+              (read-string "ask gemini ? " initial-prompt)))
+        (message (concat "invoking " gem-url))
+        (dpc-gemini/post-prompt gem-url gem-prompt)
+        (let* ((json-object-type 'hash-table)
+               (json-array-type 'list)
+               (json-key-type 'string)
+               (parsed-response
+                (json-read-from-string
+                 (buffer-substring-no-properties (point-min) (point-max))))
+               (cond
+                ((gethash "error" parsed-response)
+                 (let ((error-obj (gethash "error" parsed-response)))
+                   (error "Gemini API Error: %s (Code: %s)"
+                          (gethash "message" error-obj "Unknown error")
+                          (gethash "code" error-obj "N/A"))))
+                ((null (gethash "candidates" parsed-response))
+                 (error "Gemini response missing 'candidates' field."))
+                (t
+                 (let* ((candidates (gethash "candidates" parsed-response))
+                        (first-candidate (and (seq-consp candidates) (car candidates)))
+                        (content (and first-candidate (gethash "content" first-candidate)))
+                        (parts (and content (gethash "parts" content)))
+                        (first-part (and (seq-consp parts) (car parts)))
+                        (text (and first-part (gethash "text" first-part))))
+                   (if text
+                       (progn
+                         (delete-region (point-min) (point-max))
+                         (insert text)
+                         (dpc-gemini/fill-paragraphs-skipping-codeblocks))
+                     (error "Could not extract text from Gemini response. Structure: %S" parsed-response))))))))))
+
+
 
 ;;;###autoload
 (defun dpc-gemini/select-model ()
   "Set the Gemini model to use."
   (interactive)
-  (let* ((available-models
-          (dpc-gemini/get-generative-models
-           (lambda (m) (string-match-p "gemini" (gethash "name" m)))))
-         (short-model-names
-          (mapcar (lambda (n) (string-remove-prefix "models/" n))
-                  (mapcar (lambda (m) (gethash "name" m)) available-models)))
-         (selected-model
-          (completing-read "Model?: "
-                           short-model-names nil t)))
-    (when selected-model
-      (setq dpc-gemini-selected-model selected-model))))
+  (if-let* ((gemini-apikey (dpc-gemini/--internal-get-gemini-key)))
+      (let* ((available-models
+              (dpc-gemini/get-generative-models
+               (lambda (m) (string-match-p "gemini" (gethash "name" m)))))
+             (short-model-names
+              (mapcar (lambda (n) (string-remove-prefix "models/" n))
+                      (mapcar (lambda (m) (gethash "name" m)) available-models)))
+             (selected-model
+              (completing-read "Model?: "
+                               (dpc-ss-completion-fn short-model-names) nil t)))
+        (when selected-model
+          (setq dpc-gemini-selected-model selected-model)))))
 
 
 ;;;###autoload
@@ -430,8 +444,10 @@ As an alternative to calling this fn, programs can directly set these variables.
 file, `dpc-gemini-properties-file'. If that file had not been previously
 read, this function reads the file and caches the result."
   (if-let* ((value (dpc-gemini/--read-property-value-from-cache propname)))
-      (s-trim value)))
-
+      (let ((trimmed-value (s-trim value)))
+        (if (string= propname "apikey")
+            (setq dpc-gemini-api-key trimmed-value))
+        trimmed-value)))
 
 (provide 'dpc-gemini)
 
