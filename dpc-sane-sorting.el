@@ -46,7 +46,10 @@ filename extension. That might be YAGNI.
            ((string= b "./") t)
            (t (string< a b))))))
 
-(defun dpc-ss-alphasort-completion-fn (candidates)
+(defvar dpc-ss-supported-categories '(sorted-sanely unsorted)
+  "List of supported completion categories for `dpc-ss-alphasort-completion-fn'.")
+
+(defun dpc-ss-alphasort-completion-fn (candidates category-symbol)
   "Returns a function to be used as the COMPLETIONS parameter in
 `completing-read'.
 When using icomplete or icomplete-vertical, `completing-read' uses a
@@ -62,10 +65,13 @@ Use this function this way:
           (completing-read
             \"New model: \"
             (dpc-ss--completion-fn candidates) nil t)))"
+  (unless (memq category-symbol dpc-ss-supported-categories)
+    (error "Invalid category symbol: %s. Supported categories are: %s"
+           category-symbol dpc-ss-supported-categories))
   (let ((candidates candidates))
     (lambda (string pred action)
       (if (eq action 'metadata)
-          `(metadata (category . sorted-sanely) )
+          `(metadata (category . ,category-symbol))
         (complete-with-action action candidates string pred)))))
 
 
