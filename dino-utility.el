@@ -757,9 +757,7 @@ are the string substitutions (see `format')."
   (let* ((msg (apply 'format text args)))
     (message "%s %s %s" label (dino-time) msg)))
 
-;; AI!  Rename the function dino-set-alist-entry to dino/set-alist-entry ,
-;; and update all references to use the new name.  Check comments too.
-(defun dino-set-alist-entry (alist key value-cdr)
+(defun dino/set-alist-entry (alist key value-cdr)
   "like `add-to-list' but works whether the key exists or not.
 "
   (let ((target-entry (assoc key alist)))

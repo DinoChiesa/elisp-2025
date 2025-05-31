@@ -89,7 +89,6 @@ Eg,
   "The model key for Gemini. This package uses the specified model, and other
 packages may choose to reference this, too.
 
-Find models at https://ai.google.dev/gemini-api/docs/models/gemini .
 examples: \"gemini-2.5-flash-preview-05-20\",
 \"gemini-2.5-pro-exp-03-25\"
 See also `dpc-gemini/list-models'"

@@ -440,26 +440,26 @@
   (icomplete-vertical-mode)
 
   ;; Set completion-category-overrides for specific categories
-  ;; The `dino-set-alist-entry' function is used to update or add entries
+  ;; The `dino/set-alist-entry' function is used to update or add entries
   ;; without overwriting the entire alist.
   (setq completion-category-overrides
-        (dino-set-alist-entry completion-category-overrides
+        (dino/set-alist-entry completion-category-overrides
                                 'buffer
                                 '((styles  . (initials flex))
                                   (cycle   . 10))))
   (setq completion-category-overrides
-        (dino-set-alist-entry completion-category-overrides
+        (dino/set-alist-entry completion-category-overrides
                                 'command
                                 (list '(styles . (substring))
                                       (cons 'cycle-sort-function #'dpc-ss-sort-alpha))))
   (setq completion-category-overrides
-        (dino-set-alist-entry completion-category-overrides
+        (dino/set-alist-entry completion-category-overrides
                                 'file
                                 (list '(styles . (basic substring))
                                       (cons 'cycle-sort-function #'dpc-ss-sort-alpha-but-dot-slash-last)
                                       '(cycle . 10))))
   (setq completion-category-overrides
-        (dino-set-alist-entry completion-category-overrides
+        (dino/set-alist-entry completion-category-overrides
                                 'symbol
                                 '((styles . (basic shorthand substring)))))
 
