@@ -94,20 +94,20 @@ Use this function this way:
 ;; `sorted-sanely', to `completion-category-overrides', and the right sorting will
 ;; happen.
 (setq completion-category-overrides
-      (dino/set-alist-entry completion-category-overrides
-                            'sorted-sanely
-                            `((styles . (substring))
-                              (cycle-sort-function . ,#'dpc-ss-sort-alpha))))
+      (dino/insert-or-modify-alist-entry completion-category-overrides
+                                         'sorted-sanely
+                                         `((styles . (substring))
+                                           (cycle-sort-function . ,#'dpc-ss-sort-alpha))))
 
 
 ;; In some cases we want no sorting; particularly recentf.  Even here,
 ;; without an overrides, minibuffer will apply its weird sort. So
 ;; we override to say "no sort" with the `unsorted' category.
 (setq completion-category-overrides
-      (dino/set-alist-entry completion-category-overrides
-                            'unsorted
-                            `((styles . (substring))
-                              (cycle-sort-function . ,#'identity))))
+      (dino/insert-or-modify-alist-entry completion-category-overrides
+                                         'unsorted
+                                         `((styles . (substring))
+                                           (cycle-sort-function . ,#'identity))))
 
 (provide 'dpc-sane-sorting)
 

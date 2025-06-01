@@ -757,20 +757,23 @@ are the string substitutions (see `format')."
   (let* ((msg (apply 'format text args)))
     (message "%s %s %s" label (dino-time) msg)))
 
-;; AI! Rename this to be dino/insert-or-modify-alist-entry ,
-;; and update any references to use the new name.
-(defun dino/set-alist-entry (alist key desired-value)
-  "Update a key in ALIST with VALUE-CDR.
-If KEY does not exist, add the new pair to the front.
-This function is non-destructive when adding a new key but
-destructive (via `setcdr') when updating an existing one.
+(defun dino/insert-or-modify-alist-entry (alist key desired-value)
+  "Update a key in ALIST with DESIRED-VALUE.
+If KEY does not exist, add the new pair (KEY . DESIRED-VALUE) to the front of ALIST.
+This function is non-destructive when adding a new key (it returns a new list
+with the added pair at the front) but destructive (via `setcdr') when updating
+an existing one (it modifies the existing alist in place).
 It always returns the resulting alist.
+
+It is recommended to always use this function with `setq` to ensure the
+variable holding the alist is correctly updated, especially when a new key
+is added:
 
 Usage:
 
    (setq my-alist
-         (dino/set-alist-entry my-alist
-                               key desired-value))"
+         (dino/insert-or-modify-alist-entry my-alist
+                                            key desired-value))"
 
   (let ((target-entry (assoc key alist)))
     (if target-entry

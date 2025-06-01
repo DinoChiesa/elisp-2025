@@ -442,25 +442,25 @@
 
   ;; fixup the categories for a few things
   (setq completion-category-overrides
-        (dino/set-alist-entry completion-category-overrides
-                              'buffer
-                              `((styles  . (initials flex)) (cycle . 10))))
+        (dino/insert-or-modify-alist-entry completion-category-overrides
+                                           'buffer
+                                           `((styles  . (initials flex)) (cycle . 10))))
   (setq completion-category-overrides
-        (dino/set-alist-entry completion-category-overrides
-                              'command
-                              `((styles . (substring))
-                                (cycle-sort-function . ,#'dpc-ss-sort-alpha))))
+        (dino/insert-or-modify-alist-entry completion-category-overrides
+                                           'command
+                                           `((styles . (substring))
+                                             (cycle-sort-function . ,#'dpc-ss-sort-alpha))))
   (setq completion-category-overrides
-        (dino/set-alist-entry completion-category-overrides
-                              'file
-                              `((styles . (basic substring))
-                                (cycle-sort-function . ,#'dpc-ss-sort-alpha-but-dot-slash-last)
-                                (cycle . 10))))
+        (dino/insert-or-modify-alist-entry completion-category-overrides
+                                           'file
+                                           `((styles . (basic substring))
+                                             (cycle-sort-function . ,#'dpc-ss-sort-alpha-but-dot-slash-last)
+                                             (cycle . 10))))
 
   (setq completion-category-overrides
-        (dino/set-alist-entry completion-category-overrides
-                              'symbol
-                              `( (styles . (basic shorthand substring))) ))
+        (dino/insert-or-modify-alist-entry completion-category-overrides
+                                           'symbol
+                                           `( (styles . (basic shorthand substring))) ))
 
 
 
