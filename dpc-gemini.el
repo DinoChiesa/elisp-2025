@@ -85,15 +85,13 @@ Eg,
   :type 'string
   :group 'dpc-gemini)
 
-(defcustom dpc-gemini-selected-model "gemini-2.5-flash-preview-05-20"
+(defvar dpc-gemini-selected-model "gemini-2.5-flash-preview-05-20"
   "The model key for Gemini. This package uses the specified model, and other
 packages may choose to reference this, too.
 
 examples: \"gemini-2.5-flash-preview-05-20\",
 \"gemini-2.5-pro-exp-03-25\"
-See also `dpc-gemini/list-models'"
-  :type 'string
-  :group 'dpc-gemini)
+See also `dpc-gemini/list-models'")
 
 (defvar dpc-gemini--properties-cache nil
   "Cache for properties read from `dpc-gemini-properties-file'.
@@ -352,6 +350,8 @@ state of the region:
   "Retrieve a response from Gemini. Prompt the user for input.
 If the region is active, use region content as suggested prompt."
   (interactive)
+  ;; read properties before referencing `dpc-gemini-selected-model'
+  (dpc-gemini/read-settings-from-properties-file)
   (if-let* ((gem-prompt (dpc-gemini/--compose-message))
             (gem-url
              (concat
