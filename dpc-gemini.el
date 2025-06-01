@@ -193,21 +193,23 @@ members of supportedGenerationMethods.
 Optional arg FULL-TEXT says to return the full text of the response and
 do not filter by supportedGenerationMethods."
   (interactive "P")
-  (let* ((all-models (dpc-gemini/get-generative-models)) ; Assume this returns the parsed list
-         (buf (get-buffer-create "gemini-models"))) ; Use get-buffer-create
+  (let* ((all-models (dpc-gemini/get-generative-models))
+         (buf (get-buffer-create "gemini-models")))
     (with-current-buffer buf
       (erase-buffer)
       (if full-text
           (progn
             (insert (json-encode all-models))
             (json-pretty-print-buffer))
+
         (let* ((modelnames
-                (mapcar (lambda (model)
-                          (let ((name (gethash "name" model)))
-                            (if (and (stringp name) (s-starts-with-p "models/" name))
-                                (substring name (length "models/")) ; More robust
-                              name)))
-                        all-models)))
+                (dpc-ss-sort-alpha
+                 (mapcar (lambda (model)
+                           (let ((name (gethash "name" model)))
+                             (if (and (stringp name) (s-starts-with-p "models/" name))
+                                 (substring name (length "models/"))
+                               name)))
+                         all-models))))
           (insert "Gemini Models that support generateContent:\n\n  ")
           (insert (mapconcat 'identity modelnames "\n  "))
           (insert "\n"))))
