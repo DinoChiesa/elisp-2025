@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-31 17:01:23>
+;; Last saved: <2025-May-31 17:09:05>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -136,7 +136,8 @@
              dino/indent-buffer
              dino/indent-line-to-current-column
              dino/shfmt-buffer)
-  :autoload (dino/maybe-add-to-exec-path
+  :autoload (dino/insert-or-modify-alist-entry
+             dino/maybe-add-to-exec-path
              dino/find-latest-nvm-version-bin-dir
              dino/setup-shmode-for-apheleia
              dino/find-executable-in-paths)
@@ -440,7 +441,8 @@
   (icomplete-mode)
   (icomplete-vertical-mode)
 
-  ;; fixup the categories for a few things
+  ;; Fixup the categories for a few things.
+  ;; I tried doing this in a dolist, but it was not satisfactory.
   (setq completion-category-overrides
         (dino/insert-or-modify-alist-entry completion-category-overrides
                                            'buffer
@@ -456,29 +458,11 @@
                                            `((styles . (basic substring))
                                              (cycle-sort-function . ,#'dpc-ss-sort-alpha-but-dot-slash-last)
                                              (cycle . 10))))
-
   (setq completion-category-overrides
         (dino/insert-or-modify-alist-entry completion-category-overrides
                                            'symbol
-                                           `( (styles . (basic shorthand substring))) ))
+                                           `((styles . (basic shorthand substring))) ))
 
-
-
-  ;; (dolist (category-config
-  ;;          '( (buffer (styles  . (initials flex)) (cycle . 10))
-  ;;             (command (styles . (substring))
-  ;;                      (cycle-sort-function . dpc-ss-sort-alpha))
-  ;;             (file (styles . (basic substring))
-  ;;                   (cycle-sort-function . dpc-ss-sort-alpha-but-dot-slash-last)
-  ;;                   (cycle . 10))
-  ;;             (symbol (styles . (basic shorthand substring))) ))
-  ;;   (let ((category (car category-config))
-  ;;         (settings (cdr category-config)))
-  ;;     (when (assoc 'cycle-sort-function settings)
-  ;;       (setf (cdr (assoc 'cycle-sort-function settings))
-  ;;             (symbol-function (cdr (assoc 'cycle-sort-function settings)))))
-  ;;     (setq completion-category-overrides
-  ;;           (dino/set-alist-entry completion-category-overrides category settings))))
 
   :bind (:map  icomplete-vertical-mode-minibuffer-map
                ;; icomplete-minibuffer-map <== use this for the non-vertical version.
