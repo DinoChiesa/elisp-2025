@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-31 16:03:05>
+;; Last saved: <2025-May-31 17:01:23>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -130,6 +130,7 @@
 ;;
 (use-package dino-utility
   :load-path "~/elisp"
+  :pin manual
   :commands (dino/camel-to-snakecase-word-at-point
              dino/snake-to-camelcase-word-at-point
              dino/indent-buffer
@@ -422,7 +423,7 @@
 
 (use-package icomplete
   :demand t
-  :requires (dpc-sane-sorting)
+  :requires (dpc-sane-sorting dino-utility)
 
   ;; Gemini says the  order of evaluation is :custom, then :init, then :config.
   :custom
@@ -439,19 +440,45 @@
   (icomplete-mode)
   (icomplete-vertical-mode)
 
-  (dolist (category-config
-           '( (buffer (styles  . (initials flex)) (cycle . 10))
-              (command (styles . (substring)) (cycle-sort-function . dpc-ss-sort-alpha))
-              (file (styles . (basic substring)) (cycle-sort-function . dpc-ss-sort-alpha-but-dot-slash-last) (cycle . 10))
-              (symbol (styles . (basic shorthand substring))) ))
-    (let ((category (car category-config))
-          (settings (cdr category-config)))
-      ;; Need to properly quote the sort function symbols for the actual cons cell
-      (when (assoc 'cycle-sort-function settings)
-        (setf (cdr (assoc 'cycle-sort-function settings))
-              (symbol-function (cdr (assoc 'cycle-sort-function settings)))))
-      (setq completion-category-overrides
-            (dino/set-alist-entry completion-category-overrides category settings))))
+  ;; fixup the categories for a few things
+  (setq completion-category-overrides
+        (dino/set-alist-entry completion-category-overrides
+                              'buffer
+                              `((styles  . (initials flex)) (cycle . 10))))
+  (setq completion-category-overrides
+        (dino/set-alist-entry completion-category-overrides
+                              'command
+                              `((styles . (substring))
+                                (cycle-sort-function . ,#'dpc-ss-sort-alpha))))
+  (setq completion-category-overrides
+        (dino/set-alist-entry completion-category-overrides
+                              'file
+                              `((styles . (basic substring))
+                                (cycle-sort-function . ,#'dpc-ss-sort-alpha-but-dot-slash-last)
+                                (cycle . 10))))
+
+  (setq completion-category-overrides
+        (dino/set-alist-entry completion-category-overrides
+                              'symbol
+                              `( (styles . (basic shorthand substring))) ))
+
+
+
+  ;; (dolist (category-config
+  ;;          '( (buffer (styles  . (initials flex)) (cycle . 10))
+  ;;             (command (styles . (substring))
+  ;;                      (cycle-sort-function . dpc-ss-sort-alpha))
+  ;;             (file (styles . (basic substring))
+  ;;                   (cycle-sort-function . dpc-ss-sort-alpha-but-dot-slash-last)
+  ;;                   (cycle . 10))
+  ;;             (symbol (styles . (basic shorthand substring))) ))
+  ;;   (let ((category (car category-config))
+  ;;         (settings (cdr category-config)))
+  ;;     (when (assoc 'cycle-sort-function settings)
+  ;;       (setf (cdr (assoc 'cycle-sort-function settings))
+  ;;             (symbol-function (cdr (assoc 'cycle-sort-function settings)))))
+  ;;     (setq completion-category-overrides
+  ;;           (dino/set-alist-entry completion-category-overrides category settings))))
 
   :bind (:map  icomplete-vertical-mode-minibuffer-map
                ;; icomplete-minibuffer-map <== use this for the non-vertical version.
@@ -1886,14 +1913,13 @@ then switch to the markdown output buffer."
   ;; package is published via elpa.
   :autoload (dpc-gemini/get-config-property)
   :commands (dpc-gemini/ask-gemini dpc-gemini/select-model)
+  :bind (("C-c g a" . dpc-gemini/ask-gemini)
+         ("C-c g ?" . dpc-gemini/ask-gemini)
+         ("C-c g l" . dpc-gemini/list-models)
+         ("C-c g s" . dpc-gemini/select-model))
+  :config
+  (setq dpc-gemini-properties-file "~/.google-gemini-properties"))
 
-  :config (progn
-            (setq dpc-gemini-properties-file "~/.google-gemini-properties")
-            (keymap-global-set "C-c g ?" #'dpc-gemini/ask-gemini)
-            (keymap-global-set "C-c g a" #'dpc-gemini/ask-gemini)
-            (keymap-global-set "C-c g l" #'dpc-gemini/list-models)
-            (keymap-global-set "C-c g s" #'dpc-gemini/select-model)
-            ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gptel
@@ -4207,12 +4233,15 @@ color ready for next time.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; recentf - to open recent files.
 ;;
-;; Later in this file, there is a global key binding for `recentf-open'.
+;; The list, `recentf-list', is sorted by «date opened in emacs», not
+;; most recently modified. So if I open a file Tuesday and save it
+;; intermittently through the week, it won't bubble up in the `recentf-list'.
 ;;
 
 (use-package recentf
   :defer t
   :commands (recentf-mode recentf-open)
+  :bind (( "C-x C-r" . recentf-open))
   :config
   (require 'dpc-sane-sorting)
   (recentf-mode 1)
@@ -4336,7 +4365,6 @@ Enable `recentf-mode' if it isn't already."
 ;; (define-key global-map (kbd "C-;") nil) ;; works to unset a key
 
 (keymap-global-set "C-x 7"       #'dino-toggle-frame-split )
-(keymap-global-set "C-x C-r"     #'recentf-open)
 (keymap-global-set "C-x C-b"     #'ibuffer) ; instead of buffer-list
 (keymap-global-set "C-x |"       #'align-regexp)
 (keymap-global-set "C-x ?"       #'describe-text-properties)

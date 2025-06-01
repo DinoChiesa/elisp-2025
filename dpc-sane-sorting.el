@@ -3,6 +3,7 @@
 ;;; dpc-sane-sorting.el --- logic to help make icomplete-vertical-model sort sanely in minibuffer
 ;;
 
+(require 'dino-utility)
 
 ;; ==== sorters
 (defun dpc-ss-sort-alpha (candidates)
@@ -50,11 +51,13 @@ filename extension. That might be YAGNI.
   "List of supported completion categories for `dpc-ss-sort-completion-fn'.")
 
 (defun dpc-ss-sort-completion-fn (candidates category-symbol)
-  "Returns a function to be used as the COMPLETIONS parameter in `completing-read'.
+  "Returns a function to be used as the COMPLETIONS parameter in
+`completing-read'.
 
 CANDIDATES is a list of strings, the completion candidates.
 CATEGORY-SYMBOL is a symbol indicating the completion category, which
-influences sorting behavior. It must be a member of `dpc-ss-supported-categories'.
+influences sorting behavior. It must be a member of
+`dpc-ss-supported-categories'.
 
 When using icomplete or icomplete-vertical, `completing-read' uses a
 default of «sort first by length and then alphabetically». That is
@@ -68,7 +71,8 @@ Use this function this way:
         (lambda (candidates)
           (completing-read
             \"New model: \"
-            (dpc-ss-sort-completion-fn candidates 'sorted-sanely) nil t)))"
+            (dpc-ss-sort-completion-fn candidates \\'sorted-sanely)
+            nil t)))"
   (unless (memq category-symbol dpc-ss-supported-categories)
     (error "Invalid category symbol: %s. Supported categories are: %s"
            category-symbol dpc-ss-supported-categories))
@@ -78,7 +82,6 @@ Use this function this way:
           `(metadata (category . ,category-symbol))
         (complete-with-action action candidates string pred)))))
 
-
 ;; This category, `sorted-sanely', is for sorting of anything... LLM models in the
 ;; swap-model chooser, commands, etc. Anything that needs a sane sort order.  Without an
 ;; overrides, minibuffer sorts first by length, then alphabetically, which seems
@@ -87,25 +90,24 @@ Use this function this way:
 ;; when filtering happens.  Sorting with an active filter (like we've typed a few
 ;; characters) happens correctly only with a category override which specifies a
 ;; cycle-sort-function, which means I need a completion function that specifies a
-;; category. Eg, see above `dpc-ss-alphasort-completion-fn'.  Then add the category, in this case
+;; category. Eg, see above `dpc-ss-sort-completion-fn'.  Then add the category, in this case
 ;; `sorted-sanely', to `completion-category-overrides', and the right sorting will
 ;; happen.
-(add-to-list 'completion-category-overrides
-             `(sorted-sanely
-               (styles . (substring))
-               ;; Consider if dpc-ss-sort-alpha is still the desired function or if
-               ;; a more general sorting mechanism tied to the category is needed.
-               ;; For now, this remains as is.
-               (cycle-sort-function . ,#'dpc-ss-sort-alpha)))
+(setq completion-category-overrides
+      (dino/set-alist-entry completion-category-overrides
+                            'sorted-sanely
+                            `((styles . (substring))
+                              (cycle-sort-function . ,#'dpc-ss-sort-alpha))))
+
 
 ;; In some cases we want no sorting; particularly recentf.  Even here,
 ;; without an overrides, minibuffer will apply its weird sort. So
 ;; we override to say "no sort" with the `unsorted' category.
-(add-to-list 'completion-category-overrides
-             `(unsorted
-               (styles . (substring))
-               (cycle-sort-function . ,#'identity)))
-
+(setq completion-category-overrides
+      (dino/set-alist-entry completion-category-overrides
+                            'unsorted
+                            `((styles . (substring))
+                              (cycle-sort-function . ,#'identity))))
 
 (provide 'dpc-sane-sorting)
 

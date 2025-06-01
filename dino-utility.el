@@ -757,13 +757,27 @@ are the string substitutions (see `format')."
   (let* ((msg (apply 'format text args)))
     (message "%s %s %s" label (dino-time) msg)))
 
-(defun dino/set-alist-entry (alist key value-cdr)
-  "like `add-to-list' but works whether the key exists or not.
-"
+;; AI! Rename this to be dino/insert-or-modify-alist-entry ,
+;; and update any references to use the new name.
+(defun dino/set-alist-entry (alist key desired-value)
+  "Update a key in ALIST with VALUE-CDR.
+If KEY does not exist, add the new pair to the front.
+This function is non-destructive when adding a new key but
+destructive (via `setcdr') when updating an existing one.
+It always returns the resulting alist.
+
+Usage:
+
+   (setq my-alist
+         (dino/set-alist-entry my-alist
+                               key desired-value))"
+
   (let ((target-entry (assoc key alist)))
     (if target-entry
-        (setcdr target-entry value-cdr)
-      (add-to-list alist (cons key value-cdr)))))
+        (progn
+          (setcdr target-entry desired-value)
+          alist)
+      (cons (cons key desired-value) alist))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pretty print xml in region
