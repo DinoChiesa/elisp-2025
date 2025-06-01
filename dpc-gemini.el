@@ -103,6 +103,10 @@ See also `dpc-gemini/list-models'"
   "Last modification time of `dpc-gemini-properties-file' when it was last read into cache.
   Used to detect if the file has changed and needs re-reading.")
 
+(defface
+  dpc-gemini-text '((t (:background "black" :foreground "MediumSeaGreen")))
+  "For prompt composition text."  :group 'faces)
+
 (defun dpc-gemini/--internal-get-gemini-key ()
   "reads the key; if none is set, prompts the user."
   (let ((gemini-apikey (or
@@ -324,7 +328,7 @@ state of the region:
 
           (font-lock-add-keywords nil '(("^##.*" . 'font-lock-comment-face)))
           ;;(buffer-face-set 'font-lock-type-face)
-          (buffer-face-set 'change-log-list)
+          (buffer-face-set 'dpc-gemini-text)
           (font-lock-fontify-buffer) ;; i think this is required?
           (pop-to-buffer (current-buffer))
 
