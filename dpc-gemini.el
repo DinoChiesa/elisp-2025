@@ -103,35 +103,6 @@ See also `dpc-gemini/list-models'"
   "Last modification time of `dpc-gemini-properties-file' when it was last read into cache.
   Used to detect if the file has changed and needs re-reading.")
 
-(defun dpc-gemini/post-prompt (gem-url gem-prompt)
-  "Perform an HTTP POST to GEM-URL with a one-part text prompt given
-in GEM-PROMPT.
-
-Places the result into a newly created buffer, and then
-`switch-to-buffer' is called on that buffer when complete."
-  ;; curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$YOUR_API_KEY" \
-  ;; -H 'Content-Type: application/json' \
-  ;; -X POST \
-  ;; -d '{
-  ;;   "contents": [{
-  ;;     "parts":[{"text": "Explain how AI works"}]
-  ;;     }]
-  ;;    }'
-
-  (let ((buf (get-buffer-create "gemini-response")))
-    (switch-to-buffer buf)
-    (erase-buffer)
-    (call-process "curl" nil t t
-                  "-s"
-                  "-X" "POST"
-                  "-H" "content-type: application/json"
-                  "-d"
-                  (json-encode
-                   `(("contents" .
-                      [(("parts" . [(("text" . ,gem-prompt))]))]
-                      )))
-                  gem-url)))
-
 (defun dpc-gemini/--internal-get-gemini-key ()
   "reads the key; if none is set, prompts the user."
   (let ((gemini-apikey (or
@@ -148,6 +119,38 @@ Places the result into a newly created buffer, and then
           nil)
       gemini-apikey)))
 
+(defun dpc-gemini/post-prompt (gem-url gem-prompt)
+  "Perform an HTTP POST to GEM-URL with a one-part text prompt given
+in GEM-PROMPT.
+
+Places the result into a newly created buffer, and then
+`switch-to-buffer' is called on that buffer when complete."
+  ;; curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent" \
+  ;; -H 'X-goog-api-key: $YOUR_API_KEY' \
+  ;; -H 'Content-Type: application/json' \
+  ;; -X POST \
+  ;; -d '{
+  ;;   "contents": [{
+  ;;     "parts":[{"text": "Explain how AI works"}]
+  ;;     }]
+  ;;    }'
+
+  (if-let* ((gemini-apikey (dpc-gemini/--internal-get-gemini-key)))
+      (let ((buf (get-buffer-create "gemini-response")))
+        (switch-to-buffer buf)
+        (erase-buffer)
+        (call-process "curl" nil t t
+                      "-s"
+                      "-X" "POST"
+                      "-H" "content-type: application/json"
+                      "-H" (concat "X-Goog-API-Key:" gemini-apikey)
+                      "-d"
+                      (json-encode
+                       `(("contents" .
+                          [(("parts" . [(("text" . ,gem-prompt))]))]
+                          )))
+                      gem-url))))
+
 (defun dpc-gemini/-current-generative-model-p (response)
   "A predicate that looks at a model in RESPONSE and returns non-nil
 if the model is current and supports \"generateContent\"."
@@ -162,12 +165,9 @@ if the model is current and supports \"generateContent\"."
   "Get the available Gemini models that satisfy the optional PREDICATE."
   (if-let* ((gemini-apikey (dpc-gemini/--internal-get-gemini-key)))
       (with-temp-buffer
-        (let ((gem-url
-               (concat
-                dpc-gemini-base-url
-                "v1beta/models?key="
-                gemini-apikey)))
+        (let ((gem-url (concat dpc-gemini-base-url "v1beta/models")))
           (call-process "curl" nil t t
+                        "-H" (concat "X-Goog-API-Key:" gemini-apikey)
                         "-s"
                         "-X" "GET"
                         gem-url))
@@ -276,24 +276,83 @@ the model description needed by chatgpt-shell."
         (forward-paragraph)))))
 
 
+(defun dpc-gemini/--compose-message ()
+  "Compose a message, using a temporary buffer for multi-line text.
+
+This function is interactive and behaves differently based on the
+state of the region:
+
+1.  If a region is active and contains MORE THAN ONE newline:
+    - A new temporary buffer is created in 'text-mode'.
+    - The user can compose a message in this buffer.
+    - Pressing 'C-c C-c' accepts the content.
+    - Pressing 'C-c C-k' abandons the composition (returns nil).
+    - The function returns the composed text as a plain string (or nil if abandoned).
+
+2.  If a region is active and contains ONE LINE (or less):
+    - The minibuffer is used to read a string ('read-string').
+    - The minibuffer is pre-populated with the text from the region.
+    - The function returns the string from the minibuffer.
+
+3.  If a region is NOT active:
+    - The minibuffer is used to read a string.
+    - The function returns the string from the minibuffer."
+  (let ((initial-input "")
+        (line-count 0))
+
+    (when (region-active-p)
+      (let* ((beg (region-beginning))
+             (end (region-end)))
+        (setq initial-input (buffer-substring-no-properties beg end)
+              line-count (count-lines beg end))))
+
+    (cond
+     ((and (region-active-p) (> line-count 1))
+      (with-temp-buffer
+        (let ((abandoned nil))
+          (text-mode)
+          (insert initial-input)
+          ;; Append the instruction lines
+          (goto-char (point-max))
+          (insert "\n\n## Type your message above.\n")
+          (insert "##   Press C-c C-c to accept, C-c C-k to cancel.\n")
+          (goto-char (point-min)) ;; Move back to the beginning
+          (keymap-local-set "C-c C-c"
+                            (lambda () (interactive) (exit-recursive-edit)))
+          (keymap-local-set "C-c C-k"
+                            (lambda () (interactive) (setq abandoned t) (exit-recursive-edit)))
+
+          (font-lock-add-keywords nil '(("^##.*" . 'font-lock-comment-face)))
+          ;;(buffer-face-set 'font-lock-type-face)
+          (buffer-face-set 'change-log-list)
+          (font-lock-fontify-buffer) ;; i think this is required?
+          (pop-to-buffer (current-buffer))
+
+          ;; Enter a recursive edit. Emacs will now wait for the user
+          ;; to edit and then press the key that calls `exit-recursive-edit`.
+          (recursive-edit)
+          ;; After `exit-recursive-edit` is called, the code continues.
+          ;; The value of the `with-temp-buffer` block is the value of its
+          ;; last expression. We return the full contents of the buffer
+          ;; as a plain string, unless abandoned.
+          (unless abandoned
+            ;; Extract buffer content, split into lines, filter lines starting with "##", and join back
+            (s-trim (s-join "\n" (seq-filter (lambda (line) (not (string-prefix-p "##" (s-trim line))))
+                                             (split-string (buffer-substring-no-properties (point-min) (point-max)) "\n" t))))))))
+     (t
+      (read-string "Ask Gemini: " initial-input)))))
+
+
 ;;;###autoload
-(defun dpc-gemini/ask-gemini (beginning end)
-  "Retrieve a response from Gemini."
-  (interactive "r")
-  (if-let* ((gemini-apikey (dpc-gemini/--internal-get-gemini-key)))
-      (let* ((initial-prompt (if (region-active-p)
-                                 (buffer-substring-no-properties beginning end)
-                               ""))
-             (gem-url
-              (concat
-               dpc-gemini-base-url
-               "v1beta/models/"
-               dpc-gemini-selected-model
-               ":generateContent?key="
-               gemini-apikey))
-             (gem-prompt
-              ;;(read-from-minibuffer "ask gemini ? " nil nil nil nil initial-prompt)))
-              (read-string "ask gemini ? " initial-prompt)))
+(defun dpc-gemini/ask-gemini ()
+  "Retrieve a response from Gemini. Prompt the user for input.
+If the region is active, use region content as suggested prompt."
+  (interactive)
+  (if-let* ((gem-prompt (dpc-gemini/--compose-message))
+            (gem-url
+             (concat
+              dpc-gemini-base-url "v1beta/models/" dpc-gemini-selected-model ":generateContent")))
+      (progn
         (message (concat "invoking " gem-url))
         (dpc-gemini/post-prompt gem-url gem-prompt)
         (let* ((json-object-type 'hash-table)
@@ -301,29 +360,29 @@ the model description needed by chatgpt-shell."
                (json-key-type 'string)
                (parsed-response
                 (json-read-from-string
-                 (buffer-substring-no-properties (point-min) (point-max))))
-               (cond
-                ((gethash "error" parsed-response)
-                 (let ((error-obj (gethash "error" parsed-response)))
-                   (error "Gemini API Error: %s (Code: %s)"
-                          (gethash "message" error-obj "Unknown error")
-                          (gethash "code" error-obj "N/A"))))
-                ((null (gethash "candidates" parsed-response))
-                 (error "Gemini response missing 'candidates' field."))
-                (t
-                 (let* ((candidates (gethash "candidates" parsed-response))
-                        (first-candidate (and (seq-consp candidates) (car candidates)))
-                        (content (and first-candidate (gethash "content" first-candidate)))
-                        (parts (and content (gethash "parts" content)))
-                        (first-part (and (seq-consp parts) (car parts)))
-                        (text (and first-part (gethash "text" first-part))))
-                   (if text
-                       (progn
-                         (delete-region (point-min) (point-max))
-                         (insert text)
-                         (dpc-gemini/fill-paragraphs-skipping-codeblocks))
-                     (error "Could not extract text from Gemini response. Structure: %S" parsed-response))))))))))
-
+                 (buffer-substring-no-properties (point-min) (point-max)))))
+          (cond
+           ((gethash "error" parsed-response)
+            (let ((error-obj (gethash "error" parsed-response)))
+              (error "Gemini API Error: %s (Code: %s)"
+                     (gethash "message" error-obj "Unknown error")
+                     (gethash "code" error-obj "N/A"))))
+           ((null (gethash "candidates" parsed-response))
+            (error "Gemini response missing 'candidates' field."))
+           (t
+            (if-let* ((candidates (gethash "candidates" parsed-response))
+                      (first-candidate (car candidates))
+                      (content (gethash "content" first-candidate))
+                      (parts (gethash "parts" content))
+                      (first-part (car parts))
+                      (text (gethash "text" first-part)))
+                (if text
+                    (progn
+                      (delete-region (point-min) (point-max))
+                      (insert text)
+                      (dpc-gemini/fill-paragraphs-skipping-codeblocks))
+                  (error "Could not extract text from Gemini response. Structure: %S" parsed-response)))))))
+    (message "quit.")))
 
 
 ;;;###autoload
