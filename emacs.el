@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-May-31 17:09:05>
+;; Last saved: <2025-June-03 19:59:52>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -441,17 +441,21 @@
   (icomplete-mode)
   (icomplete-vertical-mode)
 
+
   ;; Fixup the categories for a few things.
   ;; I tried doing this in a dolist, but it was not satisfactory.
   (setq completion-category-overrides
         (dino/insert-or-modify-alist-entry completion-category-overrides
                                            'buffer
                                            `((styles  . (initials flex)) (cycle . 10))))
+
   (setq completion-category-overrides
-        (dino/insert-or-modify-alist-entry completion-category-overrides
-                                           'command
-                                           `((styles . (substring))
-                                             (cycle-sort-function . ,#'dpc-ss-sort-alpha))))
+        (dino/insert-or-modify-alist-entry
+         completion-category-overrides
+         'command
+         `((styles . (substring))
+           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-match-first))))
+
   (setq completion-category-overrides
         (dino/insert-or-modify-alist-entry completion-category-overrides
                                            'file
@@ -2099,24 +2103,24 @@ just auto-corrects on common mis-spellings by me."
 
   (define-abbrev-table 'global-abbrev-table
     '(
-      ("teh" "the" nil 1)
-      ("somehting" "something" nil 1)
+      ("teh" "the" nil 0)
+      ("somehting" "something" nil 0)
       ("deprectaed" "deprecated" nil 0)
-      ("APigee" "Apigee" nil 1)
-      ("Gmeini" "Gemini" nil 1)
-      ("hting" "thing" nil 1)
-      ("rigueur" "rigeuer" nil 1)
-      ("riguer" "rigeuer" nil 1)
-      ("submint" "submit" nil 1)
-      ("rwquest" "request" nil 1)
-      ("request" "requets" nil 1)
+      ("APigee" "Apigee" nil 0)
+      ("Gmeini" "Gemini" nil 0)
+      ("hting" "thing" nil 0)
+      ("rigueur" "rigeuer" nil 0)
+      ("riguer" "rigeuer" nil 0)
+      ("submint" "submit" nil 0)
+      ("rwquest" "request" nil 0)
+      ("requets" "request" nil 0)
       ("hygeine" "hygiene" nil 0)
       ("laucnhed" "launched" nil 0)
       ("supproted" "supported" nil 0)
       ("comittee" "committee" nil 0)
       ("machien" "machine" nil 0)
-      ("siilar" "similar" nil 0)
       ("machiens" "machines" nil 0)
+      ("siilar" "similar" nil 0)
       ("cusotmer" "customer" nil 0)
       ("accommplish" "accomplish" nil 0)
       ("accomodate" "accommodate" nil 0)
@@ -2125,9 +2129,9 @@ just auto-corrects on common mis-spellings by me."
       ("multipel" "multiple" nil 0)
       ("acheive" "achieve" nil 0)
       ("acheived" "achieved" nil 0)
-      ("becasue" "because" nil 1)
-      ("btw" "by the way" nil 3)
-      ("omw" "on my way" nil 3)
+      ("becasue" "because" nil 0)
+      ("btw" "by the way" nil 0)
+      ("omw" "on my way" nil 0)
       )
     ))
 

@@ -7,8 +7,19 @@
 
 ;; ==== sorters
 (defun dpc-ss-sort-alpha (candidates)
-  "Sorts the model candidate by name"
+  "Sorts the model CANDIDATE by name"
   (sort candidates :lessp #'string<))
+
+(defun dpc-ss-sort-alpha-exact-match-first (candidates)
+  "Sort CANDIDATES to place an exact match for the minibuffer
+content first. The rest of the candidates are sorted alphabetically.
+This corrects the problem in which I type «M-x grep» and the top
+candidate is not grep."
+  (let ((cur-input (minibuffer-contents-no-properties)))
+    (let ((exact-match (car (member cur-input candidates))))
+      (if exact-match
+          (cons exact-match (sort (remove-if (lambda (c) (equal c exact-match)) candidates) #'string-lessp))
+        (sort candidates #'string-lessp)))))
 
 (defun dpc-ss-sort-alpha-but-dot-slash-last (candidates)
   "Sort a list of CANDIDATES alphabetically, except that  \"./\"
