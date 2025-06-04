@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-June-03 19:59:52>
+;; Last saved: <2025-June-04 15:55:29>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -196,6 +196,7 @@
     (concat home-dir "/.dotnet/tools") ;; csharpier
     (concat home-dir "/bin")
     (concat home-dir "/.local/bin")    ;; aider
+    (concat home-dir "/.fzf/bin")      ;; fzf, though I have never gotten this to work with shell-command
     (concat home-dir "/go/bin")        ;; shfmt, jsonnetfmt
     "/usr/local/bin"
     "/usr/bin"
@@ -4377,6 +4378,7 @@ Enable `recentf-mode' if it isn't already."
 (keymap-global-set "C-x n"       #'other-window)
 (keymap-global-set "C-c w"       #'where-is)
 (keymap-global-set "C-c C-w"     #'compare-windows)
+(keymap-global-set "C-c C-y"     #'dcjava-wacapps-intelligently-open-file)
 (keymap-global-set "C-c ~"       #'revert-buffer-unconditionally)
 (keymap-global-set "C-x ~"       #'dino-toggle-buffer-modified)
 (keymap-global-set "C-x C-g"     #'auto-fill-mode)

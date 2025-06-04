@@ -11,7 +11,7 @@
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
-;; Last-saved : <2025-April-19 23:49:01>
+;; Last-saved : <2025-June-04 15:38:04>
 ;;
 ;;; Commentary:
 ;;
@@ -109,6 +109,21 @@
   "the alist of short classnames related to fully-qualified type names")
 (defvar dcjava-helper-classnames nil
   "list of classes to be able to import")
+
+
+(defun dcjava-path-join (&rest path-segments)
+  "Construct a file path from PATH-SEGMENTS.
+This functions like Python's os.path.join or Node's path.join."
+  (if path-segments
+      (let ((path (car path-segments)))
+        (dolist (segment (cdr path-segments))
+          (setq path (expand-file-name segment path)))
+        path)
+    ""))
+
+(defvar dcjava-wacapps-default-home (dcjava-path-join (getenv "HOME") "a" "wacapps")
+  "string defining the default home for wacapps")
+
 (defconst dcjava--classname-regex "\\([a-zA-Z_$][a-zA-Z0-9_$]*\\.\\)*[a-zA-Z_$][a-zA-Z0-9_$]*"
   "a regex that matches a qualified or unqualified classname or package name")
 
@@ -419,7 +434,9 @@ See https://mail.gnu.org/archive/html/emacs-devel/2018-01/msg00727.html "
                                   (s-chop-left (- (length desired-default-dir) 2) dir)
                                 dir))
          (command
+          ;; TODO: can I use fzf here?
           (concat "find " source-dir-for-find argument modified-classname ".java"))
+
          (default-directory (expand-file-name desired-default-dir))
          (found-file
           (s-trim-right
@@ -481,10 +498,15 @@ slashes."
   "returns a string representing the wacapps dir,
 searching from the tree above the given current working directory."
   (interactive)
-  (concat
-   (dcjava-insure-trailing-slash
-    (dcjava--parent-of-dir "wacapps"))
-   "wacapps/"))
+  (let ((dir-candidate
+         (concat
+          (dcjava-insure-trailing-slash
+           (dcjava--parent-of-dir "wacapps"))
+          "wacapps/")))
+    (if (file-directory-p dir-candidate)
+        dir-candidate
+      dcjava-wacapps-default-home)))
+
 
 (defun dcjava-wacapps-apiplatform-link ()
   "open the URL on source.corp.google.com for the current wacapps file & line."
@@ -512,15 +534,17 @@ does not end with a slash causes it to use the parent directory.
        (if (s-ends-with? "/" path) path (concat path "/"))))
 
 
-(defun dcjava-find-file-from-choice (flist)
-  "present a choice for an import statement to add, then add the chosen one."
-  (let ((chosen (x-popup-menu (dcjava--get-menu-position)
-                              (dcjava--generate-menu flist
-                                                     nil
-                                                     "Open a file..."))))
-    (when chosen ;; actually a list containing a single string (filename)
-      (progn (find-file (car chosen))
-             (message "open file %s" (car chosen))))))
+
+;; ;; 20250604-1322 - not currently used
+;; (defun dcjava-find-file-from-choice (flist)
+;;   "present a choice for an import statement to add, then add the chosen one."
+;;   (let ((chosen (x-popup-menu (dcjava--get-menu-position)
+;;                               (dcjava--generate-menu flist
+;;                                                      nil
+;;                                                      "Open a file..."))))
+;;     (when chosen ;; actually a list containing a single string (filename)
+;;       (progn (find-file (car chosen))
+;;              (message "open file %s" (car chosen))))))
 
 
 
@@ -551,6 +575,39 @@ the shell find command. "
       ;;(dcjava-find-file-from-choice filenames)))
       (message "no file for class %s" classname))))
 
+
+(defun dcjava-wacapps-intelligently-open-file (partial-path)
+  "find a source file in the wacpps tree based on PARTIAL-PATH which
+will be a fragment like java/com/apigee/keymanagement/util/ApiProductMatcher.java .
+That happens to be in gateway/sw/services.  But this method will find it and
+open it. "
+  (interactive "P")
+  ;; prompt if not specified
+  (if (not partial-path)
+      (setq partial-path (read-string "Path to open: " nil)))
+
+  (let* ((basename (file-name-nondirectory partial-path))
+         (command (concat "rg --files " (dcjava-wacapps-dir) " --glob " basename))
+         (file-list (s-lines
+                     (s-trim (shell-command-to-string command)))))
+
+    (let ((found-file nil)
+          (candidates file-list))
+      ;; Keep looping while there are candidates and we haven't found a file
+      (while (and candidates (not found-file))
+        (let* ((current-file-untrimmed (car candidates))
+               (current-file (and current-file-untrimmed (s-trim current-file-untrimmed))))
+          (if (and (file-exists-p current-file)
+                   (s-ends-with? partial-path current-file))
+              (setq found-file current-file))
+          (setq candidates (cdr candidates))))
+
+      (if found-file
+          (progn
+            (with-current-buffer (find-file found-file)
+              (read-only-mode))
+            (message "Opened file: %s" found-file))
+        (message "Cannot find a matching file for: %s" partial-path)))))
 
 
 (defun dcjava-find-wacapps-java-source-for-class-at-point ()
