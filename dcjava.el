@@ -11,7 +11,7 @@
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
-;; Last-saved : <2025-June-04 15:38:04>
+;; Last-saved : <2025-June-07 13:55:56>
 ;;
 ;;; Commentary:
 ;;
@@ -92,6 +92,8 @@
 ;;
 
 (require 's) ;; magnars' long lost string library
+(require 'cl-seq) ;; for cl-remove-if-not
+
 ;; 20250405-2001 - I don't think this is actually used here
 ;; (require 'dash) ;; magnars' functional lib
 
