@@ -22,7 +22,7 @@ candidate is not grep."
           (cons exact-match (sort (cl-remove-if (lambda (c) (equal c exact-match)) candidates) #'string-lessp))
         (sort candidates #'string-lessp)))))
 
-(defun dpc-ss-sort-alpha-but-dot-slash-last (candidates)
+(defun dpc-ss-sort-files (candidates)
   "Sort a list of CANDIDATES alphabetically, except that  \"./\"
 always appears at the end. If the minibuffer content is an exact
 match for a candidate, place that candidate first.
@@ -54,7 +54,21 @@ that invoke commands to alter this sorting. Eg, by file mtime, or by
 filename extension. That might be YAGNI.
 "
   (let ((cur-input (minibuffer-contents-no-properties)))
-    (let ((exact-match (car (member cur-input candidates))))
+    ;; The cur-input will include (abbreviate-file-name default-directory) as a
+    ;; prefix, for example ~/ when find-file is invoked in the home directory.
+    ;; But the candidates will not include that prefix. So this logic
+    ;; is designed to prefer the "Exact match" given those constraints.
+    ;; (message "cur-input (%s)" cur-input)
+    (let* ((dir-prefix (abbreviate-file-name default-directory))
+           (chopped (s-chop-prefix dir-prefix cur-input))
+           (exact-match (or
+                         (car
+                          (member chopped candidates))
+                         (cl-find-if
+                          (lambda (s) (or
+                                       (s-ends-with? chopped s)
+                                       (s-ends-with? (concat chopped "/") s)))
+                          candidates))))
       (if exact-match
           ;; Exact match found: place it first, then sort the rest
           (let ((remaining-candidates (cl-remove-if (lambda (c) (equal c exact-match)) candidates)))

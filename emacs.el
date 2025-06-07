@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-June-04 15:55:29>
+;; Last saved: <2025-June-07 14:16:09>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -228,6 +228,7 @@
   :defer t
   :config (progn
             (require 'apheleia-log)
+            (require 'cl-seq)
             (setq apheleia-log-debug-info t)
 
             (if (eq system-type 'windows-nt)
@@ -461,7 +462,7 @@
         (dino/insert-or-modify-alist-entry completion-category-overrides
                                            'file
                                            `((styles . (basic substring))
-                                             (cycle-sort-function . ,#'dpc-ss-sort-alpha-but-dot-slash-last)
+                                             (cycle-sort-function . ,#'dpc-ss-sort-files)
                                              (cycle . 10))))
   (setq completion-category-overrides
         (dino/insert-or-modify-alist-entry completion-category-overrides
@@ -1923,6 +1924,8 @@ then switch to the markdown output buffer."
   (gptel-make-gemini "Gemini"
     :key (dpc-gemini/get-config-property "apikey")
     :stream t)
+
+  (require 'cl-seq)
 
   ;; load my prompts
   (let ((prompt-file (expand-file-name "~/elisp/.gptel-prompts")))
