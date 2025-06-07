@@ -24,7 +24,8 @@ candidate is not grep."
 
 (defun dpc-ss-sort-alpha-but-dot-slash-last (candidates)
   "Sort a list of CANDIDATES alphabetically, except that  \"./\"
-always appears at the end.
+always appears at the end. If the minibuffer content is an exact
+match for a candidate, place that candidate first.
 
 This is intended for use as a `cycle-sort-function' for
 the `file' category in `completion-category-overrides', like so:
@@ -52,12 +53,25 @@ TODO: add key bindings to the `icomplete-vertical-mode-minibuffer-map'
 that invoke commands to alter this sorting. Eg, by file mtime, or by
 filename extension. That might be YAGNI.
 "
-  (sort candidates
-        (lambda (a b)
-          (cond
-           ((string= a "./") nil)
-           ((string= b "./") t)
-           (t (string< a b))))))
+  (let ((cur-input (minibuffer-contents-no-properties)))
+    (let ((exact-match (car (member cur-input candidates))))
+      (if exact-match
+          ;; Exact match found: place it first, then sort the rest
+          (let ((remaining-candidates (cl-remove-if (lambda (c) (equal c exact-match)) candidates)))
+            (cons exact-match
+                  (sort remaining-candidates
+                        (lambda (a b)
+                          (cond
+                           ((string= a "./") nil)
+                           ((string= b "./") t)
+                           (t (string< a b)))))))
+        ;; No exact match: just sort with "./" last
+        (sort candidates
+              (lambda (a b)
+                (cond
+                 ((string= a "./") nil)
+                 ((string= b "./") t)
+                 (t (string< a b)))))))))
 
 (defvar dpc-ss-supported-categories '(sorted-sanely unsorted)
   "List of supported completion categories for `dpc-ss-sort-completion-fn'.")
