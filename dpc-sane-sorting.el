@@ -4,6 +4,7 @@
 ;;
 
 (require 'dino-utility)
+(require 'cl-seq) ;; cl-remove-if
 
 ;; ==== sorters
 (defun dpc-ss-sort-alpha (candidates)
@@ -18,7 +19,7 @@ candidate is not grep."
   (let ((cur-input (minibuffer-contents-no-properties)))
     (let ((exact-match (car (member cur-input candidates))))
       (if exact-match
-          (cons exact-match (sort (remove-if (lambda (c) (equal c exact-match)) candidates) #'string-lessp))
+          (cons exact-match (sort (cl-remove-if (lambda (c) (equal c exact-match)) candidates) #'string-lessp))
         (sort candidates #'string-lessp)))))
 
 (defun dpc-ss-sort-alpha-but-dot-slash-last (candidates)
