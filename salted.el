@@ -1,4 +1,6 @@
-;;; salted.el --- functions for opening files encrypted with "salt_file"
+;;; salted.el  -*- coding: utf-8; lexical-binding: t;  -*-
+
+;; Functions for opening files encrypted with "salt_file"
 ;;
 ;; Copyright (c) 2019-2025 Google LLC
 ;;
@@ -7,19 +9,38 @@
 ;; Created: Monday, 28 October 2019, 16:15
 ;; Url: https://github.com/DinoChiesa/salted
 ;;
+
 ;;; Commentary:
 ;;
-;; Pretty simple: if you open a file with a name that ends
-;; in .salted , this code will ask you for a passphrase and will decrypt the
-;; file. Subsequent saves will re-encrypt the file.
+;; Pretty simple: if you open a file with a name that ends in .salted , this
+;; code will ask you for a passphrase and will decrypt the file. Subsequent
+;; saves will re-encrypt the file.
 ;;
 ;; To use it, go get the salt_file utility from
 ;; https://github.com/DinoChiesa/salted. Then put the following in your
 ;; ~/.emacs:
 ;;
-;;      (require 'salted)
-;;      (setq salted--salt-file-utility "~/location/of/salt_file")
+;;     (require 'salted)
+;;     (setq salted--salt-file-utility "~/location/of/salt_file")
+;;     (setq auto-mode-alist
+;;         (append
+;;          '(("\\.salted\\'" . salted-file-mode))))
 ;;
+;; or:
+;;    (use-package salted
+;;      :defer t
+;;      :commands (salted-encrypt-buffer-to-new-file salted-file-mode)
+;;      :config
+;;      (setq salted--salt-file-utility
+;;            (executable-find
+;;             (if (eq system-type 'windows-nt)
+;;                 "salt_file.exe"
+;;               "salt_file")))
+;;      (setq auto-mode-alist
+;;            (append
+;;             '(("\\.salted\\'" . salted-file-mode)))))
+;;
+
 ;; Then just use emacs as normal, to open a file with a .salted extension.
 ;;
 ;; To encrypt a file, open a plain text file, then
@@ -30,7 +51,7 @@
 ;; before-save-hook can modify the ciphertext byte stream, which makes it
 ;; un-decryptable.
 ;;
-;;
+
 ;;; Code:
 
 (require 'simple)
