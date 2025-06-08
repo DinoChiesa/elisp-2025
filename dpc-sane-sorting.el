@@ -58,6 +58,11 @@ filename extension. That might be YAGNI.
     ;; prefix, for example ~/ when find-file is invoked in the home directory.
     ;; But the candidates will not include that prefix. So this logic
     ;; is designed to prefer the "Exact match" given those constraints.
+    ;;
+    ;; This logic isn't quite right. For example if the user backspaces over the
+    ;; default directory, ... this logic won't work properly. I haven't figured out
+    ;; how to handle that correctly.
+    ;;
     ;; (message "cur-input (%s)" cur-input)
     (let* ((dir-prefix (abbreviate-file-name default-directory))
            (chopped (s-chop-prefix dir-prefix cur-input))
