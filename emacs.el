@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-June-07 14:16:09>
+;; Last saved: <2025-June-08 12:25:17>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -270,6 +270,7 @@
 (use-package company
   :defer 31
   :config
+  (setq company-idle-delay 0.4)
   ;; Not sure why we need both "TAB" and "<tab>".
   (define-key company-active-map (kbd "TAB") #'company-complete-common-or-cycle)
   (define-key company-active-map (kbd "<tab>") #'company-complete-common-or-cycle)
@@ -456,7 +457,7 @@
          completion-category-overrides
          'command
          `((styles . (substring))
-           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-match-first))))
+           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first))))
 
   (setq completion-category-overrides
         (dino/insert-or-modify-alist-entry completion-category-overrides
@@ -532,20 +533,51 @@
 ;; magit
 ;;
 (use-package magit
+  :ensure t
+  :defer 24
+  :config
   ;; On a machine with no git installed, an obscure error occurs at runtime.
   ;; This check attempts to clarify the problem. If an error does get flagged,
   ;; the fix is to install git! And make sure it is on the path.
-  :ensure t
-  :defer 24
-  :config (progn
-            (if (not (boundp 'magit-git-executable))
-                (error "variable 'magit-git-executable' is not bound")
-              (if (not magit-git-executable)
-                  (error "variable 'magit-git-executable' is not set"))
-              (if (file-exists-p (executable-find magit-git-executable))
-                  (message "found git at %s" magit-git-executable)
-                (error (format "git executable (%s) cannot be found" magit-git-executable)))
-              )))
+  (if (not (boundp 'magit-git-executable))
+      (error "variable 'magit-git-executable' is not bound")
+    (if (not magit-git-executable)
+        (error "variable 'magit-git-executable' is not set"))
+    (if (file-exists-p (executable-find magit-git-executable))
+        (message "found git at %s" magit-git-executable)
+      (error (format "git executable (%s) cannot be found" magit-git-executable)))
+    )
+
+  ;; Override some magit things so that branches get sorted
+  ;; alphabetically.
+  (require 'dpc-sane-sorting)
+  (setq completion-category-overrides
+        (dino/insert-or-modify-alist-entry completion-category-overrides
+                                           'magit
+                                           `((styles . (substring))
+                                             (cycle-sort-function . ,#'dpc-ss-sort-alpha))))
+
+  ;; from magit-base.el
+  (defun magit--completion-table (collection)
+    (lambda (string pred action)
+      (if (eq action 'metadata)
+          '(metadata (category . 'magit))
+        (complete-with-action action collection string pred))))
+
+  ;; from magit-base.el
+  (defun magit-builtin-completing-read
+      (prompt choices &optional predicate require-match initial-input hist def)
+    "Magit wrapper for standard `completing-read' function."
+    (unless (or (bound-and-true-p helm-mode)
+                (bound-and-true-p ivy-mode))
+      (setq choices (magit--completion-table choices)))
+    (let ((ivy-sort-functions-alist nil))
+      (completing-read prompt
+                       choices
+                       predicate require-match
+                       initial-input hist def)))
+
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; flycheck
@@ -2010,7 +2042,7 @@ then switch to the markdown output buffer."
   (setq chatgpt-shell-swap-model-selector
         (lambda (candidates)
           (completing-read "Swap to: "
-                           (dpc-ss-sort-completion-fn candidates 'sorted-sanely) nil t)))
+                           (dpc-ss-completion-fn candidates 'sorted-sanely) nil t)))
 
   (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn)
 
@@ -4248,7 +4280,7 @@ Enable `recentf-mode' if it isn't already."
      (list
       (progn (unless recentf-mode (recentf-mode 1))
              (completing-read (format-prompt "Open recent?" nil)
-                              (dpc-ss-sort-completion-fn recentf-list 'unsorted)
+                              (dpc-ss-completion-fn recentf-list 'unsorted)
                               nil t))))
     (when file
       (funcall recentf-menu-action file)))
