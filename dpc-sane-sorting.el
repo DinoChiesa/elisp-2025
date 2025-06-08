@@ -75,25 +75,19 @@ filename extension. That might be YAGNI.
                                        (s-ends-with? (concat chopped "/") s)))
                           candidates))))
 
-      ;; AI!  The following uses the same lambda twice. Refactor it to re-use
-      ;; that lambda.
-      (if exact-match
-          ;; Exact match found: place it first, then sort the rest
-          (let ((remaining-candidates (cl-remove-if (lambda (c) (equal c exact-match)) candidates)))
-            (cons exact-match
-                  (sort remaining-candidates
-                        (lambda (a b)
-                          (cond
-                           ((string= a "./") nil)
-                           ((string= b "./") t)
-                           (t (string< a b)))))))
-        ;; No exact match: just sort with "./" last
-        (sort candidates
-              (lambda (a b)
-                (cond
-                 ((string= a "./") nil)
-                 ((string= b "./") t)
-                 (t (string< a b)))))))))
+      (let ((sort-dot-slash-last
+             (lambda (a b)
+               (cond
+                ((string= a "./") nil)
+                ((string= b "./") t)
+                (t (string< a b))))))
+        (if exact-match
+            ;; Exact match found: place it first, then sort the rest
+            (let ((remaining-candidates (cl-remove-if (lambda (c) (equal c exact-match)) candidates)))
+              (cons exact-match
+                    (sort remaining-candidates sort-dot-slash-last)))
+          ;; No exact match: just sort with "./" last
+          (sort candidates sort-dot-slash-last))))))
 
 (defvar dpc-ss-supported-categories '(sorted-sanely unsorted)
   "List of supported completion categories for `dpc-ss-sort-completion-fn'.")
