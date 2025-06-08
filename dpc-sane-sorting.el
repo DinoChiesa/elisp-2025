@@ -74,6 +74,9 @@ filename extension. That might be YAGNI.
                                        (s-ends-with? chopped s)
                                        (s-ends-with? (concat chopped "/") s)))
                           candidates))))
+
+      ;; AI!  The following uses the same lambda twice. Refactor it to re-use
+      ;; that lambda.
       (if exact-match
           ;; Exact match found: place it first, then sort the rest
           (let ((remaining-candidates (cl-remove-if (lambda (c) (equal c exact-match)) candidates)))
