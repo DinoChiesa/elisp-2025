@@ -6,10 +6,10 @@
 // Author: @AUTHOR@
 // initialized on: @DATE@
 //
-// last saved: <2018-May-02 13:40:55>
+// last saved: <2025-June-10 16:38:20>
 // ------------------------------------------------------------------
 //
-@INSERTFILE(/Users/dchiesa/elisp/defaultcontent/Copyright.txt)@//
+@INSERTFILE(~/auto-insert-content/Copyright.txt)@//
 // ------------------------------------------------------------------
 
 using System;
