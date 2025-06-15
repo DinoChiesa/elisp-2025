@@ -1,0 +1,9 @@
+System.Net.Http.IHttpClientFactory
+Microsoft.Extensions.Caching.Memory.IMemoryCache
+System.Diagnostics.ProcessStartInfo
+System.Console
+System.Text.Json.JsonSerializer
+System.Collections.Generic.Dictionary
+System.Threading.Tasks.Task
+System.Linq.Skip
+System.Text.Encoding
