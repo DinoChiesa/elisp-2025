@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-June-08 12:25:17>
+;; Last saved: <2025-June-10 08:53:27>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -55,6 +55,12 @@
 (setq messages-buffer-max-lines 2500)
 (setq completion-auto-help nil)
 (put 'eval-expression 'disabled nil)
+
+;; 20250610-0852 - split windows ??? sensibly?
+;;
+;; I'm not sure what changed, but lately windows have been splitting into much
+;; smaller sizes; I'm trying to avoid that with these settings.
+(setq split-height-threshold nil split-width-threshold nil)
 
 ;; set truncation on side-by-side windows to nil.
 (setq truncate-partial-width-windows nil)
@@ -2132,6 +2138,9 @@ then switch to the markdown output buffer."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Prog mode - general
+;;
+;; Q: why is this not just loaded from ~/.emacs.d/abbrev_defs ?
+;; Not sure.
 
 (defun dino-define-global-abbrev-table ()
   "Define a custom global abbrev table. Really these are
@@ -2533,7 +2542,7 @@ just auto-corrects on common mis-spellings by me."
             (defconst my-protobuf-style
               '((c-basic-offset . 2)
                 (indent-tabs-mode . nil)))
-            (defun dino-protobuf-mode-hook-fn ()
+            (defun dino-protobuf-mode-fn ()
               "my mode hook for protobuf-mode"
               (keymap-local-set "ESC C-R"  #'indent-region)
               (keymap-local-set "ESC #"    #'dino/indent-buffer)
