@@ -241,41 +241,64 @@ the model description needed by chatgpt-shell."
   (if (looking-at "\\(?:^\\|\n\\)```")
       (match-end 0)))
 
-;; (defun dpc-gemini/fill-paragraphs-skipping-codeblocks ()
-;;   "Fill all paragraphs in the current buffer."
+
+;; (defun dpc-gemini/fill-paragraphs-intelligently ()
+;;   "Fill all paragraphs in the current buffer, skipping code blocks."
 ;;   (interactive)
 ;;   (save-excursion
 ;;     (goto-char (point-min))
 ;;     (while (not (eobp))
-;;       (let* ((posn-of-three-backticks (dpc-gemini/looking-at-three-backticks))
-;;              (keep-going
-;;               (or (not posn-of-three-backticks)
-;;                   (progn
-;;                     (goto-char posn-of-three-backticks)
-;;                     (when (search-forward "\n```" nil t)
-;;                       (forward-char)
-;;                       t)))))
-;;         (when keep-going
-;;           (fill-paragraph nil)
-;;           (forward-paragraph))))))
+;;       (if (looking-at "\\(?:^\\|\n\\)```")
+;;           (progn ;; Skip code block
+;;             (goto-char (match-end 0))
+;;             (if (search-forward "\n```" nil t) ; Search for closing ```
+;;                 (forward-char) ; Move past closing ``` if found
+;;               (goto-char (point-max)))) ; If not found, go to end
+;;         ;; else, Not in a code block (or just exited one)
+;;         (fill-paragraph nil)
+;;         (forward-paragraph)))))
 
 
 ;;;###autoload
-(defun dpc-gemini/fill-paragraphs-skipping-codeblocks ()
-  "Fill all paragraphs in the current buffer, skipping code blocks."
+(defun dpc-gemini/fill-paragraphs-intelligently ()
+  "Fill all paragraphs in the current buffer, skipping code blocks,
+and correctly filling bulleted lists."
   (interactive)
   (save-excursion
     (goto-char (point-min))
     (while (not (eobp))
-      (if (looking-at "\\(?:^\\|\n\\)```")
-          (progn ; Skip code block
-            (goto-char (match-end 0)) ; Move past opening ```
-            (unless (search-forward "\n```" nil t) ; Search for closing ```
-              (goto-char (point-max))) ; If not found, go to end
-            (when (looking-at "\n```") (forward-char))) ; Move past closing ``` if found
-        ;; Not in a code block (or just exited one)
+      (cond
+       ;; skip blank/empty lines
+       ((and (not (eobp)) (looking-at "[ \t]*$"))
+        (end-of-line)
+        (forward-char))
+       ;; hop over code blocks
+       ((looking-at "^[ \t]*```")
+        (goto-char (match-end 0))
+        (if (re-search-forward "^[ \t]*```" nil t)
+            (forward-char)
+          (goto-char (point-max))))
+
+       ;; Handle bulleted or numbered lists.
+       ((looking-at "^[ \t]*\\(?:[*-+]\\|[0-9]+\\.\\)[ \t]")
+        ;; This regex looks for a line starting with optional whitespace,
+        ;; followed by a bullet (*, -, +) or a number-dot (1., 23.),
+        ;; and then a space or tab.
+        ;;
+        (save-excursion (end-of-line) (newline))
         (fill-paragraph nil)
-        (forward-paragraph)))))
+
+        ;; Move to the next line to continue the loop.
+        (forward-line 1))
+
+       (t
+        ;; To avoid an infinite loop on empty lines, we first skip them.
+        (while (and (not (eobp)) (looking-at "[ \t]*$"))
+          (forward-line 1))
+        ;; If we are not at the end, fill the current paragraph.
+        (when (not (eobp))
+          (fill-paragraph nil)
+          (forward-paragraph)))))))
 
 
 (defun dpc-gemini/--compose-message ()
@@ -384,7 +407,7 @@ If the region is active, use region content as suggested prompt."
                     (progn
                       (delete-region (point-min) (point-max))
                       (insert text)
-                      (dpc-gemini/fill-paragraphs-skipping-codeblocks))
+                      (dpc-gemini/fill-paragraphs-intelligently))
                   (error "Could not extract text from Gemini response. Structure: %S" parsed-response)))))))
     (message "quit.")))
 
