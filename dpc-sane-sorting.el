@@ -123,40 +123,53 @@ the `file' category in `completion-category-overrides', like so:
         completion-category-overrides))
 "
   (let ((cur-input (minibuffer-contents-no-properties)))
+    ;;(let ((cur-input "~/foo")) ;; usable for testing
     ;; The cur-input will include (abbreviate-file-name default-directory) as a
-    ;; prefix, for example ~/ when find-file is invoked in the home directory.
-    ;; But the candidates will not include that prefix. So this logic
-    ;; is designed to prefer the "Exact match" given those constraints.
+    ;; prefix, for example ~/ when find-file is invoked in the home directory,
+    ;; or ~/elisp/ if find-file is invoked from within the elisp directory.
+    ;; But the candidates will not include that prefix. So this logic gets the
+    ;; last segment of what is in the minibuffer and matches against that.
     ;;
-    ;; This logic isn't quite right. For example if the user backspaces over the
-    ;; default directory, ... this logic won't work properly. I haven't figured out
-    ;; how to handle that correctly.
-    ;;
-    ;; (message "cur-input (%s)" cur-input)
-    (let* ((dir-prefix (abbreviate-file-name default-directory))
-           (chopped (s-chop-prefix dir-prefix cur-input))
+
+    ;;(message "cur-input (%s)" cur-input)
+    (let* ((last-segment (file-name-nondirectory cur-input))
            (exact-match (or
                          (car
-                          (member chopped candidates))
+                          (member last-segment candidates))
                          (cl-find-if
                           (lambda (s) (or
-                                       (s-ends-with? chopped s)
-                                       (s-ends-with? (concat chopped "/") s)))
+                                       (s-ends-with? last-segment s)
+                                       (s-ends-with? (concat last-segment "/") s)))
                           candidates))))
 
-      (let ((sort-dot-slash-last
-             (lambda (a b)
-               (cond
-                ((string= a "./") nil)
-                ((string= b "./") t)
-                (t (string< a b))))))
+      (let* ((strip-trailing-slash
+              (lambda (s)
+                (if (string-suffix-p "/" s)
+                    (substring s 0 -1)
+                  s)))
+             (sort-sensibly-with-dot-slash-last
+              (lambda (a b)
+                (cond
+                 ((string= a "./") nil)
+                 ((string= b "./") t)
+                 ;; If neither is the special "./" name, then sort without
+                 ;; concern for any trailing slash.  The slash is added by
+                 ;; find-file to candidates if they are directories, even though
+                 ;; it is not part of the name. But that trailing slash distorts
+                 ;; the sorting if some of the candidates have dashes in their
+                 ;; actual names, which comes _before_ slash in sort order.  So
+                 ;; the strip-trailing-slash fn sorts without considering
+                 ;; any possible trailing slash.
+                 (t (string<
+                     (funcall strip-trailing-slash a)
+                     (funcall strip-trailing-slash b)))))))
         (if exact-match
             ;; Exact match found: place it first, then sort the rest
             (let ((remaining-candidates (cl-remove-if (lambda (c) (equal c exact-match)) candidates)))
               (cons exact-match
-                    (sort remaining-candidates sort-dot-slash-last)))
+                    (sort remaining-candidates sort-sensibly-with-dot-slash-last)))
           ;; No exact match: just sort with "./" last
-          (sort candidates sort-dot-slash-last))))))
+          (sort candidates sort-sensibly-with-dot-slash-last))))))
 
 (defvar dpc-ss-supported-categories '(sorted-sanely unsorted)
   "List of supported completion categories for `dpc-ss-completion-fn'.")
