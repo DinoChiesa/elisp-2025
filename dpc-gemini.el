@@ -7,7 +7,7 @@
 ;; Package-Requires: (json.el seq.el subr-x.el s.el)
 ;; URL:
 ;; X-URL:
-;; Version: 2025.05.26
+;; Version: 2025.06.21
 ;; Keywords: gemini llm
 ;; License: New BSD
 
@@ -138,9 +138,10 @@ Places the result into a newly created buffer, and then
   ;;    }'
 
   (if-let* ((gemini-apikey (dpc-gemini/--internal-get-gemini-key)))
-      (let ((buf (get-buffer-create "gemini-response")))
+      (let ((buf (get-buffer-create "*gemini-response*")))
         (switch-to-buffer buf)
         (erase-buffer)
+        (text-mode)
         (call-process "curl" nil t t
                       "-s"
                       "-X" "POST"
@@ -196,7 +197,7 @@ Optional arg FULL-TEXT says to return the full text of the response and
 do not filter by supportedGenerationMethods."
   (interactive "P")
   (let* ((all-models (dpc-gemini/get-generative-models))
-         (buf (get-buffer-create "gemini-models")))
+         (buf (get-buffer-create "*gemini-models*")))
     (with-current-buffer buf
       (erase-buffer)
       (if full-text
@@ -333,37 +334,45 @@ state of the region:
 
     (cond
      ((and (region-active-p) (> line-count 1))
-      (with-temp-buffer
-        (let ((abandoned nil))
-          (text-mode)
-          (insert initial-input)
-          ;; Append the instruction lines
-          (goto-char (point-max))
-          (insert "\n\n## Type your message above.\n")
-          (insert "##   Press C-c C-c to accept, C-c C-k to cancel.\n")
-          (goto-char (point-min)) ;; Move back to the beginning
-          (keymap-local-set "C-c C-c"
-                            (lambda () (interactive) (exit-recursive-edit)))
-          (keymap-local-set "C-c C-k"
-                            (lambda () (interactive) (setq abandoned t) (exit-recursive-edit)))
+      (let ((buf (get-buffer-create "*gemini-compose*"))
+            (abandoned nil))
+        (switch-to-buffer buf)
+        (erase-buffer)
+        (text-mode)
+        (insert initial-input)
+        ;; Append the instruction lines
+        (goto-char (point-max))
+        (insert "\n\n## Type your message above.\n")
+        (insert (format "##   C-c C-c to send to Gemin (%s)\n" dpc-gemini-selected-model))
+        (insert "##   C-c C-k to cancel.\n")
+        (goto-char (point-min)) ;; Move back to the beginning
+        (keymap-local-set "C-c C-c"
+                          (lambda () (interactive) (exit-recursive-edit)))
+        (keymap-local-set "C-c C-k"
+                          (lambda () (interactive) (setq abandoned t) (exit-recursive-edit)))
 
-          (font-lock-add-keywords nil '(("^##.*" . 'font-lock-comment-face)))
-          ;;(buffer-face-set 'font-lock-type-face)
-          (buffer-face-set 'dpc-gemini-text)
-          (font-lock-fontify-buffer) ;; i think this is required?
-          (pop-to-buffer (current-buffer))
+        (font-lock-add-keywords nil '(("^##.*" . 'font-lock-comment-face)))
+        ;;(buffer-face-set 'font-lock-type-face)
+        (buffer-face-set 'dpc-gemini-text)
+        (font-lock-fontify-buffer) ;; i think this is required?
+        (pop-to-buffer (current-buffer))
 
-          ;; Enter a recursive edit. Emacs will now wait for the user
-          ;; to edit and then press the key that calls `exit-recursive-edit`.
-          (recursive-edit)
-          ;; After `exit-recursive-edit` is called, the code continues.
-          ;; The value of the `with-temp-buffer` block is the value of its
-          ;; last expression. We return the full contents of the buffer
-          ;; as a plain string, unless abandoned.
-          (unless abandoned
-            ;; Extract buffer content, split into lines, filter lines starting with "##", and join back
-            (s-trim (s-join "\n" (seq-filter (lambda (line) (not (string-prefix-p "##" (s-trim line))))
-                                             (split-string (buffer-substring-no-properties (point-min) (point-max)) "\n" t))))))))
+        ;; Enter a recursive edit. Emacs will now wait for the user
+        ;; to edit and then press the key that calls `exit-recursive-edit`.
+        (recursive-edit)
+        ;; After `exit-recursive-edit` is called, the code continues.
+        ;; The value of the `with-temp-buffer` block is the value of its
+        ;; last expression. We return the full contents of the buffer
+        ;; as a plain string, unless abandoned.
+        (unless abandoned
+          ;; Extract buffer content, split into lines, filter lines starting with "##", and join back
+          (s-trim
+           (s-join "\n"
+                   (seq-filter (lambda (line) (not (string-prefix-p "##" (s-trim line))))
+                               (split-string
+                                (buffer-substring-no-properties
+                                 (point-min)
+                                 (point-max)) "\n" t)))))))
      (t
       (read-string "Ask Gemini: " initial-input)))))
 
@@ -374,7 +383,8 @@ state of the region:
 If the region is active, use region content as suggested prompt."
   (interactive)
   ;; read properties before referencing `dpc-gemini-selected-model'
-  (dpc-gemini/read-settings-from-properties-file)
+  (unless dpc-gemini-selected-model
+    (dpc-gemini/read-settings-from-properties-file))
   (if-let* ((gem-prompt (dpc-gemini/--compose-message))
             (gem-url
              (concat
@@ -425,7 +435,7 @@ If the region is active, use region content as suggested prompt."
                       (mapcar (lambda (m) (gethash "name" m)) available-models)))
              (selected-model
               (completing-read "Model?: "
-                               (dpc-ss-sort-completion-fn short-model-names 'sorted-sanely) nil t)))
+                               (dpc-ss-completion-fn short-model-names 'sorted-sanely) nil t)))
         (when selected-model
           (setq dpc-gemini-selected-model selected-model)))))
 
