@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-June-10 08:53:27>
+;; Last saved: <2025-June-18 15:09:15>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -3434,21 +3434,18 @@ Does not consider word syntax tables.
 
   (set (make-local-variable 'indent-tabs-mode) nil)
   (display-line-numbers-mode)
+  (apheleia-mode)
   (hc-highlight-trailing-whitespace)
-
-  ;; Use autopair for curlies, parens, square brackets.
-  ;; electric-pair-mode works better than autopair.el in 24.4,
-  ;; and is important for use with popup / auto-complete.
-  (if (or (not (fboundp 'version<)) (version< emacs-version "24.4"))
-      (progn (require 'autopair) (autopair-mode))
-    (electric-pair-mode))
-
-  ;; ya-snippet
+  (electric-pair-mode)
   (yas-minor-mode-on)
   (show-paren-mode 1))
 
 (add-hook 'python-ts-mode-hook 'dino-python-mode-fn)
 (add-hook 'python-mode-hook 'dino-python-mode-fn)
+
+(with-eval-after-load 'apheleia
+  (setf (alist-get 'python-ts-mode apheleia-mode-alist)
+        '(ruff-isort ruff)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
