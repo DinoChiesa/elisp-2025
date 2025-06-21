@@ -13,7 +13,7 @@
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
-;; Last-saved : <2025-June-13 15:37:20>
+;; Last-saved : <2025-June-17 08:48:11>
 ;;
 ;;; Commentary:
 ;;
@@ -455,15 +455,26 @@ See https://mail.gnu.org/archive/html/emacs-devel/2018-01/msg00727.html "
       found-file)))
 
 
-(defun dcjava-find-java-source-in-dir (dir classname)
-  "find a java source file in a DIR tree, based on the CLASSNAME. This is
-a simple wrapper on the shell find command. The return value is a list of
-strings (filenames). "
-  (let* ((modified-classname (s-replace "." "/" classname))
+(defun dcjava-find-java-source-in-dir (dir possibly-qualified-classname)
+  "find a java source file in a DIR tree, based on the
+POSSIBLY-QUALIFIED-CLASSNAME. This is a wrapper on the shell find
+command. The return value is a list of strings (filenames)."
+  (let* ((modified-classname (s-replace "." "/" possibly-qualified-classname))
          (argument (if (s-contains? "/" modified-classname)
                        " -path \\*" " -name ")))
     (dcjava-tramp-aware-find-class
      dir argument modified-classname)))
+
+
+;; (defun dcjava-find-java-source-in-dir-short-classname (dir short-classname)
+;;   "find a java source file in a DIR tree, based on the brief CLASSNAME. This is
+;; a simple wrapper on the shell find command. The return value is a list of
+;; strings (filenames). "
+;;   (let* ((modified-classname (s-replace "." "/" classname))
+;;          (argument (if (s-contains? "/" modified-classname)
+;;                        " -path \\*" " -name ")))
+;;     (dcjava-tramp-aware-find-class
+;; dir argument modified-classname)))
 
 
 (defun dcjava--is-directory (dir-name)
