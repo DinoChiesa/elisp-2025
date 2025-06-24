@@ -133,14 +133,16 @@ the `file' category in `completion-category-overrides', like so:
 
     ;;(message "cur-input (%s)" cur-input)
     (let* ((last-segment (file-name-nondirectory cur-input))
-           (exact-match (or
-                         (car
-                          (member last-segment candidates))
-                         (cl-find-if
-                          (lambda (s) (or
-                                       (s-ends-with? last-segment s)
-                                       (s-ends-with? (concat last-segment "/") s)))
-                          candidates))))
+           (exact-match (and (not (s-blank? last-segment))
+                             (or
+                              (car
+                               (member last-segment candidates))
+                              (cl-find-if
+                               (lambda (s) (or
+                                            (s-ends-with? last-segment s)
+                                            (s-ends-with? (concat last-segment "/") s)))
+                               candidates)))))
+      ;;(message "last (%s) exact(%s)" last-segment exact-match)
 
       (let* ((strip-trailing-slash
               (lambda (s)
