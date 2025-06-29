@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-June-28 18:23:26>
+;; Last saved: <2025-June-29 09:11:43>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1459,44 +1459,36 @@ then switch to the markdown output buffer."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; gist
+;; igist
 ;;
-;; I stopped  using this because I couldn't figure out the MFA for Github.
+;; Reads a Personal Access Token from .gitconfig.  Get one at
+;; https://github.com/settings/tokens . Give it gist rights.
+;;
+;; To set the token into the .gitconfig:
+;;    git config --global github.gist-access-token VALUE_HERE
+;;
 
-;; (use-package gist
-;;   :defer t
-;;   :config
-;;   (progn
-;;     ;; Sometimes when invoking gist-buffer, you get an error like this:
-;;     ;; Invalid slot type: gh-gist-gist, id, string, nil
-;;     ;; If so, just run 'gist-list' and retry the gist-buffer.
-;;     ;; note that we added the DESCRIPTION argument
-;;     (defun gist-region-with-description (begin end &optional description private callback)
-;;       "Post the current region as a new paste at gist.github.com
-;; Copies the URL into the kill ring.
-;;
-;; With a prefix argument, makes a private paste."
-;;       (interactive "r\nsGist Description: \nP") ;; we handle the prompt here!
-;;       (let* ((file (or (buffer-file-name) (buffer-name)))
-;;              (name (file-name-nondirectory file))
-;;              (ext (or (cdr (assoc major-mode gist-supported-modes-alist))
-;;                       (file-name-extension file)
-;;                       "txt"))
-;;              (fname (concat (file-name-sans-extension name) "." ext))
-;;              (files (list
-;;                      (gh-gist-gist-file "file"
-;;                                         :filename fname
-;;                                         :content (buffer-substring begin end)))))
-;;         ;; finally we use our new arg to specify the description in the internal call
-;;         (gist-internal-new files private description callback)))
-;;
-;;     ;; (defun dino-add-user-agent (old-function &rest arguments)
-;;     ;;   "set the user agent when invoking github APIs"
-;;     ;;   (let ((url-user-agent "emacs/url-http.el"))
-;;     ;;     (apply old-function arguments)))
-;;     ;;(advice-add #'gh-api-authenticated-request :around #'dino-add-user-agent)
-;;     ;;(advice-remove #'gh-api-authenticated-request  #'dino-add-user-agent)
-;;     ))
+(defun dpc-config-igist ()
+  (let ((default-directory user-emacs-directory))
+    (condition-case nil
+        (progn (setq igist-current-user-name
+                     (car-safe
+                      (process-lines "git"
+                                     "config"
+                                     "user.name")))
+               (setq igist-auth-marker
+                     (or (ignore-errors
+                           (car-safe (process-lines "git" "config"
+                                                    "github.gist-access-token")))
+                         igist-auth-marker)))
+      (error (message "igist-current-user-name cannot be set")))))
+
+(use-package igist
+  :ensure t
+  :defer t
+  :autoload (igist-list-gists igist-explore-public-gists)
+  :config
+  (dpc-config-igist))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
