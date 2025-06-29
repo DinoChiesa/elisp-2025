@@ -1,0 +1,8 @@
+#key : sslinfo
+#name : <SSLInfo...>
+# --
+    <SSLInfo>
+      <Enabled>true</Enabled>
+      <Enforce>true</Enforce>
+      <IgnoreValidationErrors>false</IgnoreValidationErrors>
+    </SSLInfo>
