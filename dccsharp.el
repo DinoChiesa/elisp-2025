@@ -10,7 +10,7 @@
 ;; Version    : 1.0
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
-;; Last-saved : <2025-June-28 18:40:23>
+;; Last-saved : <2025-June-29 07:24:17>
 ;;
 ;;; Commentary:
 ;;
@@ -171,5 +171,7 @@ Uses eglot and LSP to find the right action."
         (message "Applied 'add using' action."))
     (message "No 'add using' action found.")))
 
+
+(provide 'dccsharp)
 
 ;;; dccsharp.el ends here
