@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-June-29 09:11:43>
+;; Last saved: <2025-June-29 10:42:25>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -111,8 +111,6 @@
                '("jcs-elpa"  . "https://jcs-emacs.github.io/jcs-elpa/packages/")
                '("org"       . "http://orgmode.org/elpa/")))
   (add-to-list 'package-archives item))
-
-;;(package-initialize)
 
 ;; Set the load-path for all packages installed by package. Some of the
 ;; package-installed versions over builtin versions, if they are updated more
@@ -450,14 +448,15 @@
   (icomplete-mode)
   (icomplete-vertical-mode)
 
-
   ;; Fixup the categories for a few things.
   ;; I tried doing this in a dolist, but it was not satisfactory.
   (setq completion-category-overrides
-        (dino/insert-or-modify-alist-entry completion-category-overrides
-                                           'buffer
-                                           `((styles  . (initials flex)) (cycle . 10))))
+        (dino/insert-or-modify-alist-entry
+         completion-category-overrides
+         'buffer
+         `((styles  . (initials flex)) (cycle . 10))))
 
+  ;; For M-x command
   (setq completion-category-overrides
         (dino/insert-or-modify-alist-entry
          completion-category-overrides
@@ -473,17 +472,21 @@
          `((styles . (substring))
            (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first))))
 
+  ;; honestly not sure when this is used.
   (setq completion-category-overrides
-        (dino/insert-or-modify-alist-entry completion-category-overrides
-                                           'file
-                                           `((styles . (basic substring))
-                                             (cycle-sort-function . ,#'dpc-ss-sort-files)
-                                             (cycle . 10))))
-  (setq completion-category-overrides
-        (dino/insert-or-modify-alist-entry completion-category-overrides
-                                           'symbol
-                                           `((styles . (basic shorthand substring))) ))
+        (dino/insert-or-modify-alist-entry
+         completion-category-overrides
+         'symbol
+         `((styles . (basic shorthand substring))) ))
 
+  ;; For M-x find-file
+  (setq completion-category-overrides
+        (dino/insert-or-modify-alist-entry
+         completion-category-overrides
+         'file
+         `((styles . (basic substring))
+           (cycle-sort-function . ,#'dpc-ss-sort-files)
+           (cycle . 10))))
 
   :bind (:map  icomplete-vertical-mode-minibuffer-map
                ;; icomplete-minibuffer-map <== use this for the non-vertical version.
@@ -495,7 +498,8 @@
                ("TAB"       . icomplete-force-complete)
                ("RET"       . icomplete-force-complete-and-exit)
                ("C-c C-j"   . exit-minibuffer) ;; exit without completion
-               ("C-v"       . icomplete-vertical-mode) ;; toggle - need this? I don't remember ever wanting this.
+               ;; toggle - I usually don't want this when it happens. (by mistake)
+               ("C-v"       . icomplete-vertical-mode)
 
                ;; ;; I installed & enabled embark, but I never began using it. (shrug)
                ;; ("C-c ,"     . embark-act)
@@ -542,7 +546,6 @@
   :defer 13
   :ensure t)
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; magit
 ;;
@@ -566,10 +569,11 @@
   ;; alphabetically.
   (require 'dpc-sane-sorting)
   (setq completion-category-overrides
-        (dino/insert-or-modify-alist-entry completion-category-overrides
-                                           'magit
-                                           `((styles . (substring))
-                                             (cycle-sort-function . ,#'dpc-ss-sort-alpha))))
+        (dino/insert-or-modify-alist-entry
+         completion-category-overrides
+         'magit
+         `((styles . (substring))
+           (cycle-sort-function . ,#'dpc-ss-sort-alpha))))
 
   ;; from magit-base.el
   (defun magit--completion-table (collection)
@@ -601,7 +605,6 @@
   :defer 23
   :config (progn
             ;;(add-hook 'after-init-hook #'global-flycheck-mode)
-            ;;(setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc jsonnet)) ;; why exclude jsonnet?
             (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
 
             ;; The following is irrelevant because I've switched machines several times
@@ -618,7 +621,7 @@
 ;;   lst)
 ;; (setq flycheck-command-wrapper-function #'dpc/flycheck-command-logger)
 
-;; to reset it to the default (identity), do this:
+;; To reset the wrapper fn to the default (identity), do this:
 ;; (setq flycheck-command-wrapper-function #'identity)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -925,6 +928,9 @@ server program."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wgrep - edit files in a grep output buffer. Amazing.
 ;;
+;; This is really handy.
+;;
+
 (use-package wgrep
   :defer t
   :if (file-exists-p "~/elisp/wgrep.el")
@@ -996,7 +1002,7 @@ server program."
 
 (defun dino-go-mode-fn ()
   ;; 20250310-2243
-  ;; not sure, but this does not appear to get executed with go-mode or go-ts-mode
+  ;; Not sure, but this does not appear to get executed with go-mode or go-ts-mode
   ;;(setq-default)
   (setq tab-width 2
         standard-indent 2
@@ -1068,44 +1074,6 @@ server program."
       (string= lang "shell")
       )))
   (setq org-confirm-babel-evaluate 'dpc-org-confirm-babel-evaluate))
-
-
-;; ;; (require 'ox-taskjuggler)
-;; ;; (add-to-list 'org-export-backends 'taskjuggler)
-;;
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;; including html5 presentations from .org documents
-;; ;;
-;;
-;; ;; 2023 Feb 26 TODO -  remove ox-reveal.el, it is broken
-;; ;; my own home-built thing. Not quite as cool as Org-export with reveal.js .
-;; ;; (require 'dpreso)
-;; ;;(require 'ox-reveal)
-;; ;;(setq org-reveal-root "http://cdn.jsdelivr.net/reveal.js/2.5.0/")
-;; ;; to use: M-x org-reveal-export-to-html
-;;
-;; ;; (setq org-reveal-root "http://dinochiesa.github.io/rv/")
-;; ;;
-;; ;; (require 'org-fixups)
-;; ;; (add-hook 'org-fixups/after-export-reveal-file
-;; ;;           (lambda (filename)
-;; ;;             (message "the file was exported to %s" expanded-filename)))
-;; ;;
-;; ;; (add-hook 'org-fixups/after-export-reveal-file
-;; ;;           'my-copy-and-open)
-;; ;;
-;; ;; (defun my-copy-and-open (filename)
-;; ;;   "fn to copy a file and open it in the browser."
-;; ;;   (let* ((base-fname
-;; ;;           (file-name-nondirectory filename))
-;; ;;          (new-fname
-;; ;;           (concat "/Users/dchiesa/dev/html/dpreso/" base-fname)))
-;; ;;
-;; ;;     (rename-file filename new-fname t)
-;; ;;     (call-process "open" nil t t
-;; ;;                   (concat "http://localhost:80/html/dpreso/"
-;; ;;                           base-fname))))
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2140,7 +2108,7 @@ then switch to the markdown output buffer."
 ;; Prog mode - general
 ;;
 ;; Q: why is this not just loaded from ~/.emacs.d/abbrev_defs ?
-;; Not sure.
+;; Not sure. Maybe it is?
 
 (defun dino-define-global-abbrev-table ()
   "Define a custom global abbrev table. Really these are
@@ -2223,7 +2191,7 @@ just auto-corrects on common mis-spellings by me."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; C mode  (common)
-                                        ;
+
 (require 'dtrt-indent)
 (defun dino-c-mode-common-hook-fn ()
   (cond
@@ -2323,23 +2291,23 @@ just auto-corrects on common mis-spellings by me."
 (defun dino-c-get-value-from-comments (marker-string line-limit)
   "gets a string from the header comments in the current buffer.
 
-            This is used to extract the compile command from the comments. It
-            could be used for other purposes too.
+This is used to extract the compile command from the comments. It
+could be used for other purposes too.
 
-            It looks for \"marker-string:\" and returns the string that
-            follows it, or returns nil if that string is not found.
+It looks for \"marker-string:\" and returns the string that
+follows it, or returns nil if that string is not found.
 
-            eg, when marker-string is \"compile\", and the following
-            string is found at the top of the buffer:
+eg, when marker-string is \"compile\", and the following
+string is found at the top of the buffer:
 
-            compile: cl.exe /I uthash
+compile: cl.exe /I uthash
 
-            ...then this command will return the string
+...then this command will return the string
 
-            \"cl.exe /I uthash\"
+\"cl.exe /I uthash\"
 
-            It's ok to have whitespace between the marker and the following
-            colon."
+It's ok to have whitespace between the marker and the following
+colon."
   (let (start search-limit found)
     ;; determine what lines to look in
     (save-excursion
@@ -2559,6 +2527,9 @@ just auto-corrects on common mis-spellings by me."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; csharp mode
 
+;; 20250629-1039 - I am not sure, but I think csharpier and eglot
+;; kinda solve this formatting thing, and I probably don't need this.
+;; Need to test it.
 (c-add-style
  "myC#Style"
  '("C#"  ; this must be defined elsewhere
@@ -2794,7 +2765,6 @@ just auto-corrects on common mis-spellings by me."
           hs-c-like-adjust-block-beginning         ; c-like adjust (1 char)
           )
         hs-special-modes-alist))
-
 
 
 
@@ -3559,7 +3529,7 @@ color ready for next time.
      (advice-add 'lsp-signature-posframe :before #'dino-posframe-swap-background)))
 
 ;;    (set-face-attribute 'lsp-signature-posframe nil :background "LightSteelBlue1" )
-
+;;
 ;;     (advice-add 'lsp-signature-posframe :before #'dino-posframe-swap-background)
 ;;     (advice-remove 'lsp-signature-posframe #'dino-posframe-swap-background)
 
@@ -3999,83 +3969,6 @@ color ready for next time.
     (ediff-buffers buf-buf-name file-buf-name)))
 
 
-
-;; (defun diff (old new &optional switches no-async)
-;;   "Find and display the differences between OLD and NEW files.
-;; Interactively the current buffer's file name is the default for NEW
-;; and a backup file for NEW is the default for OLD.
-;; If NO-ASYNC is non-nil, call diff synchronously.
-;; With prefix arg, prompt for diff switches."
-;;   (interactive
-;;    (let (oldf newf)
-;;      (setq newf (buffer-file-name)
-;;         newf (if (and newf (file-exists-p newf))
-;;                  (read-file-name
-;;                   (concat "Diff new file (default "
-;;                           (file-name-nondirectory newf) "): ")
-;;                   nil newf t)
-;;                (read-file-name "Diff new file: " nil nil t)))
-;;      (setq oldf (file-newest-backup newf)
-;;         oldf (if (and oldf (file-exists-p oldf))
-;;                  (read-file-name
-;;                   (concat "Diff original file (default "
-;;                           (file-name-nondirectory oldf) "): ")
-;;                   (file-name-directory oldf) oldf t)
-;;                (read-file-name "Diff original file: "
-;;                                (file-name-directory newf) nil t)))
-;;      (list oldf newf (diff-switches))))
-;;   (setq new (expand-file-name new)
-;;      old (expand-file-name old))
-;;   (or switches (setq switches diff-switches)) ; If not specified, use default.
-;;   (let* ((old-alt (file-local-copy old))
-;;      (new-alt (file-local-copy new))
-;;       (command
-;;        (mapconcat 'identity
-;;                   `(,diff-command
-;;                     ;; Use explicitly specified switches
-;;                     ,@(if (listp switches) switches (list switches))
-;;                     ,@(if (or old-alt new-alt)
-;;                           (list "-L" old "-L" new))
-;;                     ,(shell-quote-argument (or old-alt old))
-;;                     ,(shell-quote-argument (or new-alt new)))
-;;                   " "))
-;;       (buf (get-buffer-create "*Diff*"))
-;;       (thisdir default-directory)
-;;       proc)
-;;     (save-excursion
-;;       (display-buffer buf)
-;;       (set-buffer buf)
-;;       (setq buffer-read-only nil)
-;;       (buffer-disable-undo (current-buffer))
-;;       (let ((inhibit-read-only t))
-;;      (erase-buffer))
-;;       (buffer-enable-undo (current-buffer))
-;;       (diff-mode)
-;;       (set (make-local-variable 'revert-buffer-function)
-;;         `(lambda (ignore-auto noconfirm)
-;;            (diff ',old ',new ',switches ',no-async)))
-;;       (set (make-local-variable 'diff-old-temp-file) old-alt)
-;;       (set (make-local-variable 'diff-new-temp-file) new-alt)
-;;       (setq default-directory thisdir)
-;;       (let ((inhibit-read-only t))
-;;      (insert command "\n"))
-;;       (if (and (not no-async) (fboundp 'start-process))
-;;        (progn
-;;          (setq proc (start-process "Diff" buf shell-file-name
-;;                                    shell-command-switch command))
-;;          (set-process-filter proc 'diff-process-filter)
-;;          (set-process-sentinel
-;;           proc (lambda (proc msg)
-;;                  (with-current-buffer (process-buffer proc)
-;;                    (diff-sentinel (process-exit-status proc))))))
-;;      ;; Async processes aren't available.
-;;      (let ((inhibit-read-only t))
-;;        (diff-sentinel
-;;         (call-process shell-file-name nil buf nil
-;;                       shell-command-switch command)))))
-;;     buf))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Random stuff
 ;;
@@ -4260,8 +4153,6 @@ color ready for next time.
 ;;           (let ((proxy (w32reg-get-ie-proxy-config)))
 ;;             (setq url-using-proxy proxy
 ;;                   url-proxy-services proxy))))))
-
-
 
 
 
