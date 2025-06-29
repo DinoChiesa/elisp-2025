@@ -10,7 +10,7 @@
 ;; Version    : 1.0
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
-;; Last-saved : <2025-June-10 12:36:58>
+;; Last-saved : <2025-June-28 18:40:23>
 ;;
 ;;; Commentary:
 ;;
@@ -22,13 +22,8 @@
 ;;  - `dccsharp-auto-add-using' adds a using statement to the current
 ;;    file, if necessary, based on the short name of the class under
 ;;    point. When using "IHttpClientFactory", the module will add a using
-;;    System.Net.Http.  If there are multiple classes by the given name,
+;;    System.Net.Http.  TODO: If there are multiple classes by the given name,
 ;;    the user will geta popup choice.
-;;
-;; There are a few helper functions:
-;;
-;;  - `dccsharp-learn-new-using' adds a class to the known list of
-;;    classes that can be imported by `dccsharp-auto-add-using' .
 ;;
 
 ;;; License
@@ -71,635 +66,110 @@
 (defvar dccsharp--load-path (or load-file-name "~/elisp/dccsharp.el")
   "For internal use only. ")
 
-(defvar dccsharp-cache-dir (file-name-directory dccsharp--load-path))
-(defvar dccsharp-cache-basefilename ".dccsharp.classes")
-(defvar dccsharp-helper-classname-alist nil
-  "the alist of short classnames related to fully-qualified type names")
-(defvar dccsharp-helper-classnames nil
-  "list of classes to be able to import")
-
-
-(defun dcjava-path-join (&rest path-segments)
-  "Construct a file path from PATH-SEGMENTS.
-This functions like Python's os.path.join or Node's path.join."
-  (if path-segments
-      (let ((path (car path-segments)))
-        (dolist (segment (cdr path-segments))
-          (setq path (expand-file-name segment path)))
-        path)
-    ""))
-
-(defconst dccsharp--classname-regex "\\([a-zA-Z_$][a-zA-Z0-9_$]*\\.\\)*[a-zA-Z_$][a-zA-Z0-9_$]*"
+(defconst dccsharp--class-or-ns-regex "\\([a-zA-Z_$][a-zA-Z0-9_$]*\\.\\)*[a-zA-Z_$][a-zA-Z0-9_$]*"
   "a regex that matches a qualified or unqualified classname or package name")
-
-(defconst dcjava--qualified-classname-regex "\\([a-zA-Z_$][a-zA-Z0-9_$]*\\.\\)+[A-Z_$][a-zA-Z0-9_$]*"
-  "a regex that matches a qualified classname (with package prefix)")
-
-(defconst dcjava--import-stmt-regex (concat "import[\t ]+" dcjava--classname-regex
-                                            "[\t ]*;")
-  "a regex that matches a Java import statement")
-
-(defconst dcjava--package-stmt-regex (concat "package[\t ]+" dcjava--classname-regex
-                                             "[\t ]*;")
-  "a regex that matches a Java package statement")
 
 (defconst dccsharp--edge-of-symbol-regex
   "[ \t(,\\<\\[=]"
-  "A regex that matches the leading edge of a java symbol or classname")
+  "A regex that matches the leading edge of a c# symbol or classname")
 
+(defconst dccsharp--using-stmt-regex (concat "^using[\t ]+" dccsharp--class-or-ns-regex
+                                             "[\t ]*;")
+  "a regex that matches a C# using statement")
 
-;; (defconst dcjava-classname-regex "\\([a-zA-Z_$][a-zA-Z\\d_$]*\\.\\)*[a-zA-Z_$][a-zA-Z\\d_$]*"
-;;   "a regex that matches a Java classname")
+(defconst dccsharp--comment-line-regex "^[\t ]*//"
+  "a regex that matches a line that begins with a comment")
 
-(defun dccsharp-cache-filename ()
-  (concat dccsharp-cache-dir dccsharp-cache-basefilename))
+(defconst dccsharp--empty-line-regex "^[\t ]*$")
 
-(defun dccsharp--filter (condp lst)
-  "filters the list LST, removing each item for which condp returns nil"
-  (delq nil
-        (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
+;; (defun dccsharp--filter (condp lst)
+;;   "filters the list LST, removing each item for which condp returns nil"
+;;   (delq nil
+;;         (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
 
-(defun dccsharp--is-class-name (str)
-  "returns true if the string appears to be formed like a c# class name"
-  (let ((case-fold-search nil))
-    (string-match dccsharp--classname-regex str)))
+;; (defun dccsharp--is-class-name (str)
+;;   "returns true if the string appears to be formed like a c# class name"
+;;   (let ((case-fold-search nil))
+;;     (string-match dccsharp--class-or-ns-regex str)))
 
-(defun dccsharp-reload-classlist ()
-  "loads the list of known classes into memory"
+(defun dccsharp--using-line-sorter-predicate (a b)
+  "Return t if A should come before B.
+Sorts alphabetically, but places comments and empty lines at the end."
+  (let ((empty-a (string-match-p dccsharp--empty-line-regex a))
+        (empty-b (string-match-p dccsharp--empty-line-regex b))
+        (comment-a (string-match-p dccsharp--comment-line-regex a))
+        (comment-b (string-match-p dccsharp--comment-line-regex b)))
+    (cond
+     ((and (not empty-a) (not comment-a) (or empty-b comment-b)) t)
+     ((and (not empty-b) (not comment-b) (or empty-a comment-a)) nil)
+     ((and comment-a empty-b) t)
+     ((and comment-b empty-a) nil)
+     (t (string-lessp a b)))))
+
+(defun dccsharp--sort-using-lines (beg end)
+  "Sort lines in region alphabetically, moving comments and empty lines to the end."
+  (let* ((text (buffer-substring-no-properties beg end))
+         (lines (split-string text "\n"))
+         (sorted-lines (sort lines #'dccsharp--using-line-sorter-predicate))
+         (sorted-text (mapconcat #'identity sorted-lines "\n")))
+    (delete-region beg end)
+    (insert sorted-text)))
+
+(defun dccsharp-sort-using-statements ()
+  "sorts the using statements in a file. This is sort-of not
+super useful, as csharpier includes this function implicitly,
+and apheleia-mode runs csharpier on save."
   (interactive)
-  (setq dccsharp-helper-classname-alist nil
-        dccsharp-helper-classnames
-        (delete-dups
-         (dccsharp--filter
-          #'dccsharp--is-class-name
-          (with-temp-buffer
-            (insert-file-contents (dccsharp-cache-filename))
-            (split-string (buffer-string) "\n" t))))))
-
-
-
-(defun dccsharp--split-fully-qualified-classname (classname)
-  "given a fully-qualified C# CLASSNAME, returns a list of two strings: the unqualified classname followed by the package name"
-  (let* ((parts (split-string classname "\\." t))
-         (rlist (reverse parts))
-         (last (car rlist)))
-    (list last (mapconcat #'identity (reverse (cdr rlist)) "."))))
-
-
-(defun dccsharp--xform-alist (lst)
-  "transform the list to combine items that share a common classname"
-  (let ((new-list ())
-        item)
-    (while (setq item (car lst))
-      (let* ((classname (car item))
-             (rest (cadr item))
-             (found (assoc classname new-list)))
-        (if (not found)
-            (setq new-list (cons item new-list))
-          (setcdr found (cons rest (cdr found)))))
-      (setq lst (cdr lst)))
-    new-list))
-
-
-(defun dccsharp-get-helper-classname-alist ()
-  "returns the alist for the java class names. Computes it just-in-time if necessary."
-  (or dccsharp-helper-classname-alist
-      (setq dccsharp-helper-classname-alist
-            (dccsharp--xform-alist
-             (mapcar
-              #'dccsharp--split-fully-qualified-classname
-              (or dccsharp-helper-classnames (dccsharp-reload-classlist)))))))
-
-
-;; (defun dcjava-sort-import-statements ()
-;;   "sorts the import statements in a file."
-;;   (interactive)
-;;   (save-excursion
-;;     (beginning-of-buffer)
-;;     (if (re-search-forward dcjava--import-stmt-regex nil t)
-;;         (let ((start nil))
-;;           (beginning-of-line)
-;;           (setq start (point))
-;;           (while (re-search-forward dcjava--import-stmt-regex nil t))
-;;           (forward-line)
-;;           (beginning-of-line)
-;;           (sort-lines nil start (point)))
-;;       (mesage "cannot find import statements"))))
-
-(defun dcjava--gen-import-regex (package-name &optional symbol)
-  "returns a regex that matches an import for a given java class defined by a package name and a symbol.  If the symbol is null, then the package-name is treated as a fully-qualified classname."
-  (concat "^import[\t ]+"
-          (regexp-quote
-           (if symbol (concat package-name "." symbol)
-             package-name))
-          "[\t ]*;"))
-
-(defun dcjava-add-one-import-statement (package-name &optional symbol-name want-learn)
-  "add one import statement, append to the list of imports at or near beginning-of-buffer.
-If the symbol is null, then the package-name is treated as a fully-qualified classname."
-  (let ((import-statement
-         (concat "import "
-                 (if symbol-name
-                     (concat package-name "." symbol-name)
-                   package-name)
-                 ";"))
-        (import-regex (dcjava--gen-import-regex package-name symbol-name)))
-    (save-excursion
-      (if (re-search-backward import-regex nil t)
-          (message (concat "already have " package-name "." symbol-name))
-        (let ((want-extra-newline nil))
-          (if (re-search-backward dcjava--import-stmt-regex nil t)
-              (end-of-line)
-            (beginning-of-buffer)
-            (if (re-search-forward dcjava--package-stmt-regex nil t)
-                (progn (forward-line) (beginning-of-line)))
-            ;; naively skip-comments. this breaks if you use /*
-            (while (looking-at "^//")
-              (forward-line))
-            (setq want-extra-newline t))
-          (newline)
-          (insert import-statement)
-          (if want-learn
-              (dcjava-learn-new-import))
-          (dcjava-sort-import-statements)
-          (if want-extra-newline (newline))
-          (message import-statement))))))
-
-
-(defun dcjava--generate-menu (candidates &optional format heading)
-  "Generate a menu suitable for use in `x-popup-menu' from the
-list of candidates. Each item in the list of CANDIDATES is a
-string. The FORMAT is a function that formats the displayable menu choice;
-it is called once for each candidate.  The HEADING is a string used in the
-result, which will appear as a menu heading.
-
-For example, calling it with candidates ('(\"one\" \"two\")) and no additional
-areguments will return a structure like this:
-
-  (\"Select a Choice...\"
-    (\"Ignored pane title\"
-      (\"one\" \"one\")
-      (\"two\" \"two\")))
-
-Calling it with ('(\"Class1\" \"Class2\")
-                 #'(lambda (x) (concat \"import \" x \";\"))
-                 \"Add import\")
-
-...will return output like this:
-
-  (\"Add Import...\"
-    (\"Ignored pane title\"
-      (\"import a.b.c.Class;\" \"a.b.c.Class\")
-      (\"import x.y.z.Class;\" \"x.y.z.Class\")))
-
-The result of the choice is the cdr of the selected item. In this case, it
-will be something like (\"x.y.z.Class\") .
-
-"
-
-  (let ((items (mapcar #'(lambda (elt) (list (funcall (or format #'identity) elt) elt))
-                       candidates)))
-    ;; this works with x-popup-menu
-    (setq items (cons "Ignored pane title" items))
-    (list (or heading "Select a Choice...") items)))
-
-
-(defun dcjava--get-menu-position ()
-  "get the position for the popup menu"
-  (if (fboundp 'posn-at-point)
-      (let ((x-y (posn-x-y (posn-at-point (point)))))
-        (list (list (+ (car x-y) 10)
-                    (+ (cdr x-y) 20))
-              (selected-window)))
-    t))
-
-
-(defun dcjava-add-import-statement-from-choice (package-names symbol-name)
-  "present a choice for an import statement to add, then add the chosen one."
-  (let* ((candidates (mapcar #'(lambda (elt)
-                                 (concat elt "." symbol-name))
-                             package-names))
-         (chosen (x-popup-menu (dcjava--get-menu-position)
-                               (dcjava--generate-menu candidates
-                                                      #'(lambda (x) (concat "import " x ";"))
-                                                      "Add import..."))))
-    (when chosen ;; actually a list containing a single string (classname)
-      (dcjava-add-one-import-statement (car chosen)))))
-
+  (save-excursion
+    (beginning-of-buffer)
+    (if (re-search-forward dccsharp--using-stmt-regex nil t)
+        (let ((start nil))
+          (beginning-of-line)
+          (setq start (point))
+          (while (or
+                  (looking-at dccsharp--using-stmt-regex t)
+                  (looking-at dccsharp--comment-line-regex t)
+                  (looking-at dccsharp--empty-line-regex t))
+            (forward-line))
+          (beginning-of-line)
+          (dccsharp--sort-using-lines  start (point)))
+      (message "cannot find using statements"))))
 
 (defun dccsharp--class-or-qualified-member-name-at-point ()
-  "returns the fully-qualified classname under point"
+  "returns the Shortclass.Methodname under point"
   (save-excursion
     (let ((case-fold-search nil))
       (if (re-search-backward dccsharp--edge-of-symbol-regex (line-beginning-position) 1)
           (forward-char))
-      (if (looking-at dccsharp--classname-regex)
+      (if (looking-at dccsharp--class-or-ns-regex)
           (buffer-substring-no-properties (match-beginning 0) (match-end 0))))))
 
+(defun dccsharp--position-of-class-or-qualified-member-name-at-point ()
+  "returns the position of the  Shortclass.Methodname under point"
+  (save-excursion
+    (let ((case-fold-search nil))
+      (if (re-search-backward dccsharp--edge-of-symbol-regex (line-beginning-position) 1)
+          (forward-char))
+      (if (looking-at dccsharp--class-or-ns-regex)
+          (list (match-beginning 0) (match-end 0))))))
 
 (defun dccsharp-auto-add-using ()
-  "adds a using statement for the class or interface at point, if possible.
-If the class at point is fully-qualified, just adds a using for the
-containing namespace. Otherwise, uses a cached list to lookup the
-namespace to add import."
+  "Adds a using statement for the class or interface at point, if possible.
+Uses eglot and LSP to find the right action."
   (interactive)
-  (let ((thingname (dccsharp--class-or-qualified-member-name-at-point))
-        (case-fold-search nil))
-    (cond
-     (thingname
-      (let ((classparts (s-split "\\." thingname)))
-        (cond
-         (> 1 (length classparts))
-         ;; more than one segment indicates a qualified classname
-         (let ((inferred-namespace (s-join "." (butlast my-list))))
-           (matching-pair (assoc first-segment (dccsharp-get-helper-classname-alist))))
-         (cond
-          (matching-pair
-           (let* ((package-names (cdr matching-pair))
-                  (num-pkgs (length package-names)))
-             (if (= num-pkgs 1)
-                 ;; add the import statement
-                 (dcjava-add-one-import-statement (car package-names) first-segment)
-               (dcjava-add-import-statement-from-choice package-names first-segment))))
-          (t
-           (message "did not find class for %s" thingname)))))
-
-      ;; lowercase first segment indicates fully qualified classname
-      ((string-match dcjava--qualified-classname-regex thingname)
-       (let* ((pair (dcjava--split-fully-qualified-classname thingname))
-              (basename (car pair)))
-         (dcjava-add-one-import-statement thingname nil t)
-         ;; unqualify the classname under point
-         (save-excursion
-           (if (re-search-backward dcjava--edge-of-symbol-regex (line-beginning-position) 1)
-               (forward-char))
-           (if (re-search-forward (regexp-quote thingname))
-               ;; replace the fully-qualified classname with the basename
-               (replace-match basename)))))
-      (t
-       ;; not sure what this case is?
-       (let ((matching-pair (assoc thingname (dcjava-get-helper-classname-alist))))
-         (cond
-          (matching-pair
-           (let* ((package-names (cdr matching-pair))
-                  (num-pkgs (length package-names)))
-             (if (= num-pkgs 1)
-                 ;; add the import statement
-                 (dcjava-add-one-import-statement (car package-names) thingname)
-               (dcjava-add-import-statement-from-choice package-names thingname))))
-          (t
-           (message "did not find class %s" thingname)))
-         )
-       )))
-    (t
-     (message "did not find a classname under point"))
-    )))
-
-(defun dcjava-learn-new-import ()
-  "learns a new import statement for the import statement at point, if possible."
-  (interactive)
-  (let ((import-stmt
-         (save-excursion
-           (beginning-of-line)
-           (and (looking-at dcjava--import-stmt-regex)
-                (s-trim
-                 (s-chop-suffix
-                  ";"
-                  (buffer-substring-no-properties (match-beginning 0) (match-end 0))))))))
-    (if import-stmt
-        (let ((parts (split-string import-stmt "[\t ]+" t)))
-          (if (eq (length parts) 2)
-              (let ((classname (nth 1 parts)))
-                (if (not (member classname dcjava-helper-classnames))
-                    (progn
-                      (write-region
-                       (concat (nth 1 parts) "\n")
-                       nil (dcjava-cache-filename) 'append)
-                      (dcjava-reload-classlist))
-                  (message "a class by that name is already known")))
-            (message "Inconceivable! that does not look like a java class name")))
-      (message "that does not look like an import statement"))))
+  (if-let* ((server (and (fboundp 'eglot--current-server-or-lose)
+                         (eglot--current-server-or-lose)))
+            (symbol-position (dccsharp--position-of-class-or-qualified-member-name-at-point))
+            (actions (eglot-code-actions (car symbol-position) (cadr symbol-position)))
+            (add-using-action
+             (cl-find-if (lambda (action)
+                           (let ((title (plist-get action :title)))
+                             (string-match-p "\\`using " title)))
+                         actions)))
+      (progn
+        (eglot-execute server add-using-action)
+        (message "Applied 'add using' action."))
+    (message "No 'add using' action found.")))
 
 
-;; ==================================================================
-
-(defun dcjava-tramp-aware-find-class (dir argument modified-classname)
-  "Execute shell command COMMAND and return its output as a string.
-This may be a remote shell if the file is being accessed from tramp.
-
-See https://mail.gnu.org/archive/html/emacs-devel/2018-01/msg00727.html "
-  (let* ((remote-host
-          (save-match-data ; is usually a good idea
-            (and
-             (string-match "^/ssh:\\([^:]+\\):" dir)
-             (match-string 1 dir))))
-         (desired-default-dir (if remote-host
-                                  (concat "/ssh:" remote-host ":~/")
-                                "~/"))
-         (source-dir-for-find (if remote-host
-                                  (s-chop-left (- (length desired-default-dir) 2) dir)
-                                dir))
-         (command
-          ;; TODO: can I use fzf here?
-          (concat "find " source-dir-for-find argument modified-classname ".java"))
-
-         (default-directory (expand-file-name desired-default-dir))
-         (found-file
-          (s-trim-right
-           (with-connection-local-variables
-            (shell-command-to-string command)))))
-
-    (setq found-file
-          (if (s-blank? found-file) nil
-            (s-chomp  found-file)))
-    (if (and found-file remote-host)
-        (concat "/ssh:" remote-host ":" found-file)
-      found-file)))
-
-
-(defun dcjava-find-java-source-in-dir (dir classname)
-  "find a java source file in a DIR tree, based on the CLASSNAME. This is
-a simple wrapper on the shell find command. The return value is a list of
-strings (filenames). "
-  (let* ((modified-classname (s-replace "." "/" classname))
-         (argument (if (s-contains? "/" modified-classname)
-                       " -path \\*" " -name ")))
-    (dcjava-tramp-aware-find-class
-     dir argument modified-classname)))
-
-
-(defun dcjava--is-directory (dir-name)
-  "Tests to see whether a name refers to a directory"
-  (and
-   (file-exists-p dir-name)
-   (let ((attrs (file-attributes dir-name)))
-     (and
-      (car attrs)
-      (not (stringp (car attrs)))))))
-
-
-(defun dcjava--parent-of-dir (contained_dir)
-  "returns a string representing the parent dir of the directory named
-in CONTAINED_DIR, searching from the tree above the given current working
-directory. CONTAINED_DIR should be a simple path segment, no
-slashes."
-  (interactive)
-  (let ((to-find contained_dir))
-    (let ((path
-           (dcjava-insure-trailing-slash
-            (let ((maybe-this (concat (file-name-directory default-directory) to-find)))
-              (if (dcjava--is-directory maybe-this)
-                  (file-name-directory default-directory)
-                (let ((elts (reverse (split-string (file-name-directory default-directory) "/")))
-                      r)
-                  (while (and elts (not r))
-                    (if (string= (car elts) to-find)
-                        (setq r (reverse (cdr elts)))
-                      (setq elts (cdr elts))))
-                  (if r
-                      (mapconcat #'identity r "/") )))))))
-      (and path (file-truename path)))))
-
-(defun dcjava-wacapps-dir ()
-  "returns a string representing the wacapps dir,
-searching from the tree above the given current working directory."
-  (interactive)
-  (let ((dir-candidate
-         (concat
-          (dcjava-insure-trailing-slash
-           (dcjava--parent-of-dir "wacapps"))
-          "wacapps/")))
-    (if (file-directory-p dir-candidate)
-        dir-candidate
-      dcjava-wacapps-default-home)))
-
-
-(defun dcjava-wacapps-apiplatform-link ()
-  "open the URL on source.corp.google.com for the current wacapps file & line."
-  (interactive)
-  (let ((fname (buffer-file-name)))
-    (save-match-data
-      (let ((smatch (string-match ".+/api_platform/\\(.+\\)" fname)))
-        (if smatch
-            (let* ((fsuffix (match-string 1 fname))
-                   (the-url
-                    (concat "https://source.corp.google.com/h/edge-internal/featureplatform/api_platform/+/master:"
-                            fsuffix
-                            ";l="
-                            (number-to-string (line-number-at-pos)))))
-              (message "open %s" fsuffix)
-              (browse-url the-url)))))))
-
-
-(defun dcjava-insure-trailing-slash (path)
-  "Insure the given path ends with a slash. This is useful with
-`default-directory'. Setting `default-directory' to a value that
-does not end with a slash causes it to use the parent directory.
-"
-  (and path
-       (if (s-ends-with? "/" path) path (concat path "/"))))
-
-
-
-;; ;; 20250604-1322 - not currently used
-;; (defun dcjava-find-file-from-choice (flist)
-;;   "present a choice for an import statement to add, then add the chosen one."
-;;   (let ((chosen (x-popup-menu (dcjava--get-menu-position)
-;;                               (dcjava--generate-menu flist
-;;                                                      nil
-;;                                                      "Open a file..."))))
-;;     (when chosen ;; actually a list containing a single string (filename)
-;;       (progn (find-file (car chosen))
-;;              (message "open file %s" (car chosen))))))
-
-
-
-(defun dcjava-find-wacapps-java-source-for-class (classname)
-  "find a java source file in the source tree that defines the class named
-by CLASSNAME. Prompts if no classname is provided. This fn is a wrapper on
-the shell find command. "
-
-  (interactive "P")
-  ;; prompt for classname if not specified
-  (if (not classname)
-      (setq classname (read-string "Class to find: " nil)))
-
-  ;; this assumes cps and api_platform are sibling directories in the tree
-  (let* ((wacapps-dir (dcjava-wacapps-dir))
-         (api-platform-src-root (concat wacapps-dir "api_platform/"))
-         (cps-src-root (concat wacapps-dir "cps/"))
-         (filename (and classname
-                        (or
-                         (dcjava-find-java-source-in-dir api-platform-src-root classname)
-                         (dcjava-find-java-source-in-dir cps-src-root classname)))))
-
-    (if filename
-        (if (file-exists-p filename)
-            (progn (find-file filename)
-                   (message "open file %s" filename))
-          (message "E_NOEXIST %s" classname))
-      ;;(dcjava-find-file-from-choice filenames)))
-      (message "no file for class %s" classname))))
-
-
-(defun dcjava-wacapps-intelligently-open-file (partial-path)
-  "find a source file in the wacpps tree based on PARTIAL-PATH which
-will be a fragment like java/com/apigee/keymanagement/util/ApiProductMatcher.java .
-That happens to be in gateway/sw/services.  But this method will find it and
-open it. "
-  (interactive "P")
-  ;; prompt if not specified
-  (if (not partial-path)
-      (setq partial-path (read-string "Path to open: " nil)))
-
-  (let* ((basename (file-name-nondirectory partial-path))
-         (command (concat "rg --files " (dcjava-wacapps-dir) " --glob " basename))
-         (file-list (s-lines
-                     (s-trim (shell-command-to-string command)))))
-
-    (let ((found-file nil)
-          (candidates file-list))
-      ;; Keep looping while there are candidates and we haven't found a file
-      (while (and candidates (not found-file))
-        (let* ((current-file-untrimmed (car candidates))
-               (current-file (and current-file-untrimmed (s-trim current-file-untrimmed))))
-          (if (and (file-exists-p current-file)
-                   (s-ends-with? partial-path current-file))
-              (setq found-file current-file))
-          (setq candidates (cdr candidates))))
-
-      (if found-file
-          (progn
-            (with-current-buffer (find-file found-file)
-              (read-only-mode))
-            (message "Opened file: %s" found-file))
-        (message "Cannot find a matching file for: %s" partial-path)))))
-
-
-(defun dcjava-find-wacapps-java-source-for-class-at-point ()
-  "find a java source file in the wacapps dir tree that defines the
-class named by the `thing-at-point'. This fn is a wrapper on the shell
-find command.
-
-When invoked interactively, uses the class name at point. When
-none is found, then prompts for a classname.
-
-When multiple source files are found, prompts user with a list to
-select from.
-"
-  (interactive)
-  (let* ((classname
-          (or
-           (dcjava--class-or-qualified-member-name-at-point)
-           (let ((thing (thing-at-point 'word)))
-             (if thing (substring-no-properties thing)))
-           (read-string "Class to find: " nil)))
-         )
-    (dcjava-find-wacapps-java-source-for-class classname)))
-
-(defun dcjava-inferred-package-name ()
-  "returns the inferred package name from the directory structure,
-or nil if there is none."
-  (let ((elts (remove "" (reverse (split-string (file-name-directory default-directory) "/"))))
-        (package-root-dir-names '("org" "com" "io" "net"))
-        dir-stack
-        inferred-package-name)
-    (while (and elts (not inferred-package-name))
-      (let ((current-dir-name (car elts)))
-        (cond
-         ((member current-dir-name package-root-dir-names)
-          (setq inferred-package-name (mapconcat #'identity (push current-dir-name dir-stack) ".")))
-         ((s-equals? current-dir-name "java")
-          (setq inferred-package-name (mapconcat #'identity dir-stack ".")))
-         (t
-          (progn
-            (push (car elts) dir-stack)
-            (setq elts (cdr elts))))
-         )))
-    inferred-package-name))
-
-(defun dcjava-inferred-package-statement ()
-  "returns the package statement with the inferred package name, or
-blank if there is none."
-  (let ((inferred-package-name (dcjava-inferred-package-name)))
-    (if inferred-package-name
-        (concat "package " inferred-package-name ";")
-      "")))
-
-(defun dcjava-insert-inferred-package-name ()
-  "inserts a package statement with an inferred package name
-at the top of the source file."
-  (interactive)
-  (let ((inferred-package-statement (dcjava-inferred-package-statement)))
-    (if (and inferred-package-statement
-             (not (string= "" inferred-package-statement)))
-        (save-excursion
-          (beginning-of-buffer)
-          ;; naively skip-comments. this breaks if you use /*
-          (while (looking-at "^//")
-            (forward-line))
-          (newline)
-          (insert inferred-package-statement)
-          (newline)
-          ))))
-
-(defun dcjava-shell-command-on-buffer (command)
-  (let ((output-goes-to-current-buffer t)
-        (output-replaces-current-content t))
-    (shell-command-on-region (point-min)
-                             (point-max)
-                             command
-                             output-goes-to-current-buffer
-                             output-replaces-current-content)))
-
-(defun dcjava-latest-gformat-jar (&optional explicitly-provided-dir-to-search)
-  "Finds the latest jar for google-java-format. This works
-under Windows and Linux.
-
-It looks for any file like google-java-format-*.jar and
-returns the \"last\" one according to lexicographic sort.
-
-The jar name changes as new ones are released. This fn just finds
-and uses the latest one. Just drop the updated jar into ~/bin,
-delete the old jar (or not), and everything will keep working.
-"
-  (let ((dir-to-search
-         (or explicitly-provided-dir-to-search dcjava-location-of-gformat-jar)))
-    (if (and dir-to-search (file-directory-p dir-to-search))
-        (let* ((regex
-                (dino-escape-braces-in-regex "google-java-format-[0-9].+\\.jar$"))
-               (filter-fn
-                (lambda (candidate)
-                  (and
-                   (string-match regex (file-name-nondirectory candidate))
-                   (file-exists-p candidate))))
-               (matching-candidates
-                (cl-remove-if-not filter-fn (directory-files dir-to-search t))))
-          (if (null matching-candidates)
-              nil
-            (let ((sorted-candidates (sort matching-candidates #'string<)))
-              (car (last sorted-candidates))))))))
-
-
-(defun dcjava-gformat-command (&optional explicitly-provided-dir-to-search)
-  "returns the command in string form to run gformat. Searches the
-specified directory for the jar file."
-  (let ((jar-file (dcjava-latest-gformat-jar explicitly-provided-dir-to-search)))
-    (if jar-file
-        (concat "java -jar " (dcjava-latest-gformat-jar) " -"))))
-
-
-(defun dcjava-gformat-buffer ()
-  "runs google-java-format on the current buffer"
-  (interactive)
-  (let ((command (dcjava-gformat-command)))
-    (if command
-        (let ((savedpoint (point)))
-          (dcjava-shell-command-on-buffer command)
-          (goto-char savedpoint))
-      (message "no google-java-format jar found in %s" (or dcjava-location-of-gformat-jar "-unset-")))))
-
-
-(provide 'dcjava)
-
-;;; dcjava.el ends here
+;;; dccsharp.el ends here

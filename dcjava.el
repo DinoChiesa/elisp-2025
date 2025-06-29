@@ -13,7 +13,7 @@
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
-;; Last-saved : <2025-June-17 08:48:11>
+;; Last-saved : <2025-June-28 18:31:50>
 ;;
 ;;; Commentary:
 ;;
@@ -134,9 +134,14 @@ This functions like Python's os.path.join or Node's path.join."
 (defconst dcjava--qualified-classname-regex "\\([a-zA-Z_$][a-zA-Z0-9_$]*\\.\\)+[A-Z_$][a-zA-Z0-9_$]*"
   "a regex that matches a qualified classname (with package prefix)")
 
-(defconst dcjava--import-stmt-regex (concat "import[\t ]+" dcjava--classname-regex
+(defconst dcjava--import-stmt-regex (concat "^[\t ]*import[\t ]+" dcjava--classname-regex
                                             "[\t ]*;")
   "a regex that matches a Java import statement")
+
+(defconst dcjava--comment-line-regex "^[\t ]*//"
+  "a regex that matches a line that begins with a comment")
+
+(defconst dcjava--empty-line-regex "^[\t ]*$")
 
 (defconst dcjava--package-stmt-regex (concat "package[\t ]+" dcjava--classname-regex
                                              "[\t ]*;")
@@ -210,7 +215,9 @@ This functions like Python's os.path.join or Node's path.join."
 
 
 (defun dcjava-sort-import-statements ()
-  "sorts the import statements in a file."
+  "sorts the import statements in a file. Not sure I ever use
+this at this point, because apheleia uses gformat which sorts
+imports."
   (interactive)
   (save-excursion
     (beginning-of-buffer)
@@ -218,8 +225,10 @@ This functions like Python's os.path.join or Node's path.join."
         (let ((start nil))
           (beginning-of-line)
           (setq start (point))
-          (while (re-search-forward dcjava--import-stmt-regex nil t))
-          (forward-line)
+          (while (or (looking-at dcjava--import-stmt-regex nil t)
+                     (looking-at dcjava--comment-line-regex t)
+                     (looking-at dcjava--empty-line-regex t))
+            (forward-line))
           (beginning-of-line)
           (sort-lines nil start (point)))
       (mesage "cannot find import statements"))))

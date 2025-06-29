@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-June-18 15:09:15>
+;; Last saved: <2025-June-28 18:23:26>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -462,6 +462,14 @@
         (dino/insert-or-modify-alist-entry
          completion-category-overrides
          'command
+         `((styles . (substring))
+           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first))))
+
+  ;; For describe-function or describe-variable, use `symbol-help'
+  (setq completion-category-overrides
+        (dino/insert-or-modify-alist-entry
+         completion-category-overrides
+         'symbol-help
          `((styles . (substring))
            (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first))))
 
@@ -2964,7 +2972,12 @@ just auto-corrects on common mis-spellings by me."
   (keymap-local-set "ESC #"    #'dino/indent-buffer)
   (keymap-local-set "C-c C-w"  #'compare-windows)
   (keymap-local-set "C-c C-g"  #'dino-csharpier-buffer)
-  (keymap-local-set "C-x C-e"     #'compile)
+  (keymap-local-set "C-x C-e"  #'compile)
+
+  (require 'dccsharp)
+  (keymap-local-set "C-c i"    #'dccsharp-auto-add-using)
+  (keymap-local-set "C-c e"    #'eglot-code-actions)
+  (keymap-local-set "C-c C-s"  #'dccsharp-sort-using-statements)
 
   ;; 20241229-1756
   (electric-pair-local-mode 1)
@@ -3022,7 +3035,7 @@ just auto-corrects on common mis-spellings by me."
   :config (add-hook 'csharp-ts-mode-hook 'ctsn/setup))
 
 (defun dino-maybe-eglot-reconnect ()
-  "At least in emacxs 29.4, when apheleia reformats a C# buffer it seems to
+  "At least in emacs 29.4, when apheleia reformats a C# buffer it seems to
   confuse the language server. This function will force a reconnect in
   that case. This is overkill and slow, but I have not yet figured out a way
   around it."
