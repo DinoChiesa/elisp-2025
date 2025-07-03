@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-02 22:12:04>
+;; Last saved: <2025-July-03 13:08:11>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -642,6 +642,7 @@
                   ("C-c e r" . eglot-rename)
                   ("C-c e f" . eglot-format)
                   ("C-c e s" . eglot-shutdown)
+                  ("C-c e C-s" . eglot-shutdown-all)
                   ("C-c e r" . eglot-reconnect)
                   ("C-c e c" . company-capf)
                   )
@@ -801,7 +802,7 @@ server program."
     (if (alist-get 'jsonnet-mode eglot-server-programs)
         (setf (alist-get 'jsonnet-mode eglot-server-programs) #'dpc/jsonnet-lsp)
       (add-to-list 'eglot-server-programs
-                   `(jsonnet-mode . dpc/jsonnet-lsp))))
+                   `(jsonnet-mode dpc/jsonnet-lsp))))
 
   ;; 20250406-1450
   ;;
@@ -1711,19 +1712,22 @@ then switch to the markdown output buffer."
   "My hook for CSS mode"
   (interactive)
   ;; (turn-on-font-lock) ;; need this?
-  (setq css-indent-offset 2)
-
+  (setq css-indent-offset 2
+        completion-auto-help 'always
+        )
   (keymap-local-set "ESC C-R" #'indent-region)
   (keymap-local-set "ESC #"   #'dino/indent-buffer)
   (keymap-local-set "C-c C-w" #'compare-windows)
   (keymap-local-set "C-c C-c" #'comment-region)
   (keymap-local-set "ESC ."   #'company-complete)
+  (keymap-local-set "ESC C-i" #'company-capf)
 
   (turn-on-auto-revert-mode)
   (electric-pair-mode)
   (company-mode)
   (apheleia-mode)
   (display-line-numbers-mode)
+  ;;(eglot-ensure) ;; maybe I will want this?
 
   ;; 20250524-1624
   ;; Microsoft produces a CSS language server as part of (VS)Code OSS.  But they do not
@@ -1734,29 +1738,47 @@ then switch to the markdown output buffer."
   ;; guess, for the CSS lang server (and maybe a few others).  but (a) that repo hasn't been
   ;; updated in a while, and (b) the build doesn't work.
   ;;
-  ;; I asked Gemini how I could use https://github.com/Microsoft/vscode-css-languageservice,
-  ;; and it advised me to build my own server that packages this library. I tried that, see
-  ;; ~/dev/my-css-language-server , it also didn't work.
+  ;; There is a relevant repo that is being maintained:
+  ;; https://github.com/microsoft/vscode-css-languageservice But that is a
+  ;; library, service? not a tool or LSP.  There is no "npm run" script for it.
+  ;; I asked Gemini how I could use it, and it advised me run a thing that is
+  ;; based on an extraction that was done 7 years ago.
+  ;; https://www.npmjs.com/package/vscode-css-languageserver-bin .  If I say I
+  ;; don't want that, it advises me to build my own server that packages this
+  ;; library. I tried that, see ~/dev/my-css-language-server , it also didn't
+  ;; work.  I don't recall what the obstacle was there.
   ;;
-  ;; Finally, resorted to just running the CSS lang server that is packaged in the VSCode
-  ;; installation. This works on Windows; not sure the install location of the CSS Lang
-  ;; Server on Linux.
+  ;; Finally, I resorted to just running the CSS lang server that is packaged in
+  ;; the VSCode installation. This works on Windows and Linux. Of course I have
+  ;; to install vscode to get it.
+  ;;
+  ;; I am not sure what specifically I am getting out of the LSP here; tree-sitter
+  ;; gives me completions and syntax highlighting. Is there refactoring or other stuff
+  ;; the LSP gives me? (shrug)
 
-  ;; This is ugly but works.
-  (let* ((home-dir (getenv "HOME"))
-         (vscode-server-program
-          (concat home-dir
-                  "\\AppData\\Local\\Programs\\Microsoft VS Code\\resources\\app\\extensions\\css-language-features\\server\\dist\\node\\cssServerMain.js")))
+  (let* ((vscode-server-program
+          (file-name-concat (if (eq system-type 'windows-nt)
+                                (file-name-concat (getenv "HOME")
+                                                  "AppData/Local/Programs/Microsoft VS Code")
+                              "/usr/share/code")
+                            "resources/app/extensions/css-language-features/server/dist/node/cssServerMain.js")))
     (if (file-exists-p vscode-server-program)
         (add-to-list 'eglot-server-programs
                      `((css-mode css-ts-mode)
                        . ,(list "node" vscode-server-program "--stdio")))
-
       ))
 
+  ;;
+  ;; To fix if I have broken things:
+  ;; (setq eglot-server-programs (assoc-delete-all '(css-mode css-ts-mode) eglot-server-programs ))
+
   ;; To install the external flycheck checkers:
-  ;; sudo npm install -g csslint
-  ;; sudo npm install -g stylelint stylelint-config-standard stylelint-scss
+  ;;
+  ;; npm install -g csslint  # not sure needed any longer!
+  ;; npm install -g stylelint stylelint-config-standard stylelint-scss
+  ;;
+  ;; check what you have installed globally:
+  ;;   npm ls -g
 
   (flycheck-mode)
   (flycheck-select-checker
@@ -3324,43 +3346,39 @@ Does not consider word syntax tables.
 (defun dpc-xmllsp-init-options (_server)
   "options for my own custom XML LSP, built in python."
   (let* ((home-dir  (getenv "HOME") )
-         (xsd-cachedir (concat home-dir "/xml-schema-cache")))
+         (xsd-cachedir (file-name-concat home-dir "/xml-schema-cache")))
     `(:schemaLocators
       [
        (:rootElement t
                      :searchPaths
                      [
-                      ,(concat home-dir "/newdev/apigee-schema-inference/dist/schema")
+                      ,(file-name-concat home-dir "/newdev/apigee-schema-inference/dist/schema")
                       ])
        (:locationHint ,(concat xsd-cachedir "/schema_map.json"))
        (:patterns [(:pattern "*.csproj"
                              ;;:path ,(concat xsd-cachedir "/Microsoft.Build.CommonTypes.xsd")
-                             :path ,(concat xsd-cachedir "/Microsoft.Build.Core.xsd")
+                             :path ,(file-name-concat xsd-cachedir "/Microsoft.Build.Core.xsd")
                              :useDefaultNamespace t
                              )])
        ]
       )))
 
 
-(with-eval-after-load 'eglot
-  (add-to-list
-   'eglot-server-programs
-   `(nxml-mode .
-               ("/usr/local/google/home/dchiesa/newdev/xmllsp/.venv/bin/python"
-                ,(concat (getenv "HOME")
-                         "/newdev/xmllsp/xml_language_server/xmllsp.py")
-                :initializationOptions dpc-xmllsp-init-options))))
-
+(let ((xmllsp-loc (expand-file-name "~/newdev/xmllsp")))
+  (with-eval-after-load 'eglot
+    (add-to-list
+     'eglot-server-programs
+     `(nxml-mode .
+                 (,(file-name-concat xmllsp-loc ".venv/bin/python")
+                  ,(file-name-concat xmllsp-loc "xml_language_server/xmllsp.py")
+                  "--log-level"
+                  "INFO"
+                  :initializationOptions dpc-xmllsp-init-options)))))
 
 ;; For fixing up if I've messed up the above:
 ;;
-;; ;; (setf
-;; ;;  (alist-get 'nxml-mode eglot-server-programs)
-;; ;;  `("java" "-jar"
-;; ;;    ,(concat (getenv "HOME")
-;; ;;             "/newdev/lemminx/org.eclipse.lemminx/target/org.eclipse.lemminx-uber.jar")
-;; ;;    "--stdio"
-;; ;;    :initializationOptions dpc-lemminx-init-options))
+;; (setq eglot-server-programs (assoc-delete-all 'nxml-mode eglot-server-programs ))
+;;
 ;;
 ;; (setf
 ;;  (alist-get 'nxml-mode eglot-server-programs)
@@ -3368,30 +3386,6 @@ Does not consider word syntax tables.
 ;;    ,(concat (getenv "HOME")
 ;;             "/newdev/xmllsp/xml_language_server/xmllsp.py")
 ;;    :initializationOptions dpc-xmllsp-init-options))
-
-
-;; (defun dpc-lemminx-init-options (_server)
-;;   "a unary function that returns init options.
-;; For now the return value is hard coded, but it can be dynamic based on the
-;; buffer name, contents, root element, and so on.
-;;
-;; This isn't working. The Lemminx logs show NPE and weird stacks.
-;; So complicated.
-;; Maybe python will work?
-;;
-;; See https://github.com/eclipse-lemminx/lemminx/blob/main/docs/Configuration.md for
-;; an example of the required/supported content for lemminx."
-;;   `(:settings
-;;     (:xml
-;;      ( :trace (:server "verbose")
-;;        :logs (:client t :file "/tmp/lemminx.log")
-;;        :fileAssociations
-;;        [(:systemId
-;;          ,(concat (getenv "HOME")
-;;                   "/newdev/apigee-schema-inference/dist/schema/AssignMessage.xsd")
-;;          :pattern "**/*.xml")]))))
-
-
 
 
 
