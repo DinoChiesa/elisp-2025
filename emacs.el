@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-June-29 10:42:25>
+;; Last saved: <2025-July-02 22:12:04>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -636,6 +636,15 @@
   :defer t
   :demand t
   :commands (eglot eglot-ensure)
+  :bind (:map     eglot-mode-map
+                  ("C-c e a" . eglot-code-actions)
+                  ("C-c e o" . eglot-code-actions-organize-imports)
+                  ("C-c e r" . eglot-rename)
+                  ("C-c e f" . eglot-format)
+                  ("C-c e s" . eglot-shutdown)
+                  ("C-c e r" . eglot-reconnect)
+                  ("C-c e c" . company-capf)
+                  )
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
   :config  (setq flymake-show-diagnostics-at-end-of-line t)
 
@@ -2471,7 +2480,7 @@ colon."
          ;;(local-set-key (kbd "{") 'dino-insert-open-brace)
 
          (require 'yasnippet)
-         (yas-minor-mode-on)
+         (yas-minor-mode)
 
          ;; for hide/show support
          (hs-minor-mode 1)
@@ -2817,7 +2826,7 @@ colon."
          ;; for skeleton stuff
          (set (make-local-variable 'skeleton-pair) t)
 
-         (yas-minor-mode-on)
+         (yas-minor-mode)
          (show-paren-mode 1)
          (hl-line-mode 1)
 
@@ -2945,7 +2954,7 @@ colon."
   (electric-pair-local-mode 1)
 
   (require 'yasnippet)
-  (yas-minor-mode-on)
+  (yas-minor-mode)
   (show-paren-mode 1)
   (hl-line-mode 1)
   (company-mode)
@@ -3007,6 +3016,11 @@ colon."
     (eglot-reconnect (eglot--current-server-or-lose))
     ))
 
+;; 20250702-1535 ? unsure if I need this. I think this is for completing on snippets.
+(add-hook 'eglot-managed-mode-hook
+          (lambda ()
+            (add-to-list 'company-backends
+                         '(company-capf :with company-yasnippet))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Compile
@@ -3220,7 +3234,6 @@ Does not consider word syntax tables.
 ;; XML (nxml-mode)
 ;;
 (when (boundp 'apheleia-formatters)
-
   ;; TODO: use smarter path resolution here
   (push '(dino-xmlpretty .
                          ("java" "-jar"
@@ -3255,33 +3268,40 @@ Does not consider word syntax tables.
   ;; ;; to switch between previously set plugin for a mode:
   ;; (setf (alist-get 'nxml-mode apheleia-mode-alist) 'xml-prettier)
   ;; ;;(setf (alist-get 'nxml-mode apheleia-mode-alist) 'dino-xmlpretty)
-
   )
 
 (defun dino-xml-mode-fn ()
   (turn-on-auto-revert-mode)
-  ;; for hide/show support
   (hs-minor-mode 1)
   (setq hs-isearch-open t)
+  ;; 20250702-2204
+  ;;
+  ;; The python xmllsp works , but for files with .rnc schema,
+  ;; it may be better to just use the nxml builtin capability, and not the LSP
+  ;; MSBuild project files are one with good .rnc schema.
+  (unless (and buffer-file-name
+               (string-suffix-p ".csproj" buffer-file-name))
+    (eglot-ensure))
+
+  ;; M-C-i to get completion popups, whether from nxml or eglot
+  (company-mode)
   (display-line-numbers-mode)
 
   (keymap-local-set "ESC C-R" #'indent-region)
   (keymap-local-set "C-c n"   #'sgml-name-char) ;; inserts entity ref of pressed char
   (keymap-local-set "M-#"     #'dino-xml-pretty-print-buffer)
   (keymap-local-set "C-c f"   #'dino-replace-filename-no-extension)
+  (keymap-local-set "ESC C-i" #'company-capf)
 
   (keymap-local-set "C-<"      #'nxml-backward-element)
   (keymap-local-set "C->"      #'nxml-forward-element)
   (keymap-local-set "C-c C-c"  #'dino-xml-comment-region)
 
-  ;; C-M-f will jump over complete elements
-
   (setq nxml-sexp-element-flag t
-        nxml-child-indent 2)
-
-  ;; never convert leading spaces to tabs:
-  ;;(make-local-variable 'indent-tabs-mode)
-  (setq indent-tabs-mode nil)
+        nxml-child-indent 2
+        nxml-slash-auto-complete-flag t
+        completion-auto-help 'always
+        indent-tabs-mode nil)
 
   ;; 20230718-1235
   ;;(apheleia-mode) ;; this can be disruptive
@@ -3295,29 +3315,85 @@ Does not consider word syntax tables.
       (modify-syntax-entry ?\' "\"" sgml-mode-syntax-table)
     (modify-syntax-entry ?\' ".")) ;; . = punctuation
 
-
   (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
-
-  ;; when `nxml-slash-auto-complete-flag' is non-nil, get completion
-  (setq nxml-slash-auto-complete-flag t)
-
-  ;; ;;; this pair of sets almost works, except that
-  ;; ;;; it un-indents the intervening XML when removing
-  ;; ;;; comments.  If I remove the comment-continue thing,
-  ;; ;;; then the comment-block does not get really completely removed
-  ;; ;;; on uncommenting.
-  ;; (set (make-local-variable 'comment-style) 'multi-line)
-  ;; (set (make-local-variable 'comment-continue) " ")))
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;; (dino-set-alist-entry comment-styles                                                                      ;;
-  ;;                       'multi-line                                                                         ;;
-  ;;                       (list t nil nil t "One 'block' comment for all lines, end on last commented line")) ;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   )
 
 (add-hook 'sgml-mode-hook 'dino-xml-mode-fn)
 (add-hook 'nxml-mode-hook 'dino-xml-mode-fn)
+
+(defun dpc-xmllsp-init-options (_server)
+  "options for my own custom XML LSP, built in python."
+  (let* ((home-dir  (getenv "HOME") )
+         (xsd-cachedir (concat home-dir "/xml-schema-cache")))
+    `(:schemaLocators
+      [
+       (:rootElement t
+                     :searchPaths
+                     [
+                      ,(concat home-dir "/newdev/apigee-schema-inference/dist/schema")
+                      ])
+       (:locationHint ,(concat xsd-cachedir "/schema_map.json"))
+       (:patterns [(:pattern "*.csproj"
+                             ;;:path ,(concat xsd-cachedir "/Microsoft.Build.CommonTypes.xsd")
+                             :path ,(concat xsd-cachedir "/Microsoft.Build.Core.xsd")
+                             :useDefaultNamespace t
+                             )])
+       ]
+      )))
+
+
+(with-eval-after-load 'eglot
+  (add-to-list
+   'eglot-server-programs
+   `(nxml-mode .
+               ("/usr/local/google/home/dchiesa/newdev/xmllsp/.venv/bin/python"
+                ,(concat (getenv "HOME")
+                         "/newdev/xmllsp/xml_language_server/xmllsp.py")
+                :initializationOptions dpc-xmllsp-init-options))))
+
+
+;; For fixing up if I've messed up the above:
+;;
+;; ;; (setf
+;; ;;  (alist-get 'nxml-mode eglot-server-programs)
+;; ;;  `("java" "-jar"
+;; ;;    ,(concat (getenv "HOME")
+;; ;;             "/newdev/lemminx/org.eclipse.lemminx/target/org.eclipse.lemminx-uber.jar")
+;; ;;    "--stdio"
+;; ;;    :initializationOptions dpc-lemminx-init-options))
+;;
+;; (setf
+;;  (alist-get 'nxml-mode eglot-server-programs)
+;;  `("/usr/local/google/home/dchiesa/newdev/xmllsp/.venv/bin/python"
+;;    ,(concat (getenv "HOME")
+;;             "/newdev/xmllsp/xml_language_server/xmllsp.py")
+;;    :initializationOptions dpc-xmllsp-init-options))
+
+
+;; (defun dpc-lemminx-init-options (_server)
+;;   "a unary function that returns init options.
+;; For now the return value is hard coded, but it can be dynamic based on the
+;; buffer name, contents, root element, and so on.
+;;
+;; This isn't working. The Lemminx logs show NPE and weird stacks.
+;; So complicated.
+;; Maybe python will work?
+;;
+;; See https://github.com/eclipse-lemminx/lemminx/blob/main/docs/Configuration.md for
+;; an example of the required/supported content for lemminx."
+;;   `(:settings
+;;     (:xml
+;;      ( :trace (:server "verbose")
+;;        :logs (:client t :file "/tmp/lemminx.log")
+;;        :fileAssociations
+;;        [(:systemId
+;;          ,(concat (getenv "HOME")
+;;                   "/newdev/apigee-schema-inference/dist/schema/AssignMessage.xsd")
+;;          :pattern "**/*.xml")]))))
+
+
+
+
 
 ;; not sure why I have to do this again, here.
 (add-hook 'nxml-mode-hook
@@ -3412,7 +3488,7 @@ Does not consider word syntax tables.
   (apheleia-mode)
   (hc-highlight-trailing-whitespace)
   (electric-pair-mode)
-  (yas-minor-mode-on)
+  (yas-minor-mode)
   (show-paren-mode 1))
 
 (add-hook 'python-ts-mode-hook 'dino-python-mode-fn)
@@ -3630,7 +3706,7 @@ color ready for next time.
   ;; stop complaining. So I didn't use it, and still use jshint, which
   ;; seems to work just fine.
 
-  (yas-minor-mode-on)
+  (yas-minor-mode)
 
   ;; always delete trailing whitespace
   (add-hook 'before-save-hook
