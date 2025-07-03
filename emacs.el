@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-03 13:08:11>
+;; Last saved: <2025-July-03 14:06:45>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -956,7 +956,10 @@ server program."
   :if (file-exists-p "~/elisp/apigee/apigee.el")
   :load-path "~/elisp/apigee"
   :defer t
-  :commands (apigee-new-proxy apigee-lint-asset apigee-add-policy apigee-add-target)
+  :commands
+  (apigee-new-proxy apigee-deploy-proxy apigee-import-and-deploy-proxy
+                    apigee-lint-asset apigee-add-policy apigee-add-target
+                    apigee-inject-proxy-revision-logic)
   :config
   (progn
     (let* ((apigeecli-path "~/.apigeecli/bin/apigeecli")
