@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-03 14:06:45>
+;; Last saved: <2025-July-04 10:40:29>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -182,7 +182,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Set the path correctly on MacOS, based on /etc/paths.d .
 ;; I am unsure whether this helps on linux or Windows, I've never
-;; tested it.
+;; tested it. I have my own dino/maybe-add-to-exec-path that
+;; seems to work for me, see below.
 (use-package path-helper
   :if (eq system-type 'darwin)
   :ensure t
@@ -683,31 +684,35 @@
   :after eglot
   :config (eglot-booster-mode))
 
-;; 20250324-1743
-;; For aider, there are two packages: aider.el and aidermacs.el .
-;; Both are active.
+;; 20250704-1025
+;; I never use this. Just using aider in a separate terminal seems
+;; fine to me.
 ;;
-;; aider.el seems less ambitious. aidermacs aims to integrate with
-;; existing emacs stuff; uses ediff, for example.
-;; Beyond that I don't have a good feel for the differences.
+;; ;; 20250324-1743
+;; ;; For aider, there are two packages: aider.el and aidermacs.el .
+;; ;; Both are active.
+;; ;;
+;; ;; aider.el seems less ambitious. aidermacs aims to integrate with
+;; ;; existing emacs stuff; uses ediff, for example.
+;; ;; Beyond that I don't have a good feel for the differences.
+;; ;;
+;; ;; Also, it is possible to use aider side-by-side with emacs with
+;; ;; no elisp package at all.
 ;;
-;; Also, it is possible to use aider side-by-side with emacs with
-;; no elisp package at all.
-
-(use-package aidermacs
-  :defer 35
-  :bind (("C-c a" . aidermacs-transient-menu))
-  :config
-  ;; Enable minor mode for Aider files
-  (aidermacs-setup-minor-mode)
-  (setenv "AIDER_WEAK_MODEL" "gemini/2.5-flash-preview-05-20")
-  (setenv "AIDER_EDITOR_MODEL" "gemini/2.5-pro-exp-03-25")
-
-  :custom
-  ;; See the Configuration section below
-  (aidermacs-auto-commits t)
-  (aidermacs-use-architect-mode t)
-  (aidermacs-default-model "gemini/gemini-2.5-pro-exp-03-25"))
+;; (use-package aidermacs
+;;   :defer 35
+;;   :bind (("C-c a" . aidermacs-transient-menu))
+;;   :config
+;;   ;; Enable minor mode for Aider files
+;;   (aidermacs-setup-minor-mode)
+;;   (setenv "AIDER_WEAK_MODEL" "gemini/2.5-flash-preview-05-20")
+;;   (setenv "AIDER_EDITOR_MODEL" "gemini/2.5-pro-exp-03-25")
+;;
+;;   :custom
+;;   ;; See the Configuration section below
+;;   (aidermacs-auto-commits t)
+;;   (aidermacs-use-architect-mode t)
+;;   (aidermacs-default-model "gemini/gemini-2.5-pro-exp-03-25"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jsonnet
