@@ -1862,6 +1862,21 @@ shfmt is the command that will be run."
         (goto-char orig-point)))))
 
 
+(defun dino/get-env-setting (env-filename keyname)
+  "read a properties or .env file and return a value"
+  (let ((expanded-fname (expand-file-name env-filename)))
+    (if (file-exists-p expanded-fname)
+        (with-temp-buffer
+          (insert-file-contents env-filename)
+          (keep-lines keyname (point-min) (point-max))
+          (let* ((pattern-to-check (concat "^" keyname "\s*[:=]\s*\\(.*\\)"))
+                 (value
+                  (when (string-match pattern-to-check (buffer-string))
+                    (match-string 1 (buffer-string)))))
+            value))
+      (error "cannot find that file")
+      )))
+
 (provide 'dino-utility)
 
 ;;; dino-utility.el ends here
