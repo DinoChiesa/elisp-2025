@@ -189,7 +189,7 @@ like XML mode or csharp mode."
   (interactive)
   (indent-region (point-min) (point-max)))
 
-(defun dino-toggle-buffer-modified ()
+(defun dino/toggle-buffer-modified ()
   "Toggle the buffer-modified-p value for the current buffer."
   (interactive)
   (set-buffer-modified-p (not (buffer-modified-p))))
@@ -315,13 +315,13 @@ to determine if we need to rotate through various formats.")
                                         ("september" . 9) ("october" . 10)
                                         ("november" . 11) ("december" . 12)))
 (defconst dino-time-formats '(
-                              ("%Y%m%d-%H%M"         . dino-parse-YYYYMMDDHHMM-time)
-                              ("%A, %e %B %Y, %H:%M" . dino-parse-rfc822-time)
-                              ("%Y %B %e"            . dino-parse-YBe-time)
-                              ("%H:%M:%S"            . dino-parse-HMS-time)
-                              ("%Y-%m-%dT%H:%M:%S"   . dino-parse-YmdHMS-time)
+                              ("%Y%m%d-%H%M"         . dino--parse-YYYYMMDDHHMM-time)
+                              ("%A, %e %B %Y, %H:%M" . dino--parse-rfc822-time)
+                              ("%Y %B %e"            . dino--parse-YBe-time)
+                              ("%H:%M:%S"            . dino--parse-HMS-time)
+                              ("%Y-%m-%dT%H:%M:%S"   . dino--parse-YmdHMS-time)
                               )
-  "A list of time formats with corresponding parse functions to use in `dino-insert-timeofday' and `dino-maybe-delete-time-string-looking-forward' ")
+  "A list of time formats with corresponding parse functions to use in `dino/insert-timeofday' and `dino-maybe-delete-time-string-looking-forward' ")
 
 ;; (setq dino-time-formats '(
 ;;                              ("%Y%m%d-%H%M" . dino-parse-YYYYMMDDHHMM-time)
@@ -330,7 +330,7 @@ to determine if we need to rotate through various formats.")
 ;;                              ("%H:%M:%S" . dino-parse-hms-time)
 ;;                              ))
 
-(defun dino-parse-YYYYMMDDHHMM-time (arg)
+(defun dino--parse-YYYYMMDDHHMM-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
 in format YYYYMMDD-HHMM. Example: \"20130820-0848\".
 Otherwise, ARG is a string, and this function will parse it with that regex, and
@@ -356,7 +356,7 @@ returns the time in emacs internal time format, eg (sec-high sec-low).
 For invalid monthnames, returns nil."
   (cdr (assoc-string (downcase monthname) dino-monthnames-and-numbers)))
 
-(defun dino-parse-rfc822-time (arg)
+(defun dino--parse-rfc822-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
 formatted like: \"Tuesday, 21 November 2017, 12:42\".
 Otherwise, ARG is a string, and this function will parse it with that regex, and
@@ -379,7 +379,7 @@ returns the time in emacs internal time format, eg (sec-high sec-low).
           (apply 'encode-time
                  (list seconds minute hour day month year tz)))))))
 
-(defun dino-parse-YBe-time (arg)
+(defun dino--parse-YBe-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
 formatted like: \"2017 November 21\".
 Otherwise, ARG is a string, and this function will parse it with that regex, and
@@ -401,7 +401,7 @@ returns the time in emacs internal time format, eg (sec-high sec-low).
           (apply 'encode-time
                  (list seconds minute hour day month year tz)))))))
 
-(defun dino-parse-HMS-time (arg)
+(defun dino--parse-HMS-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
 formatted like: \"14:32:33\".
 Otherwise, ARG is a string, and this function will parse it with that regex, and
@@ -424,7 +424,7 @@ returns the time in emacs internal time format, eg (sec-high sec-low).
           (apply 'encode-time
                  (list seconds minute hour day month year tz)))))))
 
-(defun dino-parse-YmdHMS-time (arg)
+(defun dino--parse-YmdHMS-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
 formatted like: \"2019-02-12T14:32:33\".
 Otherwise, ARG is a string, and this function will parse it with that regex, and
@@ -496,7 +496,7 @@ appropriate string has been found and deleted. Else return nil."
 
 
 
-(defun dino-insert-timeofday (&optional arg)
+(defun dino/insert-timeofday (&optional arg)
   "Inserts a string representing the time of day at point.
 If the mode is txt-mode, then the format used is like this:
   Tuesday, 20 August 2013, 08:48
@@ -517,7 +517,6 @@ If you invoke this command repeatedly, it cycles through additional formats:
 Point is placed at the beginning of the newly inserted timestamp.
 "
   (interactive "P")
-
   (cond
    ((or (window-minibuffer-p) (equal major-mode 'wdired-mode) arg)
     (let ((time-format (nth 0 dino-time-formats)))
@@ -868,7 +867,7 @@ Like `replace-string' but for non-interactive use. "
               dino-xml-escape-pairs))))
 
 
-(defun dino-urlencode-region (start end)
+(defun dino/urlencode-region (start end)
   "calls the Javascript function encodeURIComponent() (via nodejs) on the string in region."
   (interactive "r")
   (save-excursion

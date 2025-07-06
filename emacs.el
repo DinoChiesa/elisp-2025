@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-03 14:06:45>
+;; Last saved: <2025-July-06 16:33:31>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -159,9 +159,6 @@
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
  '(ls-lisp-format-time-list (quote ("%Y-%m-%d %H:%M" "%Y-%m-%d %H:%M")))
  '(ls-lisp-use-localized-time-format t)
  '(temporary-file-directory "/tmp"))
@@ -275,7 +272,7 @@
   :defer 31
   :config
   (setq company-idle-delay 0.4)
-  ;; Not sure why we need both "TAB" and "<tab>".
+  ;; Not sure why, or if, we need both "TAB" and "<tab>".
   (define-key company-active-map (kbd "TAB") #'company-complete-common-or-cycle)
   (define-key company-active-map (kbd "<tab>") #'company-complete-common-or-cycle)
   (define-key company-active-map (kbd "S-TAB") (lambda () (interactive) (company-complete-common-or-cycle -1))))
@@ -284,7 +281,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; company-box
 ;;
-;; front-end for company, for presentation.
+;; front-end for company, for presentation. Adds features like icons for
+;; different completion candidates, better color highlighting, and the ability
+;; to display documentation for functions and variables.
 
 (use-package company-box
   :defer t
@@ -472,7 +471,7 @@
          `((styles . (substring))
            (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first))))
 
-  ;; honestly not sure when this is used.
+  ;; not sure _when_ this is used, or even if it is needed rather than `symbol-help'
   (setq completion-category-overrides
         (dino/insert-or-modify-alist-entry
          completion-category-overrides
@@ -566,7 +565,9 @@
     )
 
   ;; Override some magit things so that branches get sorted
-  ;; alphabetically.
+  ;; alphabetically. This works only because I am _redefining
+  ;; some functions from magit-base.el !
+  ;; See https://github.com/magit/magit/discussions/5390
   (require 'dpc-sane-sorting)
   (setq completion-category-overrides
         (dino/insert-or-modify-alist-entry
@@ -606,12 +607,6 @@
   :config (progn
             ;;(add-hook 'after-init-hook #'global-flycheck-mode)
             (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
-
-            ;; The following is irrelevant because I've switched machines several times
-            ;; since this last worked.  and I don't use PHP much these days. But in the
-            ;; future I might want to start again, so I am leaving this here.
-            ;; (setq flycheck-phpcs-standard "Drupal") ;; DinoChiesa
-            ;; (setq flycheck-phpcs-standard "/usr/local/share/pear/PHP/CodeSniffer/src/Standards/DinoChiesa")
             ))
 
 ;; ;; for diagnosing flycheck checks (any mode)
@@ -683,31 +678,31 @@
   :after eglot
   :config (eglot-booster-mode))
 
-;; 20250324-1743
-;; For aider, there are two packages: aider.el and aidermacs.el .
-;; Both are active.
+;; ;; 20250324-1743
+;; ;; For aider, there are two packages: aider.el and aidermacs.el .
+;; ;; Both are active.
+;; ;;
+;; ;; aider.el seems less ambitious. aidermacs aims to integrate with
+;; ;; existing emacs stuff; uses ediff, for example.
+;; ;; Beyond that I don't have a good feel for the differences.
+;; ;;
+;; ;; Also, it is possible to use aider side-by-side with emacs with
+;; ;; no elisp package at all. This is mostly how I use it.
 ;;
-;; aider.el seems less ambitious. aidermacs aims to integrate with
-;; existing emacs stuff; uses ediff, for example.
-;; Beyond that I don't have a good feel for the differences.
+;; (use-package aidermacs
+;;   :defer 35
+;;   :bind (("C-c a m" . aidermacs-transient-menu))
+;;   :config
+;;   ;; Enable minor mode for Aider files
+;;   (aidermacs-setup-minor-mode)
+;;   (setenv "AIDER_WEAK_MODEL" "gemini/2.5-flash-preview-05-20")
+;;   (setenv "AIDER_EDITOR_MODEL" "gemini/2.5-pro-exp-03-25")
 ;;
-;; Also, it is possible to use aider side-by-side with emacs with
-;; no elisp package at all.
-
-(use-package aidermacs
-  :defer 35
-  :bind (("C-c a" . aidermacs-transient-menu))
-  :config
-  ;; Enable minor mode for Aider files
-  (aidermacs-setup-minor-mode)
-  (setenv "AIDER_WEAK_MODEL" "gemini/2.5-flash-preview-05-20")
-  (setenv "AIDER_EDITOR_MODEL" "gemini/2.5-pro-exp-03-25")
-
-  :custom
-  ;; See the Configuration section below
-  (aidermacs-auto-commits t)
-  (aidermacs-use-architect-mode t)
-  (aidermacs-default-model "gemini/gemini-2.5-pro-exp-03-25"))
+;;   :custom
+;;   ;; See the Configuration section below
+;;   (aidermacs-auto-commits t)
+;;   (aidermacs-use-architect-mode t)
+;;   (aidermacs-default-model "gemini/gemini-2.5-pro-exp-03-25"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jsonnet
@@ -882,7 +877,6 @@ server program."
 ;;               source-inplace)))
 ;;   )
 
-
 (use-package jsonnet-mode
   :init (progn (require 'flycheck) (require 'eglot) (require 'dpc-jsonnet-mode-fixups))
   ;;:ensure t
@@ -909,11 +903,11 @@ server program."
   ;; TODO: fix this keymap binding; it conflicts with the font resize key binding.
   :config (keymap-global-set "C-=" 'er/expand-region))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; multiple-cursors - For visually editing similar things with one key sequence.
 ;;
 ;; I use this rarely and my fingers don't remember the bindings. But it's neat.
+;; Helpful in wgrep mode!
 (use-package multiple-cursors
   :ensure t
   :demand t
@@ -936,15 +930,15 @@ server program."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; wgrep - edit files in a grep output buffer. Amazing.
+;; wgrep - edit files in a grep or rg output buffer. Amazing.
 ;;
 ;; This is really handy.
 ;;
 
 (use-package wgrep
   :defer t
-  :if (file-exists-p "~/elisp/wgrep.el")
-  :load-path "~/elisp"
+  ;;:if (file-exists-p "~/elisp/wgrep.el")
+  ;;:load-path "~/elisp"
   :commands (wgrep-setup)
   :config (keymap-set grep-mode-map "C-c C-p" #'wgrep-change-to-wgrep-mode))
 
@@ -960,6 +954,9 @@ server program."
   (apigee-new-proxy apigee-deploy-proxy apigee-import-and-deploy-proxy
                     apigee-lint-asset apigee-add-policy apigee-add-target
                     apigee-inject-proxy-revision-logic)
+
+  :bind (("C-c a i" . apigee-import-and-deploy-proxy))
+
   :config
   (progn
     (let* ((apigeecli-path "~/.apigeecli/bin/apigeecli")
@@ -1196,6 +1193,7 @@ then switch to the markdown output buffer."
   (modify-syntax-entry ?_ "w")
   (auto-fill-mode -1)
   (keymap-local-set "C-c m s" #'dpc-markdown-standalone)
+  (keymap-local-set "C-c m d" #'delete-trailing-whitespace)
   (keymap-local-set "C-c m |" #'markdown-table-align) ;; my favorite feature
   )
 
@@ -1569,7 +1567,6 @@ then switch to the markdown output buffer."
   :config
   (add-to-list 'auto-mode-alist '("\\.ps1\\'" . powershell-mode))
   (add-to-list 'auto-mode-alist '("\\.psm1\\'" . powershell-mode))
-
 
   (defun dino-powershell-mode-fn ()
     (electric-pair-mode 1)
@@ -3305,7 +3302,9 @@ Does not consider word syntax tables.
   ;; it may be better to just use the nxml builtin capability, and not the LSP
   ;; MSBuild project files are one with good .rnc schema.
   (unless (and buffer-file-name
-               (string-suffix-p ".csproj" buffer-file-name))
+               (or
+                (string-suffix-p ".xsd" buffer-file-name)
+                (string-suffix-p ".csproj" buffer-file-name)))
     (eglot-ensure))
 
   ;; M-C-i to get completion popups, whether from nxml or eglot
@@ -3348,7 +3347,7 @@ Does not consider word syntax tables.
 
 (defun dpc-xmllsp-init-options (_server)
   "options for my own custom XML LSP, built in python."
-  (let* ((home-dir  (getenv "HOME") )
+  (let* ((home-dir (getenv "HOME") )
          (xsd-cachedir (file-name-concat home-dir "/xml-schema-cache")))
     `(:schemaLocators
       [
@@ -3730,8 +3729,8 @@ color ready for next time.
   (electric-pair-mode)
   (electric-operator-mode)
   (display-line-numbers-mode)
-  (indent-bars-mode)
-
+  (if (fboundp 'indent-bars-mode)
+      (indent-bars-mode))
   (setq apheleia-remote-algorithm 'local)
   (setq apheleia-log-debug-info t)
   )
@@ -4379,7 +4378,7 @@ Enable `recentf-mode' if it isn't already."
 (keymap-global-set "C-c q"       #'query-replace)
 (keymap-global-set "C-c c"       #'goto-char)
 (keymap-global-set "C-c r"       #'replace-regexp)
-(keymap-global-set "C-x t"       #'dino-insert-timeofday)
+(keymap-global-set "C-x t"       #'dino/insert-timeofday)
 (keymap-global-set "C-x C-d"     #'delete-window)
 (keymap-global-set "C-x x"       #'copy-to-register)
 (keymap-global-set "C-x g"       #'insert-register)
@@ -4390,7 +4389,7 @@ Enable `recentf-mode' if it isn't already."
 (keymap-global-set "C-c C-w"     #'compare-windows)
 (keymap-global-set "C-c C-y"     #'dcjava-wacapps-intelligently-open-file)
 (keymap-global-set "C-c ~"       #'revert-buffer-unconditionally)
-(keymap-global-set "C-x ~"       #'dino-toggle-buffer-modified)
+(keymap-global-set "C-x ~"       #'dino/toggle-buffer-modified)
 (keymap-global-set "C-x C-g"     #'auto-fill-mode)
 (keymap-global-set "C-x C-e"     #'smarter-compile)
 (keymap-global-set "C-x E"       #'smarter-compile-run)
@@ -4402,7 +4401,7 @@ Enable `recentf-mode' if it isn't already."
 (keymap-global-set "ESC SPC"     #'set-mark-command)
 (keymap-global-set "C-c k"       #'keymap-global-set)
 (keymap-global-set "C-x d"       #'dino-ediff-buffer-against-file)
-(keymap-global-set "C-x &"       #'dino-encode-uri-component-in-region)
+(keymap-global-set "C-x &"       #'dino/urlencode-region)
 (keymap-global-set "C-<"         #'beginning-of-defun)
 (keymap-global-set "C->"         #'end-of-defun)
 (keymap-global-set "C-c C-x C-c" #'calendar)
