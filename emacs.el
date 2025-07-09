@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-08 18:30:07>
+;; Last saved: <2025-July-08 19:11:04>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1657,6 +1657,7 @@ then switch to the markdown output buffer."
   (auto-fill-mode -1)
   (apheleia-mode)
   (treesit-fold-mode)
+  (display-line-numbers-mode)
   (keymap-local-set "C-c >"  #'treesit-fold-close)
   (keymap-local-set "C-c <"  #'treesit-fold-open)
 
@@ -3736,7 +3737,6 @@ color ready for next time.
   ;;           'js-fixup-font-lock-extend-region)
 
   (modify-syntax-entry ?_ "w")
-  ;;(turn-on-font-lock) ;; 20250524-1336 not sure this is still necessary with eglot
 
   (keymap-local-set "ESC C-R"    #'indent-region)
   (keymap-local-set "ESC #"      #'dino/indent-buffer)
@@ -3760,14 +3760,6 @@ color ready for next time.
   ;;         (if (string-suffix-p ".json" buffer-file-name)
   ;;             'json-jsonlint
   ;;           'javascript-jshint))))
-
-  ;;(flycheck-select-checker 'javascript-eslint) ;; for more control?
-  ;;
-  ;; Tuesday,  2 January 2018, 15:36
-  ;; I tried eslint for emacs and found that it complained a lot about
-  ;; the indent style I prefer. Also I could not figure out how to get it to
-  ;; stop complaining. So I didn't use it, and still use jshint, which
-  ;; seems to work just fine.
 
   (yas-minor-mode)
 
@@ -3831,9 +3823,12 @@ color ready for next time.
               `,(split-string gformat-command " +")))))
 
 (defun dino-java-mode-fn ()
+
+  ;; not sure if the following two are necessary if using java-ts-mode
   (if c-buffer-is-cc-mode
       (c-set-style "myJavaStyle"))
   (turn-on-font-lock)
+
   (keymap-local-set "ESC C-R" #'indent-region)
   (keymap-local-set "ESC #"   #'dino/indent-buffer)
 
@@ -3842,11 +3837,11 @@ color ready for next time.
   (set (make-local-variable 'indent-tabs-mode) nil)
   (set (make-local-variable 'c-basic-offset) 2)
 
-  ;; 20191015-1837 - better than autopair or skeleton pair
   (electric-pair-mode)
+  (display-line-numbers-mode)
+  (treesit-fold-mode)
 
-  ;; 20230718-1235 - disabled
-  ;; 20250215-1848 - I think this should work now? haven't tried it.
+  ;; 20250215-1848 - I think this should work now on Windows? haven't tried it.
   (if (not (eq system-type 'windows-nt))
       (apheleia-mode))
 
@@ -3872,7 +3867,6 @@ color ready for next time.
   (keymap-local-set "C-c C-g f"  #'dcjava-gformat-buffer)
 
   (dino-enable-delete-trailing-whitespace)
-  (display-line-numbers-mode)
   )
 
 (add-hook 'java-mode-hook 'dino-java-mode-fn)
