@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-08 19:46:42>
+;; Last saved: <2025-July-08 19:50:29>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1650,7 +1650,7 @@ then switch to the markdown output buffer."
   (auto-fill-mode -1)
   (apheleia-mode)
   (display-line-numbers-mode)
-  (if (treesit-ready-p t)
+  (if (fboundp 'treesit-fold-mode)
       (progn
         (treesit-fold-mode)
         (keymap-local-set "C-c >"  #'treesit-fold-close)
@@ -1789,7 +1789,7 @@ more information."
   (apheleia-mode)
   (display-line-numbers-mode)
 
-  (if (treesit-ready-p t)
+  (if (fboundp 'treesit-fold-mode)
       (progn
         (treesit-fold-mode)
         (keymap-local-set "C-c >"  #'treesit-fold-close)
@@ -3802,7 +3802,7 @@ color ready for next time.
       (indent-bars-mode))
   (setq apheleia-remote-algorithm 'local)
   (setq apheleia-log-debug-info t)
-  (if (treesit-ready-p t)
+  (if (fboundp 'treesit-fold-mode)
       (progn
         (treesit-fold-mode)
         (keymap-local-set "C-c >"  #'treesit-fold-close)
@@ -3861,7 +3861,7 @@ color ready for next time.
 
   (electric-pair-mode)
   (display-line-numbers-mode)
-  (if (treesit-ready-p t)
+  (if (fboundp 'treesit-fold-mode)
       (progn
         (treesit-fold-mode)
         (keymap-local-set "C-c >"  #'treesit-fold-close)
