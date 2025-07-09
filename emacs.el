@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-06 16:44:35>
+;; Last saved: <2025-July-08 18:30:07>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1342,9 +1342,9 @@ then switch to the markdown output buffer."
          ("\\.aspx\\'"                          . aspx-mode)
          ("\\.ashx\\'"                          . csharp-mode)
          ("\\.ascx\\'"                          . csharp-mode)
-         ("\\.s?html?\\'"                       . html-mode)
-         ("\\.html\\'"                          . html-mode)
-         ("\\.htm\\'"                           . html-mode)
+         ;;("\\.s?html?\\'"                       . html-mode)
+         ("\\.html\\'"                          . html-ts-mode)
+         ("\\.htm\\'"                           . html-ts-mode)
          ("\\.md\\'"                            . markdown-mode)
          ("\\.py\\'"                            . python-ts-mode)
          ;;("\\.dart\\'"                          . dart-mode)
@@ -1648,13 +1648,72 @@ then switch to the markdown output buffer."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; HTML
 
+(use-package treesit-fold
+  :ensure t)
+
 (defun dino-html-mode-fn ()
   (keymap-local-set "C-c 1" #'just-one-space)
   (keymap-local-set "<f7>"  #'find-file-at-point)
-  ;; Make sure autofill is OFF.
   (auto-fill-mode -1)
-  )
+  (apheleia-mode)
+  (treesit-fold-mode)
+  (keymap-local-set "C-c >"  #'treesit-fold-close)
+  (keymap-local-set "C-c <"  #'treesit-fold-open)
 
+  ;; Block highlights use `show-paren-match', which is
+  ;; a steelblue3 background, tooooo much.
+  ;;  (make-face-buffer-local 'show-paren-match) ;; no
+
+  (face-remap-add-relative 'show-paren-match '(:background "color-238")))
+
+
+(dino/maybe-register-vscode-server-for-eglot 'html-mode)
+
+;; 20250708-1805
+;; Fixup treesit-fold .
+;;
+;; For html-mode, it folds from the END (closing angle bracket) of the opening
+;; element to the beginning (opening angle bracket) of the close element.  It
+;; SHOULD fold from the END of the opening element name to the END (closing
+;; angle bracket) of the closing element.  This includes attributes in the fold.
+;; This fixes that up.
+;; I filed a PR for this: https://github.com/emacs-tree-sitter/treesit-fold/pull/33
+
+(defun dpc-treesit-fold-range-html-element (node offset)
+  "Define fold range for tag in HTML.
+
+For arguments NODE and OFFSET, see function `treesit-fold-range-seq' for
+more information."
+
+  ;; (let* ((beg (treesit-node-end (treesit-node-child node 0)))
+  ;;        (end-node (treesit-fold-last-child node))
+  ;;        (end (treesit-node-start end-node)))
+  ;;   (treesit-fold--cons-add (cons beg end) offset)))
+  (let* (;; beg = after element name that follows open angle bracket
+         (beg (treesit-node-end (treesit-node-child (treesit-node-child node 0) 1)))
+         ;; end-node is the closing angle bracket
+         (end-node (treesit-node-child (treesit-fold-last-child node) 2))
+         (end (treesit-node-start end-node)))
+    (treesit-fold--cons-add (cons beg end) offset)))
+
+(defun dpc-treesit-fold-parsers-html ()
+  "Rule set for HTML."
+  '((element . dpc-treesit-fold-range-html-element)
+    (comment . (treesit-fold-range-seq 1 -1))))
+
+(defun dpc-fixup-treesit-fold-for-html ()
+  "fixup treesit-fold for HTML"
+  ;; first remove the old entries:
+  (setq treesit-fold-range-alist (assoc-delete-all 'html-ts-mode treesit-fold-range-alist ))
+  (setq treesit-fold-range-alist (assoc-delete-all 'html-mode treesit-fold-range-alist ))
+
+  ;; add new entries to the alist
+  (add-to-list 'treesit-fold-range-alist
+               `(html-ts-mode . ,(dpc-treesit-fold-parsers-html)))
+  (add-to-list 'treesit-fold-range-alist
+               `(html-mode . ,(dpc-treesit-fold-parsers-html))))
+
+(dpc-fixup-treesit-fold-for-html)
 (add-hook 'html-mode-hook 'dino-html-mode-fn)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1762,17 +1821,19 @@ then switch to the markdown output buffer."
   ;; gives me completions and syntax highlighting. Is there refactoring or other stuff
   ;; the LSP gives me? (shrug)
 
-  (let* ((vscode-server-program
-          (file-name-concat (if (eq system-type 'windows-nt)
-                                (file-name-concat (getenv "HOME")
-                                                  "AppData/Local/Programs/Microsoft VS Code")
-                              "/usr/share/code")
-                            "resources/app/extensions/css-language-features/server/dist/node/cssServerMain.js")))
-    (if (file-exists-p vscode-server-program)
-        (add-to-list 'eglot-server-programs
-                     `((css-mode css-ts-mode)
-                       . ,(list "node" vscode-server-program "--stdio")))
-      ))
+  (dino/maybe-register-vscode-server-for-eglot '(css-mode css-ts-mode))
+
+  ;; (let* ((vscode-server-program
+  ;;         (file-name-concat (if (eq system-type 'windows-nt)
+  ;;                               (file-name-concat (getenv "HOME")
+  ;;                                                 "AppData/Local/Programs/Microsoft VS Code")
+  ;;                             "/usr/share/code")
+  ;;                           "resources/app/extensions/css-language-features/server/dist/node/cssServerMain.js")))
+  ;;   (if (file-exists-p vscode-server-program)
+  ;;       (add-to-list 'eglot-server-programs
+  ;;                    `((css-mode css-ts-mode)
+  ;;                      . ,(list "node" vscode-server-program "--stdio")))
+  ;;     ))
 
   ;;
   ;; To fix if I have broken things:

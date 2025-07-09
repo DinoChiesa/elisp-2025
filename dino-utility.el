@@ -1877,6 +1877,33 @@ shfmt is the command that will be run."
       (error "cannot find that file")
       )))
 
+(defvar dino--vscode-lang-server-programs
+  `(((css-mode css-ts-mode) . "css-language-features/server/dist/node/cssServerMain.js")
+    (html-mode . "html-language-features/server/dist/node/htmlServerMain.js")
+    (json-mode . "json-language-features/server/dist/node/jsonServerMain.js")
+    )
+  "alist of relative locations of language servers in the
+VSCode install. Intends to use the same keys as `eglot-server-programs'.
+The catalyst for this was the desire to have a CSS LSP.  But there are
+others available in vscode that are worth using - JSON and HTML. I think
+the Typescript extension is ... not quite the same as an LSP, not sure.")
+
+(defun dino/maybe-register-vscode-server-for-eglot (mode-or-modelist)
+  "register VSCode-provided language server into eglot, if it exists."
+  (if-let* ((relative-program-location (alist-get mode-or-modelist dino--vscode-lang-server-programs))
+            (vscode-server-program-fqpath
+             (file-name-concat (if (eq system-type 'windows-nt)
+                                   (file-name-concat (getenv "HOME")
+                                                     "AppData/Local/Programs/Microsoft VS Code")
+                                 "/usr/share/code")
+                               "resources/app/extensions"
+                               relative-program-location)))
+
+      (if (file-exists-p vscode-server-program-fqpath)
+          (add-to-list 'eglot-server-programs
+                       `(,mode-or-modelist
+                         . ,(list "node" vscode-server-program-fqpath "--stdio"))))))
+
 (provide 'dino-utility)
 
 ;;; dino-utility.el ends here
