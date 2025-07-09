@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-08 19:11:04>
+;; Last saved: <2025-July-08 19:46:42>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1335,7 +1335,7 @@ then switch to the markdown output buffer."
          ("\\.\\(bashrc\\|profile\\|bash_aliases\\|bash_functions\\|bash_logout\\)\\'"  . bash-ts-mode)
          ("\\.proto\\'"                         . protobuf-mode)
          ("\\.\\(php\\|module\\)\\'"            . php-mode)
-         ("\\.md\\'"                            . markdown-mode)
+         ("\\.md\\'"                            . markdown-mode) ;; fyi: there is a markdown-ts-mode
          ("\\.cs\\'"                            . csharp-ts-mode)
          ("\\.asp\\'"                           . html-mode)
          ;;("\\.aspx\\'"                        . html-helper-mode)
@@ -1351,7 +1351,7 @@ then switch to the markdown output buffer."
          ("\\.el\\'"                            . emacs-lisp-mode)
          ;;("\\.js$"                            . js-mode)
          ;;("\\.gs$"                            . js-mode)             ;; google apps-script
-         ("\\.\\(js\\|gs\\|jsi\\)\\'"           . js-mode)
+         ("\\.\\(js\\|gs\\|jsi\\)\\'"           . js-ts-mode)
          ("\\.\\(avsc\\)\\'"                    . json-mode)           ;; avro schema
          ("\\.txt\\'"                           . text-mode)
          ("\\.asmx\\'"                          . csharp-mode)         ; likely, could be another language tho
@@ -1390,13 +1390,6 @@ then switch to the markdown output buffer."
    (if (eq (cdr pair) 'java-mode)
        (setcdr pair 'java-ts-mode)))
  auto-mode-alist)
-
-;; (mapc
-;;  (lambda (pair)
-;;    (if (eq (cdr pair) 'css-mode)
-;;        (setcdr pair 'css-ts-mode)))
-;;  auto-mode-alist)
-
 
 ;;;; Keep this snip !
 ;;;; Modify and Run it to temporarily append an extension to the list, "right now".
@@ -1656,10 +1649,12 @@ then switch to the markdown output buffer."
   (keymap-local-set "<f7>"  #'find-file-at-point)
   (auto-fill-mode -1)
   (apheleia-mode)
-  (treesit-fold-mode)
   (display-line-numbers-mode)
-  (keymap-local-set "C-c >"  #'treesit-fold-close)
-  (keymap-local-set "C-c <"  #'treesit-fold-open)
+  (if (treesit-ready-p t)
+      (progn
+        (treesit-fold-mode)
+        (keymap-local-set "C-c >"  #'treesit-fold-close)
+        (keymap-local-set "C-c <"  #'treesit-fold-open)))
 
   ;; Block highlights use `show-paren-match', which is
   ;; a steelblue3 background, tooooo much.
@@ -1793,6 +1788,13 @@ more information."
   (company-mode)
   (apheleia-mode)
   (display-line-numbers-mode)
+
+  (if (treesit-ready-p t)
+      (progn
+        (treesit-fold-mode)
+        (keymap-local-set "C-c >"  #'treesit-fold-close)
+        (keymap-local-set "C-c <"  #'treesit-fold-open)))
+
   ;;(eglot-ensure) ;; maybe I will want this?
 
   ;; 20250524-1624
@@ -1821,8 +1823,6 @@ more information."
   ;; I am not sure what specifically I am getting out of the LSP here; tree-sitter
   ;; gives me completions and syntax highlighting. Is there refactoring or other stuff
   ;; the LSP gives me? (shrug)
-
-  (dino/maybe-register-vscode-server-for-eglot '(css-mode css-ts-mode))
 
   ;; (let* ((vscode-server-program
   ;;         (file-name-concat (if (eq system-type 'windows-nt)
@@ -1854,6 +1854,9 @@ more information."
 
   (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
   (setq indent-tabs-mode nil) )
+
+;; one-time thing
+(dino/maybe-register-vscode-server-for-eglot '(css-mode css-ts-mode))
 
 
 (use-package css-mode
@@ -3725,7 +3728,8 @@ color ready for next time.
 
 
 (when (boundp 'apheleia-mode-alist)
-  (push '(js-mode . prettier-javascript) apheleia-mode-alist))
+  (push '(js-mode . prettier-javascript) apheleia-mode-alist)
+  (push '(js-ts-mode . prettier-javascript) apheleia-mode-alist))
 
 (defun dino-js-mode-fn ()
   ;; https://stackoverflow.com/a/15239704/48082
@@ -3761,8 +3765,6 @@ color ready for next time.
   ;;             'json-jsonlint
   ;;           'javascript-jshint))))
 
-  (yas-minor-mode)
-
   ;; always delete trailing whitespace
   (add-hook 'before-save-hook
             (lambda ()
@@ -3778,10 +3780,18 @@ color ready for next time.
   ;; To get this program:
   ;;   npm install -g typescript-language-server typescript
   ;;
+  ;; As of July 2025, people say vtsls is a better alternative:
+  ;;    npm install -g @vtsls/language-server
+  ;;
+  ;; ...and then modify the `eglot-server-programs' entry appropriately to
+  ;; run vtsls --stdio
+  ;;
   ;; Completions via Company from Eglot just work. Enable both company-mode and
   ;; eglot in the buffer, and completions should work automatically.
 
-  (hs-minor-mode t)
+  (yas-minor-mode)
+  ;;(hs-minor-mode t)
+  (display-line-numbers-mode)
   (company-mode)
   (eglot-ensure)
   (apheleia-mode)
@@ -3792,9 +3802,21 @@ color ready for next time.
       (indent-bars-mode))
   (setq apheleia-remote-algorithm 'local)
   (setq apheleia-log-debug-info t)
+  (if (treesit-ready-p t)
+      (progn
+        (treesit-fold-mode)
+        (keymap-local-set "C-c >"  #'treesit-fold-close)
+        (keymap-local-set "C-c <"  #'treesit-fold-open)))
   )
 
 (add-hook 'js-mode-hook   'dino-js-mode-fn)
+(add-hook 'js-ts-mode-hook   'dino-js-mode-fn)
+
+;; supplant the default typescript-language-server
+(add-to-list 'eglot-server-programs
+             `((js-mode js-ts-mode typescript-ts-mode)
+               . ("vtsls" "--stdio")))
+
 
 ;; for {jshint, jslint, flycheck javascript-jshint} to work,
 ;; the path  ust have been previously set correctly.
@@ -3823,11 +3845,11 @@ color ready for next time.
               `,(split-string gformat-command " +")))))
 
 (defun dino-java-mode-fn ()
-
-  ;; not sure if the following two are necessary if using java-ts-mode
+  ;; the following two are unnecessary if using java-ts-mode
   (if c-buffer-is-cc-mode
-      (c-set-style "myJavaStyle"))
-  (turn-on-font-lock)
+      (progn
+        (c-set-style "myJavaStyle")
+        (turn-on-font-lock)))
 
   (keymap-local-set "ESC C-R" #'indent-region)
   (keymap-local-set "ESC #"   #'dino/indent-buffer)
@@ -3839,7 +3861,11 @@ color ready for next time.
 
   (electric-pair-mode)
   (display-line-numbers-mode)
-  (treesit-fold-mode)
+  (if (treesit-ready-p t)
+      (progn
+        (treesit-fold-mode)
+        (keymap-local-set "C-c >"  #'treesit-fold-close)
+        (keymap-local-set "C-c <"  #'treesit-fold-open)))
 
   ;; 20250215-1848 - I think this should work now on Windows? haven't tried it.
   (if (not (eq system-type 'windows-nt))
