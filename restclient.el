@@ -1,3 +1,4 @@
+;;; -*- coding: utf-8; lexical-binding: t;  -*-
 ;;; restclient.el --- An interactive HTTP client for Emacs
 ;;
 ;; Public domain.
@@ -423,7 +424,7 @@ eg, :basicauth := (base64-encode-string
     (goto-char (restclient-current-max))
     (unless (eobp) (forward-line 1))
     (let ((commands '())
-          (extract-re "^\\s-*#\\s-*rc-extract\\s-+\\(:[^: ]+\\)\\s-*=\\s-*\\$\\((.*)\\)")
+          (extract-re "^\\s-*#\\s-*rc-extract\\s-+\\(:[^: ]+\\)\\s-*=\\s-*\\$(\\(.*\\))")
           (comment-re "^\\s-*#")
           (empty-comment-re "^\\s-*#\\s-*$"))
       (catch 'stop-scanning
@@ -449,9 +450,7 @@ eg, :basicauth := (base64-encode-string
             (with-current-buffer temp-buffer
               (insert-buffer-substring response-buffer)
               (goto-char (point-min))
-              (while (re-search-forward "^\\s*//" (point-max) t)
-                (beginning-of-line)
-                (kill-line)))
+              (flush-lines "^//" (point-min) (point-max)))
             (dolist (command-spec commands)
               (let* ((varname (car command-spec))
                      (command (cadr command-spec))
@@ -459,7 +458,7 @@ eg, :basicauth := (base64-encode-string
                 (unwind-protect
                     (progn
                       (with-current-buffer temp-buffer
-                        (shell-command-on-region (point-min) (point-max) command output-buffer t))
+                        (shell-command-on-region (point-min) (point-max) command output-buffer 'no-mark))
                       (with-current-buffer output-buffer
                         (let ((result (s-trim (buffer-string))))
                           (kill-new (format "%s = %s" varname result))
@@ -475,12 +474,18 @@ Optional argument STAY-IN-WINDOW do not move focus to response buffer if t."
   (interactive)
   (let ((extract-commands (restclient--find-extract-commands)))
     (when extract-commands
-      (let (hook-fn)
+      (lexical-let ((extract-commands extract-commands)
+                    (hook-fn nil))
+        ;; AI! at runtime I am getting an error here:
+        ;; error in process filter: Symbol’s value as variable is void: hook-fn
+        ;;
+        ;; Why? Can you fix it.
+        ;;
         (setq hook-fn
               (lambda ()
                 (restclient--process-extract-commands extract-commands)
                 (remove-hook 'restclient-response-loaded-hook hook-fn t)))
-        (add-hook 'restclient-response-loaded-hook hook-fn nil t))))
+        (add-hook 'restclient-response-loaded-hook hook-fn nil nil))))
   (restclient-http-parse-current-and-do 'restclient-http-do raw stay-in-window))
 
 ;;;###autoload
