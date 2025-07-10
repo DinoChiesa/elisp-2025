@@ -417,42 +417,70 @@ eg, :basicauth := (base64-encode-string
                             (format "\\\n -d '%s'" entity) "")))
       (message "curl command copied to clipboard."))))
 
+(defun restclient--find-extract-commands ()
+  "Finds all '# rc-extract' commands immediately following the current request."
+  (save-excursion
+    (goto-char (restclient-current-max))
+    (unless (eobp) (forward-line 1))
+    (let ((commands '())
+          (extract-re "^\\s-*#\\s-*rc-extract\\s-+\\(:[^: ]+\\)\\s-*=\\s-*\\$\\((.*)\\)")
+          (comment-re "^\\s-*#")
+          (empty-comment-re "^\\s-*#\\s-*$"))
+      (catch 'stop-scanning
+        (while (and (not (eobp)) (looking-at comment-re))
+          (if (looking-at extract-re)
+              (let ((varname (match-string-no-properties 1))
+                    (command (match-string-no-properties 2)))
+                (push (list varname (s-trim command)) commands))
+            ;; not an extract comment
+            (unless (looking-at empty-comment-re)
+              ;; not an empty comment either, so stop
+              (throw 'stop-scanning nil)))
+          (forward-line 1)))
+      (nreverse commands))))
+
+(defun restclient--process-extract-commands (commands)
+  "Process extract commands in the current (response) buffer."
+  (when commands
+    (let ((response-buffer (current-buffer))
+          (temp-buffer (generate-new-buffer " *rc-temp-filtered*")))
+      (unwind-protect
+          (progn
+            (with-current-buffer temp-buffer
+              (insert-buffer-substring response-buffer)
+              (goto-char (point-min))
+              (while (re-search-forward "^\\s*//" (point-max) t)
+                (beginning-of-line)
+                (kill-line)))
+            (dolist (command-spec commands)
+              (let* ((varname (car command-spec))
+                     (command (cadr command-spec))
+                     (output-buffer (generate-new-buffer " *rc-extract-output*")))
+                (unwind-protect
+                    (progn
+                      (with-current-buffer temp-buffer
+                        (shell-command-on-region (point-min) (point-max) command output-buffer t))
+                      (with-current-buffer output-buffer
+                        (let ((result (s-trim (buffer-string))))
+                          (kill-new (format "%s = %s" varname result))
+                          (message "rc-extract: %s set and copied to kill-ring." varname))))
+                  (when (buffer-live-p output-buffer) (kill-buffer output-buffer))))))
+        (when (buffer-live-p temp-buffer) (kill-buffer temp-buffer))))))
+
 ;;;###autoload
 (defun restclient-http-send-current (&optional raw stay-in-window)
   "Sends current request.
 Optional argument RAW don't reformat response if t.
 Optional argument STAY-IN-WINDOW do not move focus to response buffer if t."
   (interactive)
-
-  ;; AI! modify the logic in this function to perform some additional work after
-  ;; restclient-http-do completes:
-  ;; (a) Scan the restclient buffer for comments that appear _immediately subsequent to_
-  ;; restclient-current-max. Include coments that begin with "# rc-extract " .
-  ;; Keep scanning until finding a "non empty" comment line that does not begin with
-  ;; that pattern. (An empty comment would be a # followed by zero or more whitespace chars, and a newline)
-  ;;
-  ;; For all comment lines immediately following the value found by
-  ;; restclient-current-max that begin with the pattern "# rc-extract", parse
-  ;; the comment line to find a variable assignment instruction, patterned like this:
-  ;;   :VARNAME = $(COMMAND)
-  ;;
-  ;; ...where VARNAME and COMMAND will vary.
-  ;;
-  ;; The full comment line will look like
-  ;; # rc-extract :token = $(jq -r '.access_token')
-  ;;
-  ;; When finding such a line, extract the command, and then run the elisp function shell-command-on-region
-  ;; on the filtered contents of the response buffer created by restclient in
-  ;; restclient-http-do (the name of the buffer may be "*HTTP Response*", but is not always).
-  ;;
-  ;; Filter the contents of the response buffer before sending it to the shell command,
-  ;; by excluding any lines that begin with double slash (//).
-  ;;
-  ;; With the result of that, use `kill-new' to insert a new value into the kill ring
-  ;; containing ":VARNAME = RESULT"
-  ;;
-  ;;
-
+  (let ((extract-commands (restclient--find-extract-commands)))
+    (when extract-commands
+      (let (hook-fn)
+        (setq hook-fn
+              (lambda ()
+                (restclient--process-extract-commands extract-commands)
+                (remove-hook 'restclient-response-loaded-hook hook-fn t)))
+        (add-hook 'restclient-response-loaded-hook hook-fn nil t))))
   (restclient-http-parse-current-and-do 'restclient-http-do raw stay-in-window))
 
 ;;;###autoload
