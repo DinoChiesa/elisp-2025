@@ -474,17 +474,12 @@ Optional argument STAY-IN-WINDOW do not move focus to response buffer if t."
   (interactive)
   (let ((extract-commands (restclient--find-extract-commands)))
     (when extract-commands
-      (lexical-let ((extract-commands extract-commands)
-                    (hook-fn nil))
-        ;; AI! at runtime I am getting an error here:
-        ;; error in process filter: Symbol’s value as variable is void: hook-fn
-        ;;
-        ;; Why? Can you fix it.
-        ;;
+      (let ((extract-commands extract-commands)
+            (hook-fn nil))
         (setq hook-fn
               (lambda ()
                 (restclient--process-extract-commands extract-commands)
-                (remove-hook 'restclient-response-loaded-hook hook-fn t)))
+                (remove-hook 'restclient-response-loaded-hook hook-fn)))
         (add-hook 'restclient-response-loaded-hook hook-fn nil nil))))
   (restclient-http-parse-current-and-do 'restclient-http-do raw stay-in-window))
 
