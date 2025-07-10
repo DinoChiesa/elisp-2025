@@ -87,9 +87,9 @@
 ;; and password.
 (defadvice url-http-handle-authentication (around restclient-fix)
   (let ((have-success (boundp 'success)))
-  (if restclient-within-call
-      (setq success t ad-return-value t)
-    ad-do-it)))
+    (if restclient-within-call
+        (setq success t ad-return-value t)
+      ad-do-it)))
 
 (ad-activate 'url-http-handle-authentication)
 
@@ -141,8 +141,8 @@
     (run-hooks 'restclient-http-do-hook)
     (url-retrieve url 'restclient-http-handle-response
                   (append (list method url (if restclient-same-buffer-response
-                            restclient-same-buffer-response-name
-                          (format "*HTTP %s %s*" method url))) handle-args) nil restclient-inhibit-cookies)))
+                                               restclient-same-buffer-response-name
+                                             (format "*HTTP %s %s*" method url))) handle-args) nil restclient-inhibit-cookies)))
 
 (defvar restclient-content-type-regexp "^Content-[Tt]ype: \\(\\w+\\)/\\(?:[^\\+\r\n]*\\+\\)*\\([^;\r\n]+\\)")
 
@@ -423,6 +423,36 @@ eg, :basicauth := (base64-encode-string
 Optional argument RAW don't reformat response if t.
 Optional argument STAY-IN-WINDOW do not move focus to response buffer if t."
   (interactive)
+
+  ;; AI! modify the logic in this function to perform some additional work after
+  ;; restclient-http-do completes:
+  ;; (a) Scan the restclient buffer for comments that appear _immediately subsequent to_
+  ;; restclient-current-max. Include coments that begin with "# rc-extract " .
+  ;; Keep scanning until finding a "non empty" comment line that does not begin with
+  ;; that pattern. (An empty comment would be a # followed by zero or more whitespace chars, and a newline)
+  ;;
+  ;; For all comment lines immediately following the value found by
+  ;; restclient-current-max that begin with the pattern "# rc-extract", parse
+  ;; the comment line to find a variable assignment instruction, patterned like this:
+  ;;   :VARNAME = $(COMMAND)
+  ;;
+  ;; ...where VARNAME and COMMAND will vary.
+  ;;
+  ;; The full comment line will look like
+  ;; # rc-extract :token = $(jq -r '.access_token')
+  ;;
+  ;; When finding such a line, extract the command, and then run the elisp function shell-command-on-region
+  ;; on the filtered contents of the response buffer created by restclient in
+  ;; restclient-http-do (the name of the buffer may be "*HTTP Response*", but is not always).
+  ;;
+  ;; Filter the contents of the response buffer before sending it to the shell command,
+  ;; by excluding any lines that begin with double slash (//).
+  ;;
+  ;; With the result of that, use `kill-new' to insert a new value into the kill ring
+  ;; containing ":VARNAME = RESULT"
+  ;;
+  ;;
+
   (restclient-http-parse-current-and-do 'restclient-http-do raw stay-in-window))
 
 ;;;###autoload
