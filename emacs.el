@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-08 23:32:29>
+;; Last saved: <2025-July-11 20:53:43>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1891,51 +1891,61 @@ more information."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JSON
+(defun json-prettify-buffer ()
+  "prettifies a json buffer."
+  (interactive)
+  (save-excursion
+    (json-prettify-region (point-min) (point-max)))))
+;; function alias
+(defalias 'json-prettify-region 'json-reformat-region)
+
+(defun dino-json-mode-fn ()
+  (display-line-numbers-mode)
+  ;;(turn-on-font-lock)
+  ;;(flycheck-mode 0)
+  ;; 20250111-1538
+  ;;
+  ;; The default checker is json-python-json, which has a command "python3".
+  ;; On my version of windows,
+  ;;
+  ;; (1) there is no "python3", the executable i sjust called "python" and it resides in c:\Python313 .
+  ;;
+  ;; (2) there is a directory on the path, ~\AppData\Local\Microsoft\WindowsApps, that has a
+  ;; IO_REPARSE_TAG_APPEXECLINK named "python3.exe". Not all systems can handle these reparse
+  ;; points, see
+  ;; https://jpsoft.com/forums/threads/dir-reports-meaningless-symlink-information.9839/ .
+  ;;
+  ;; Not really sure why that directory is on the path.
+  ;;
+  ;; This change modifies the command to just "python". Because c:\Python313 has python.exe,
+  ;; and because c:\python313 lies before that WindowsApps directory with the reparse points,
+  ;; flycheck finds the command successfully and is able to execute the checker.
+  ;;
+  (if (eq system-type 'windows-nt)
+      (setf (car (flycheck-checker-get 'json-python-json 'command))
+            "python"))
+  (if (and (fboundp 'treesit-parser-list)
+           (treesit-parser-list)
+           (fboundp 'treesit-fold-mode))
+      (progn
+        (treesit-fold-mode)
+        (keymap-local-set "C-c >"  #'treesit-fold-close)
+        (keymap-local-set "C-c <"  #'treesit-fold-open)))
+  )
+
 (use-package json-mode
   :defer t
   :config (progn
             (require 'json-reformat)
-            (autoload 'json-mode "json" nil t)
+            ;;(autoload 'json-mode "json" nil t) ;; still need this?
 
-            ;; add a new element to the front of the list and it will shadow matches
-            ;; further down the list.
-            (add-to-list 'auto-mode-alist '("\\.json\\'" . json-mode))
+            ;; 20250710-1107 - still need this?
+            ;; ;; add a new element to the front of the list and it will shadow matches
+            ;; ;; further down the list.
+            ;; (add-to-list 'auto-mode-alist '("\\.json\\'" . json-mode))
 
-            (defun dino-json-mode-fn ()
-              ;;(turn-on-font-lock)
-              ;;(flycheck-mode 0)
-              ;; 20250111-1538
-              ;;
-              ;; The default checker is json-python-json, which has a command "python3".
-              ;; On my version of windows,
-              ;;
-              ;; (1) there is no "python3", the executable i sjust called "python" and it resides in c:\Python313 .
-              ;;
-              ;; (2) there is a directory on the path, ~\AppData\Local\Microsoft\WindowsApps, that has a
-              ;; IO_REPARSE_TAG_APPEXECLINK named "python3.exe". Not all systems can handle these reparse
-              ;; points, see
-              ;; https://jpsoft.com/forums/threads/dir-reports-meaningless-symlink-information.9839/ .
-              ;;
-              ;; Not really sure why that directory is on the path.
-              ;;
-              ;; This change modifies the command to just "python". Because c:\Python313 has python.exe,
-              ;; and because c:\python313 lies before that WindowsApps directory with the reparse points,
-              ;; flycheck finds the command successfully and is able to execute the checker.
-              ;;
-              (if (eq system-type 'windows-nt)
-                  (setf (car (flycheck-checker-get 'json-python-json 'command))
-                        "python"))
-              )
             (add-hook 'json-mode-hook   'dino-json-mode-fn)
-
-            ;; function alias
-            (defalias 'json-prettify-region 'json-reformat-region)
-
-            (defun json-prettify-buffer ()
-              "prettifies a json buffer."
-              (interactive)
-              (save-excursion
-                (json-prettify-region (point-min) (point-max))))
+            (add-hook 'json-ts-mode-hook   'dino-json-mode-fn)
             ))
 
 
@@ -3735,6 +3745,21 @@ color ready for next time.
   (push '(js-mode . prettier-javascript) apheleia-mode-alist)
   (push '(js-ts-mode . prettier-javascript) apheleia-mode-alist))
 
+(defun dino--maybe-space (&optional arg)
+  "Conditionally insert a space based on the preceding text.
+If the cursor is immediately following '// ', this function will
+do nothing. However, if the previous command was also this one
+(i.e., you press SPACE a second time), it will insert a space.
+In all other contexts, it behaves like a normal space.
+Maybe electric-operator-mode is postfixing a space when i
+type // , not sure. But anyway i'd rather it didn't  So this
+counteracts that. "
+  (interactive "P")
+  (if (and (looking-back "// " (- (point) 3))
+           (not (eq last-command this-command)))
+      nil
+    (self-insert-command (or arg 1))))
+
 (defun dino-js-mode-fn ()
   ;; https://stackoverflow.com/a/15239704/48082
   (set (make-local-variable 'font-lock-multiline) t)
@@ -3754,6 +3779,7 @@ color ready for next time.
   (keymap-local-set "C-c C-k c"  #'dino/snake-to-camelcase-word-at-point)
   (keymap-local-set "<TAB>"      #'js-indent-line)
   (keymap-local-set "C-<TAB>"    #'yas-expand)
+  (keymap-local-set "SPC"  #'dino--maybe-space)
 
   ;; Dino 20210127-1259 - trying to diagnose flycheck checker errors
   ;;
@@ -3802,6 +3828,13 @@ color ready for next time.
   (electric-pair-mode)
   (electric-operator-mode)
   (display-line-numbers-mode)
+
+  ;; Avoid the error seen with vtsls:
+  ;; "Request textDocument/onTypeFormatting failed with message: Cannot find provider for onTypeFormatting, the feature is possibly not supported by the current TypeScript version or disabled by settings."
+  ;; Will apply only to the current buffer and not affect other buffers.
+  (setopt eglot-ignored-server-capabilities (list :documentOnTypeFormattingProvider))
+
+
   (if (fboundp 'indent-bars-mode)
       (indent-bars-mode))
   (setq apheleia-remote-algorithm 'local)
@@ -3820,10 +3853,24 @@ color ready for next time.
 
 ;; supplant the default typescript-language-server
 (add-to-list 'eglot-server-programs
-             `((js-mode js-ts-mode typescript-ts-mode)
+             `(((js-mode :language-id "javascript")
+                (js-ts-mode :language-id "javascript")
+                (tsx-ts-mode :language-id "typescriptreact")
+                (typescript-ts-mode :language-id "typescript")
+                (typescript-mode :language-id "typescript"))
                . ("vtsls" "--stdio")))
 
 
+;; fix when broken
+;; (setq eglot-server-programs (assoc-delete-all '(js-mode js-ts-mode typescript-ts-mode) eglot-server-programs ))
+;;
+;; (setq eglot-server-programs (assoc-delete-all '((js-mode :language-id "javascript")
+;;                                                 (js-ts-mode :language-id "javascript")
+;;                                                 (tsx-ts-mode :language-id "typescriptreact")
+;;                                                 (typescript-ts-mode :language-id "typescript")
+;;                                                 (typescript-mode :language-id "typescript"))
+;;                                               eglot-server-programs ))
+;;
 ;; for {jshint, jslint, flycheck javascript-jshint} to work,
 ;; the path  ust have been previously set correctly.
 
