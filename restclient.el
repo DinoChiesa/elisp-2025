@@ -440,17 +440,20 @@ eg, :basicauth := (base64-encode-string
           (forward-line 1)))
       (nreverse commands))))
 
+
 (defun restclient--process-extract-commands (commands)
-  "Process extract commands in the current (response) buffer."
+  "Process extract commands, adding all results as a single kill-ring entry."
   (when commands
     (let ((response-buffer (current-buffer))
           (temp-buffer (generate-new-buffer " *rc-temp-filtered*")))
       (unwind-protect
-          (progn
+          (let ((results '()))
             (with-current-buffer temp-buffer
               (insert-buffer-substring response-buffer)
               (goto-char (point-min))
               (flush-lines "^//" (point-min) (point-max)))
+
+            ;; 2. Loop through commands and collect results into the `results` list
             (dolist (command-spec commands)
               (let* ((varname (car command-spec))
                      (command (cadr command-spec))
@@ -458,13 +461,19 @@ eg, :basicauth := (base64-encode-string
                 (unwind-protect
                     (progn
                       (with-current-buffer temp-buffer
-                        (shell-command-on-region (point-min) (point-max) command output-buffer 'no-mark))
+                        (shell-command-on-region (point-min) (point-max) command output-buffer nil))
                       (with-current-buffer output-buffer
-                        (let ((result (s-trim (buffer-string))))
-                          (kill-new (format "%s = %s" varname result))
-                          (message "rc-extract: %s set and copied to kill-ring." varname))))
-                  (when (buffer-live-p output-buffer) (kill-buffer output-buffer))))))
-        (when (buffer-live-p temp-buffer) (kill-buffer temp-buffer))))))
+                        (let ((result (s-trim (buffer-substring-no-properties (point-min) (point-max)))))
+                          (push (format "%s = %s" varname result) results))))
+                  (when (buffer-live-p output-buffer)
+                    (kill-buffer output-buffer)))))
+
+            (when results
+              (kill-new (concat (mapconcat #'identity (nreverse results) "\n") "\n"))
+              (message "rc-extract: yank to get all extracted variables.")))
+
+        (when (buffer-live-p temp-buffer)
+          (kill-buffer temp-buffer))))))
 
 ;;;###autoload
 (defun restclient-http-send-current (&optional raw stay-in-window)
