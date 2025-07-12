@@ -13,7 +13,7 @@
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
-;; Last-saved : <2025-June-28 18:31:50>
+;; Last-saved : <2025-July-11 15:26:37>
 ;;
 ;;; Commentary:
 ;;
@@ -430,9 +430,10 @@ uses a cached list to lookup the package/class to import."
 
 ;; ==================================================================
 
-(defun dcjava-tramp-aware-find-class (dir argument modified-classname)
-  "Execute shell command COMMAND and return its output as a string.
-This may be a remote shell if the file is being accessed from tramp.
+(defun dcjava-find-java-source-in-dir (dir possibly-qualified-classname)
+  "Find a java source file in a directory DIR, return its fullpath as a string.
+This command will use `shell-command-to-string' to invoke find or rg.
+The command may be a remote shell if the file is being accessed from tramp.
 
 See https://mail.gnu.org/archive/html/emacs-devel/2018-01/msg00727.html "
   (let* ((remote-host
@@ -446,45 +447,45 @@ See https://mail.gnu.org/archive/html/emacs-devel/2018-01/msg00727.html "
          (source-dir-for-find (if remote-host
                                   (s-chop-left (- (length desired-default-dir) 2) dir)
                                 dir))
-         (command
-          ;; TODO: can I use fzf here?
-          (concat "find " source-dir-for-find argument modified-classname ".java"))
-
+         (inferred-filename (concat (s-replace "." "/" possibly-qualified-classname) ".java"))
+         (command (dcjava--command-to-find-java-src source-dir-for-find inferred-filename))
          (default-directory (expand-file-name desired-default-dir))
          (found-file
           (s-trim-right
            (with-connection-local-variables
             (shell-command-to-string command)))))
-
     (setq found-file
-          (if (s-blank? found-file) nil
-            (s-chomp  found-file)))
+          (if (s-blank? found-file) nil (s-chomp found-file)))
     (if (and found-file remote-host)
         (concat "/ssh:" remote-host ":" found-file)
       found-file)))
 
+(defun dcjava--command-to-find-java-src (source-dir inferred-filename)
+  "Return the command to find a java source file in a directory SOURCE-DIR,
+based on the INFERRED-FILENAME. The command will be rg or find. The command
+will vary slightly, depending on whether the class-to-find is qualified or
+not, == whether INFERRED-FILENAME has a slash in it, or not.
 
-(defun dcjava-find-java-source-in-dir (dir possibly-qualified-classname)
-  "find a java source file in a DIR tree, based on the
-POSSIBLY-QUALIFIED-CLASSNAME. This is a wrapper on the shell find
-command. The return value is a list of strings (filenames)."
-  (let* ((modified-classname (s-replace "." "/" possibly-qualified-classname))
-         (argument (if (s-contains? "/" modified-classname)
-                       " -path \\*" " -name ")))
-    (dcjava-tramp-aware-find-class
-     dir argument modified-classname)))
+Examples of return value:
+With rg:
+    rg --files -g '**/com/apigee/oas/validation/api/OASValidator.java' ~/a/wacapps/api_platform
+    rg --files -g 'OASValidator.java' ~/a/wacapps/api_platform
 
+With find:
+    find ~/a/wacapps/api_platform -path \\*/com/apigee/oas/validation/api/OASValidator.java
+or:
+    find ~/a/wacapps/api_platform -name OASValidator.java
 
-;; (defun dcjava-find-java-source-in-dir-short-classname (dir short-classname)
-;;   "find a java source file in a DIR tree, based on the brief CLASSNAME. This is
-;; a simple wrapper on the shell find command. The return value is a list of
-;; strings (filenames). "
-;;   (let* ((modified-classname (s-replace "." "/" classname))
-;;          (argument (if (s-contains? "/" modified-classname)
-;;                        " -path \\*" " -name ")))
-;;     (dcjava-tramp-aware-find-class
-;; dir argument modified-classname)))
+The return value is a list of strings (filenames)."
 
+  (if (executable-find "rg")
+      (format "rg --files -g '%s%s' %s"
+              (if (s-contains? "/" inferred-filename) "**/" "")
+              inferred-filename source-dir)
+    (format "find %s %s %s"
+            source-dir
+            (if (s-contains? "/" inferred-filename) " -path \\**" " -name ")
+            inferred-filename)))
 
 (defun dcjava--is-directory (dir-name)
   "Tests to see whether a name refers to a directory"
@@ -582,7 +583,12 @@ the shell find command. "
   (interactive "P")
   ;; prompt for classname if not specified
   (if (not classname)
-      (setq classname (read-string "Class to find: " nil)))
+      (let ((suggested-name
+             (or
+              (dcjava--class-or-qualified-member-name-at-point)
+              (let ((thing (thing-at-point 'word)))
+                (if thing (substring-no-properties thing))))))
+        (setq classname (read-string "Class to find: " suggested-name))))
 
   ;; this assumes cps and api_platform are sibling directories in the tree
   (let* ((wacapps-dir (dcjava-wacapps-dir))
@@ -592,7 +598,6 @@ the shell find command. "
                         (or
                          (dcjava-find-java-source-in-dir api-platform-src-root classname)
                          (dcjava-find-java-source-in-dir cps-src-root classname)))))
-
     (if filename
         (if (file-exists-p filename)
             (progn (find-file filename)
