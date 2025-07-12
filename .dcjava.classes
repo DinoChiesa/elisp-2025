@@ -728,3 +728,4 @@ jakarta.servlet.FilterChain
 jakarta.servlet.Filter
 jakarta.servlet.http.HttpServletResponse
 jakarta.servlet.http.Cookie
+com.github.benmanes.caffeine.cache.Cache
