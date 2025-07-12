@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-11 20:53:43>
+;; Last saved: <2025-July-12 10:10:22>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1895,7 +1895,8 @@ more information."
   "prettifies a json buffer."
   (interactive)
   (save-excursion
-    (json-prettify-region (point-min) (point-max)))))
+    (json-prettify-region (point-min) (point-max))))
+
 ;; function alias
 (defalias 'json-prettify-region 'json-reformat-region)
 
