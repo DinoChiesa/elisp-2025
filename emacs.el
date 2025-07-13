@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-12 10:10:22>
+;; Last saved: <2025-July-13 13:53:35>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -264,12 +264,8 @@
   ;;(alist-get 'csharp-mode apheleia-mode-alist)
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; company
-;;
-;; COMPlete-ANYthing.
-
 (use-package company
+  ;; COMPlete-ANYthing.
   :defer 31
   :config
   (setq company-idle-delay 0.4)
@@ -278,43 +274,49 @@
   (define-key company-active-map (kbd "<tab>") #'company-complete-common-or-cycle)
   (define-key company-active-map (kbd "S-TAB") (lambda () (interactive) (company-complete-common-or-cycle -1))))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; company-box
-;;
-;; front-end for company, for presentation. Adds features like icons for
-;; different completion candidates, better color highlighting, and the ability
-;; to display documentation for functions and variables.
-
 (use-package company-box
+  ;; front-end for company, for presentation. Adds features like icons for
+  ;; different completion candidates, better color highlighting, and the ability
+  ;; to display documentation for functions and variables.
+
   :defer t
   :after (company)
   :hook (company-mode . company-box-mode))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; indent-bars
-;; helpful for yaml and json and etc.
 (use-package indent-bars
+  ;; helpful for yaml and json and etc.
   :defer 19
   :ensure t)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; x509-mode
-;;
-;; View certs and CRLs, other stuff, in emacs. It relies on the
-;; openssl utility.  Untested on Windows as yet.
-;;
 (use-package x509-mode
+  ;; View certs, CRLs, & related, in emacs. Relies on the
+  ;; openssl utility. Untested on Windows as yet.
   :defer 36
   :ensure t)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; rego
-;;
-;; OPA configuration language. As of 20250312-0217,
-;; rego-mode on MELPA is out of date and unmaintained.
+(use-package uniline
+  ;; easily make line drawings with unicode symbols.
+  :defer t)
+
+(use-package fzf
+  ;; fuzzy find in emacs, fast way to open files deep in a tree
+  :defer t
+  :commands (fzf fzf-find-file)
+  :vc (:url "https://github.com/JohnC32/fzf.el" ;; JohnC32 has updates for windows OS
+            :branch "master"
+            :rev :newest)
+  :bind (("C-x j" . fzf));; or should I use fzf-find-file? not sure.
+  :config (setq fzf/args "-x --color bw --print-query --margin=1,0 --no-hscroll"
+                fzf/executable "fzf"
+                fzf/git-grep-args "-i --line-number %s"
+                ;; command used for `fzf-grep-*` functions
+                fzf/grep-command "rg --no-heading -nH"
+                ;; fzf/grep-command "grep -nrH")
+                ))
 
 (use-package rego-mode
+  ;; OPA configuration language. As of 20250312-0217,
+  ;; rego-mode on MELPA is out of date and unmaintained.
   :if (file-exists-p "~/elisp/rego-mode.el")
   :load-path "~/elisp"
   :pin manual
@@ -337,17 +339,6 @@
 
   (add-hook 'rego-mode-hook 'dino-rego-mode-fn))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(use-package default-text-scale
-  :ensure t
-  :defer 21
-  :config (progn
-            (default-text-scale-mode)
-            (keymap-global-set "C-=" #'default-text-scale-increase)
-            (keymap-global-set "C--" #'default-text-scale-decrease)))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package treesit
   :defer t
   :config
@@ -358,78 +349,22 @@
                    (prin1-to-string
                     (treesit-language-available-p 'c-sharp)))))
 
-
 (use-package hl-line
   ;;:defer 9
   :config (progn
             (set-face-background hl-line-face "gray18")
             (global-hl-line-mode)))
 
-;; ;; 20250223-1338 - this may be obsolete now.
-;; ;; I couldn't get eval-after-load to work with hl-line, so
-;; ;; I made this an after advice.
-;; (defadvice hl-line-mode (after
-;;                          dino-advise-hl-line-mode
-;;                          activate compile)
-;;   (set-face-background hl-line-face "gray18"))
-
-(global-hl-line-mode)
-
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;; embark
-;; ;;
-;; ;; This is sort of a helper that provides hints for things you might want to do
-;; ;; with candidates. For examine in a minibuffer presenting a list of buffers or
-;; ;; files or functions, there is a set of things you might want to do with it.
-;; ;; For example, M-x find-file  ja C-x  will
-;; ;; - find file (prompt you)
-;; ;; - present files matching ja*
-;; ;; - C-x will be embark-export the list into a new Embark buffer, and you can
-;; ;;    then C-; (embark-act) on any of those items or a combination of those items.
-;; ;;
-;; ;; 20250405-2010 - This sounds neat but so far I am not using it very much.
-;; ;;
-;; (use-package embark
-;;   :ensure t
-;;   :demand t
-;;   :defer t
-;;
-;;   :bind
-;;   (("C-c ," . embark-act)         ;; pick some comfortable binding
-;;    ("C-c ;" . embark-dwim)        ;; good alternative: M-.
-;;    ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
-;;
-;;   :init
-;;   ;; Optionally replace the key help with a completing-read interface
-;;   (setq prefix-help-command #'embark-prefix-help-command)
-;;
-;;   :config
-;;   ;; Hide the mode line of the Embark live/completions buffers
-;;   (add-to-list 'display-buffer-alist
-;;                '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
-;;                  nil
-;;                  (window-parameters (mode-line-format . none)))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; dpc-sane-sorting
-;;
-
 (use-package dpc-sane-sorting
+  ;; helpers that make icomplete-vertical sort sanely
   :load-path "~/elisp"
   :pin manual )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; icomplete
-;;
-;; This package is old but good and actively maintained.  icomplete-vertical WAS
-;; a third-party thing: https://github.com/oantolin/icomplete-vertical , and
-;; it's also still available on MELPA, but as of emacs 28, it is now a feature
-;; of the builtin icomplete-mode.  It gives equivalent or better behavior as
-;; compared to the old independent module, though the configuration options are
-;; slightly different.
-
 (use-package icomplete
+  ;; icomplete-vertical WAS a third-party thing, but as of emacs 28, it is now a
+  ;; feature of the builtin icomplete-mode.  It gives equivalent or better
+  ;; behavior as compared to the old independent module, though the configuration
+  ;; options are slightly different.
   :demand t
   :requires (dpc-sane-sorting dino-utility)
 
@@ -508,16 +443,11 @@
                )
   )
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; marginalia
-;;
-;; A complement to icomplete-vertical-mode. Displays annotations adjacent to
-;; completions in the minibuffer.  For commands, it displays the docstring and
-;; key binding if any. For files, it displays the mode and last modified
-;; time. For symbols, docstring.
-
 (use-package marginalia
+  ;; A complement to icomplete-vertical-mode. Displays annotations adjacent to
+  ;; completions in the minibuffer.  For commands, it displays the docstring and
+  ;; key binding if any. For files, it displays the mode and last modified
+  ;; time. For symbols, docstring.
   :ensure t
   ;; `maginalia-cycle' cycles through different annotations available for a
   ;; particular completion category.  So let's bind this command to a key
@@ -530,25 +460,16 @@
   ;; Enable the mode right away. This forces loading the package.
   (marginalia-mode))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; electric-operator
-;; 20241227-2259
-;; for smart insertion of ++ and == and += etc, replaces smart-op.
-
 (use-package electric-operator
+  ;; for smart insertion of ++ and == and += etc, replaces smart-op.
   :defer 8
   :ensure t)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; WSD mode - fontifications for editing websequence diagrams
-;;
 (use-package wsd-mode
+  ;; fontifications for editing websequence diagrams
   :defer 13
   :ensure t)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; magit
-;;
 (use-package magit
   :ensure t
   :defer 24
@@ -599,9 +520,6 @@
 
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; flycheck
-;;
 (use-package flycheck
   :ensure t
   :defer 23
@@ -609,6 +527,7 @@
             ;;(add-hook 'after-init-hook #'global-flycheck-mode)
             (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
             ))
+
 
 ;; ;; for diagnosing flycheck checks (any mode)
 ;; (defun dpc/flycheck-command-logger (lst)
@@ -619,10 +538,6 @@
 
 ;; To reset the wrapper fn to the default (identity), do this:
 ;; (setq flycheck-command-wrapper-function #'identity)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; eglot
-;;
 
 (defun dino-start-eglot-unless-remote ()
   (unless (file-remote-p default-directory)
@@ -710,9 +625,6 @@
 ;;   (aidermacs-use-architect-mode t)
 ;;   (aidermacs-default-model "gemini/gemini-2.5-pro-exp-03-25"))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; jsonnet
-;;
 
 (defun dino-jsonnet-mode-fn ()
   "buffer-specific jsonnet-mode setups"
@@ -884,6 +796,7 @@ server program."
 ;;   )
 
 (use-package jsonnet-mode
+  ;; NB: the requires keyword is the same as :if - it does not load dependencies!
   :init (progn (require 'flycheck) (require 'eglot) (require 'dpc-jsonnet-mode-fixups))
   ;;:ensure t
   :defer t
@@ -902,19 +815,17 @@ server program."
   :load-path "~/elisp"
   :pin manual)
 
-;; Tips from https://www.youtube.com/watch?v=p3Te_a-AGqM
-;; for marking ever-larger regions iteratively
 (use-package expand-region
+  ;; Tips from https://www.youtube.com/watch?v=p3Te_a-AGqM
+  ;; for marking ever-larger regions iteratively. Used rarely.
   :defer t
   ;; TODO: fix this keymap binding; it conflicts with the font resize key binding.
   :config (keymap-global-set "C-=" 'er/expand-region))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; multiple-cursors - For visually editing similar things with one key sequence.
-;;
-;; I use this rarely and my fingers don't remember the bindings. But it's neat.
-;; Helpful in wgrep mode!
 (use-package multiple-cursors
+  ;; For visually editing similar things with one key sequence.
+  ;; I use this rarely and my fingers don't remember the bindings. But it's neat.
+  ;; Helpful in wgrep mode!
   :ensure t
   :demand t
   :defer t
@@ -934,23 +845,14 @@ server program."
   (add-hook 'multiple-cursors-mode-hook #'dpc/multiple-cursors-set-key-bindings)
   )
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; wgrep - edit files in a grep or rg output buffer. Amazing.
-;;
-;; This is really handy.
-;;
-
 (use-package wgrep
+  ;; superpower: edit files in a grep or rg output buffer. Amazing.
   :defer t
   ;;:if (file-exists-p "~/elisp/wgrep.el")
   ;;:load-path "~/elisp"
   :commands (wgrep-setup)
   :config (keymap-set grep-mode-map "C-c C-p" #'wgrep-change-to-wgrep-mode))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Apigee
-;;
 
 (use-package apigee
   :if (file-exists-p "~/elisp/apigee/apigee.el")
@@ -1069,9 +971,6 @@ server program."
             (add-hook 'go-ts-mode-hook 'dino-go-mode-fn)))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; org mode, including html5 presentations from .org documents
-;;
 (use-package org
   :defer t
   :config (org-babel-do-load-languages
@@ -1092,13 +991,10 @@ server program."
   (setq org-confirm-babel-evaluate 'dpc-org-confirm-babel-evaluate))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; yasnippet
-;;
-;; I'm pretty sure this must be added before auto-complete-config, because the
-;; latter appends some things to yasnippet.
-
 (use-package yasnippet
+  ;; Expanding snippets for any mode.
+  ;; I'm pretty sure that if I use `auto-complete-config', I must load yasnippet first,
+  ;; because the former appends some things to yasnippet.
   :defer 13
   :ensure t
   :defines (yas-snippet-dirs yas-prompt-functions)
@@ -1210,6 +1106,68 @@ then switch to the markdown output buffer."
   :hook (markdown-mode . dino-markdown-mode-fn))
 
 
+
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 20250713-1345
+;; This is rendered obsolete by global-text-scale-adjust in emacs v29+
+;;
+;; (use-package default-text-scale
+;;   :ensure t
+;;   :defer 21
+;;   :config (progn
+;;             (default-text-scale-mode)
+;;             (keymap-global-set "C-=" #'default-text-scale-increase)
+;;             (keymap-global-set "C--" #'default-text-scale-decrease)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ;; 20250223-1338 - this may be obsolete now.
+;; ;; I couldn't get eval-after-load to work with hl-line, so
+;; ;; I made this an after advice.
+;; (defadvice hl-line-mode (after
+;;                          dino-advise-hl-line-mode
+;;                          activate compile)
+;;   (set-face-background hl-line-face "gray18"))
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; embark
+;; ;;
+;; ;; This is sort of a helper that provides hints for things you might want to do
+;; ;; with candidates. For examine in a minibuffer presenting a list of buffers or
+;; ;; files or functions, there is a set of things you might want to do with it.
+;; ;; For example, M-x find-file  ja C-x  will
+;; ;; - find file (prompt you)
+;; ;; - present files matching ja*
+;; ;; - C-x will be embark-export the list into a new Embark buffer, and you can
+;; ;;    then C-; (embark-act) on any of those items or a combination of those items.
+;; ;;
+;; ;; 20250405-2010 - This sounds neat but so far I am not using it very much.
+;; ;;
+;; (use-package embark
+;;   :ensure t
+;;   :demand t
+;;   :defer t
+;;
+;;   :bind
+;;   (("C-c ," . embark-act)         ;; pick some comfortable binding
+;;    ("C-c ;" . embark-dwim)        ;; good alternative: M-.
+;;    ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+;;
+;;   :init
+;;   ;; Optionally replace the key help with a completing-read interface
+;;   (setq prefix-help-command #'embark-prefix-help-command)
+;;
+;;   :config
+;;   ;; Hide the mode line of the Embark live/completions buffers
+;;   (add-to-list 'display-buffer-alist
+;;                '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+;;                  nil
+;;                  (window-parameters (mode-line-format . none)))))
+
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; httpget
 ;; 20241228-0227 - It seems likely this is probably unnecessary at this point.
@@ -1232,6 +1190,8 @@ then switch to the markdown output buffer."
 ;; fringe (between line numbers and buffer text)
 (setq-default left-fringe-width  10)
 (set-face-attribute 'fringe nil :background "black")
+
+(global-hl-line-mode)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1664,8 +1624,8 @@ then switch to the markdown output buffer."
 
   (face-remap-add-relative 'show-paren-match '(:background "color-238")))
 
-
-(dino/maybe-register-vscode-server-for-eglot 'html-mode)
+(if (boundp 'eglot-server-programs)
+    (dino/maybe-register-vscode-server-for-eglot 'html-mode))
 
 ;; 20250708-1805
 ;; Fixup treesit-fold .
@@ -2282,6 +2242,7 @@ just auto-corrects on common mis-spellings by me."
   (dino-define-global-abbrev-table)
   (keymap-local-set "C-c C-c"  #'center-paragraph)
   (keymap-local-set "C-c i"    #'dino/indent-line-to-current-column)
+  (keymap-local-set "C-<insert>"  #'uniline-mode)
 
   ;;(variable-pitch-mode)
   ;;
@@ -3853,13 +3814,14 @@ counteracts that. "
 (add-hook 'js-ts-mode-hook   'dino-js-mode-fn)
 
 ;; supplant the default typescript-language-server
-(add-to-list 'eglot-server-programs
-             `(((js-mode :language-id "javascript")
-                (js-ts-mode :language-id "javascript")
-                (tsx-ts-mode :language-id "typescriptreact")
-                (typescript-ts-mode :language-id "typescript")
-                (typescript-mode :language-id "typescript"))
-               . ("vtsls" "--stdio")))
+(if (boundp 'eglot-server-programs)
+    (add-to-list 'eglot-server-programs
+                 `(((js-mode :language-id "javascript")
+                    (js-ts-mode :language-id "javascript")
+                    (tsx-ts-mode :language-id "typescriptreact")
+                    (typescript-ts-mode :language-id "typescript")
+                    (typescript-mode :language-id "typescript"))
+                   . ("vtsls" "--stdio"))))
 
 
 ;; fix when broken
@@ -3996,21 +3958,22 @@ counteracts that. "
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; proselint
 
+(flycheck-define-checker proselint
+  "A linter for prose."
+  :command ("proselint" source-inplace)
+  :error-patterns
+  ((warning line-start (file-name) ":" line ":" column ": "
+            (id (one-or-more (not (any " "))))
+            (message (one-or-more not-newline)
+                     (zero-or-more "\n" (any " ") (one-or-more not-newline)))
+            line-end))
+  :modes (text-mode markdown-mode gfm-mode))
+
+
 (eval-after-load "flycheck"
   '(progn
-     (flycheck-define-checker proselint
-       "A linter for prose."
-       :command ("proselint" source-inplace)
-       :error-patterns
-       ((warning line-start (file-name) ":" line ":" column ": "
-                 (id (one-or-more (not (any " "))))
-                 (message (one-or-more not-newline)
-                          (zero-or-more "\n" (any " ") (one-or-more not-newline)))
-                 line-end))
-       :modes (text-mode markdown-mode gfm-mode))
      (add-to-list 'flycheck-checkers 'proselint)
      ))
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
