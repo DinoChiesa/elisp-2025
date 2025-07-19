@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-13 16:43:43>
+;; Last saved: <2025-July-18 13:47:28>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -27,6 +27,9 @@
 ;; 20250406 I think this needs to be system-wide. Setting it in a mode hook is too late,
 ;; as the file local vars will have already been evaluated and set.
 (setq enable-local-variables t)
+
+;; 20250717-0619 - F10 will invoke `tmm-menubar'
+(setq tty-menu-open-use-tmm t)
 
 ;; 20250405-1501
 ;;
@@ -366,7 +369,7 @@
   ;; behavior as compared to the old independent module, though the configuration
   ;; options are slightly different.
   :demand t
-  :requires (dpc-sane-sorting dino-utility)
+  :requires (dpc-sane-sorting dino-utility) ;; looking atthe doc I am not sure :requires exists!
 
   ;; Gemini says the  order of evaluation is :custom, then :init, then :config.
   :custom
@@ -547,16 +550,16 @@
   :defer t
   :demand t
   :commands (eglot eglot-ensure)
-  :bind (:map     eglot-mode-map
-                  ("C-c e a" . eglot-code-actions)
-                  ("C-c e o" . eglot-code-actions-organize-imports)
-                  ("C-c e r" . eglot-rename)
-                  ("C-c e f" . eglot-format)
-                  ("C-c e s" . eglot-shutdown)
-                  ("C-c e C-s" . eglot-shutdown-all)
-                  ("C-c e r" . eglot-reconnect)
-                  ("C-c e c" . company-capf)
-                  )
+  :bind (:map eglot-mode-map
+              ("C-c e a" . eglot-code-actions)
+              ("C-c e o" . eglot-code-actions-organize-imports)
+              ("C-c e r" . eglot-rename)
+              ("C-c e f" . eglot-format)
+              ("C-c e s" . eglot-shutdown)
+              ("C-c e C-s" . eglot-shutdown-all)
+              ("C-c e r" . eglot-reconnect)
+              ("C-c e c" . company-capf)
+              )
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
   :config  (setq flymake-show-diagnostics-at-end-of-line t)
 
@@ -3757,14 +3760,13 @@ counteracts that. "
   ;;             'json-jsonlint
   ;;           'javascript-jshint))))
 
-  ;; always delete trailing whitespace
-  (add-hook 'before-save-hook
-            (lambda ()
-              ;; javascript-mode is an alias for js-mode. Not sure which is required.
-              (when (or (eq major-mode 'js-mode) (eq major-mode 'javascript-mode))
-                (save-excursion
-                  (delete-trailing-whitespace)))
-              nil 'local))
+
+  ;; Cleanup trailing whitespace.
+  ;; I forget why I wanted this to be conditional.  Which js- derived
+  ;; modes should NOT get the `delete-trailing-whitespace' treatment?
+  ;; I dunno.
+  (when (memq major-mode '(js-mode javascript-mode json-mode))
+    (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local))
 
   ;;
   ;; eglot by default uses typescript-language-server as the server.
@@ -3785,7 +3787,13 @@ counteracts that. "
   ;;(hs-minor-mode t)
   (display-line-numbers-mode)
   (company-mode)
-  (eglot-ensure)
+
+  ;; 20250718-1351
+  ;; when running eglot in json-mode, I get all sorts of unhelpful
+  ;; tips.  json-mode is derivative of js-mode, so I need to not
+  ;; use eglot when it's json-mode. For now anyway!
+  (if (not (eq major-mode 'json-mode))
+      (eglot-ensure))
   (apheleia-mode)
   (electric-pair-mode)
   (electric-operator-mode)
@@ -3795,7 +3803,6 @@ counteracts that. "
   ;; "Request textDocument/onTypeFormatting failed with message: Cannot find provider for onTypeFormatting, the feature is possibly not supported by the current TypeScript version or disabled by settings."
   ;; Will apply only to the current buffer and not affect other buffers.
   (setopt eglot-ignored-server-capabilities (list :documentOnTypeFormattingProvider))
-
 
   (if (fboundp 'indent-bars-mode)
       (indent-bars-mode))
@@ -4430,6 +4437,13 @@ Enable `recentf-mode' if it isn't already."
                             (?\" . ?\")
                             (?\{ . ?\})
                             ) )
+
+(use-package ibuffer-preview
+  :if (and (file-exists-p "~/elisp/ibuffer-preview.el")
+           (boundp 'ibuffer-mode-hook) )
+  :load-path "~/elisp"
+  :config (keymap-set ibuffer-mode-map "v" #'ibuffer-preview-mode))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Global key bindings
