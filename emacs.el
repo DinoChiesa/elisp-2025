@@ -3348,9 +3348,9 @@ Does not consider word syntax tables.
   (setq hs-isearch-open t)
   ;; 20250702-2204
   ;;
-  ;; The python xmllsp works , but for files with .rnc schema,
-  ;; it may be better to just use the nxml builtin capability, and not the LSP
-  ;; MSBuild project files are one with good .rnc schema.
+  ;; The python xmllsp works for files with .xsd schema, but for files with .rnc
+  ;; schema, it may be better to just use the nxml builtin capability, and not
+  ;; the LSP MSBuild project files are one with good .rnc schema.
   (unless (and buffer-file-name
                (or
                 (string-suffix-p ".xsd" buffer-file-name)
