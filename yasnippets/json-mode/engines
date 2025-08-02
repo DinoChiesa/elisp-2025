@@ -1,0 +1,9 @@
+# name : engines
+# key : engines
+# --
+  "engines": {
+    "node": ">= v22.16.0",
+    "npm": ">= 10.9.2"
+  }
+
+

@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: props
+# key: props
+# --
+{propertyset.settings.apikeyVar}
