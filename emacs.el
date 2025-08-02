@@ -1097,6 +1097,7 @@ then switch to the markdown output buffer."
   "My hook for markdown mode"
   (modify-syntax-entry ?_ "w")
   (auto-fill-mode -1)
+  (display-line-numbers-mode)
   (keymap-local-set "C-c m s" #'dpc-markdown-standalone)
   (keymap-local-set "C-c m d" #'delete-trailing-whitespace)
   (keymap-local-set "C-c m |" #'markdown-table-align) ;; my favorite feature
@@ -1493,6 +1494,7 @@ then switch to the markdown output buffer."
     (turn-on-auto-revert-mode)
     (display-line-numbers-mode)
     (yaml-pretty-mode)
+    (keymap-local-set "C-c C-c"  #'comment-region)
     ;;(make-local-variable 'indent-tabs-mode)
     (setq indent-tabs-mode nil))
 
@@ -2243,9 +2245,11 @@ just auto-corrects on common mis-spellings by me."
   (auto-fill-mode 1)
   (abbrev-mode 1)
   (dino-define-global-abbrev-table)
-  (keymap-local-set "C-c C-c"  #'center-paragraph)
-  (keymap-local-set "C-c i"    #'dino/indent-line-to-current-column)
-  (keymap-local-set "C-<insert>"  #'uniline-mode)
+  (display-line-numbers-mode)
+  (keymap-local-set "C-c C-c"    #'center-paragraph)
+  (keymap-local-set "C-c i"      #'dino/indent-line-to-current-column)
+  (keymap-local-set "C-<insert>" #'uniline-mode)
+  (keymap-local-set "C-c m d"    #'delete-trailing-whitespace)
 
   ;;(variable-pitch-mode)
   ;;
@@ -2970,8 +2974,6 @@ colon."
             (cdr (car csharp-ts-mode--indent-rules))))
      (setq-local treesit-simple-indent-rules csharp-ts-mode--indent-rules)
      ))
-
-
 
 (defun dino-csharpier-buffer ()
   "run csharpier on the current buffer."
@@ -4036,6 +4038,14 @@ counteracts that. "
 
   (advice-add 'rfc-mode-browse :around #'dpc/rfc-mode-browse-advice))
 
+
+(use-package vdiff
+  :defer t
+  :config
+  (defun dino-vdiff-mode-fn ()
+    (define-key vdiff-mode-map (kbd "C-c") vdiff-mode-prefix-map))
+
+  (add-hook 'vdiff-mode-hook 'dino-vdiff-mode-fn))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
