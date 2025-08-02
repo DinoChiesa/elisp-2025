@@ -1,17 +1,18 @@
-#key : versions
-#name : <versions plugin.....>
+# -*- mode: snippet -*-
+# name: versions
+# key: versions
 # --
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>versions-maven-plugin</artifactId>
-        <version>2.18.0</version>
-        <executions>
-          <execution>
-            <phase>compile</phase>
-            <goals>
-              <goal>display-dependency-updates</goal>
-              <goal>display-plugin-updates</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
+  <plugin>
+    <groupId>org.codehaus.mojo</groupId>
+    <artifactId>versions-maven-plugin</artifactId>
+    <version>2.18.0</version>
+    <executions>
+      <execution>
+        <phase>compile</phase>
+        <goals>
+          <goal>display-dependency-updates</goal>
+          <goal>display-plugin-updates</goal>
+        </goals>
+      </execution>
+    </executions>
+  </plugin>
