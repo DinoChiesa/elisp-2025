@@ -225,7 +225,7 @@ imports."
         (let ((start nil))
           (beginning-of-line)
           (setq start (point))
-          (while (or (looking-at dcjava--import-stmt-regex nil t)
+          (while (or (looking-at dcjava--import-stmt-regex t)
                      (looking-at dcjava--comment-line-regex t)
                      (looking-at dcjava--empty-line-regex t))
             (forward-line))

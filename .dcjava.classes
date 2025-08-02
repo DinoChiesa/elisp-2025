@@ -693,7 +693,6 @@ io.javalin.Javalin
 com.nimbusds.jose.crypto.AESEncrypter
 com.nimbusds.jose.crypto.AESDecrypter
 java.time.temporal.ChronoField.NANO_OF_SECOND
-org.bouncycastle.pkcs.PrivateKeyInfo
 java.util.concurrent.ThreadFactory
 java.util.concurrent.Executors
 java.util.concurrent.ExecutorService
