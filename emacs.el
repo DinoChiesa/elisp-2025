@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-August-02 00:47:21>
+;; Last saved: <2025-August-02 00:58:39>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -301,8 +301,8 @@
   ;; easily make line drawings with unicode symbols.
   :defer t)
 
-(if (and (eq system-type 'windows-nt)
-         (version< emacs-version "30.1"))
+(if ;;(or (not (eq system-type 'windows-nt))
+    (version< emacs-version "30.1")
     (use-package fzf
       ;; fuzzy find in emacs, fast way to open files deep in a tree
       :defer t
