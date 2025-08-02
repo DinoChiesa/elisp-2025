@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-July-18 13:47:28>
+;; Last saved: <2025-August-02 00:47:21>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -301,21 +301,21 @@
   ;; easily make line drawings with unicode symbols.
   :defer t)
 
-(use-package fzf
-  ;; fuzzy find in emacs, fast way to open files deep in a tree
-  :defer t
-  :commands (fzf fzf-find-file)
-  :vc (:url "https://github.com/JohnC32/fzf.el" ;; JohnC32 has updates for windows OS
-            :branch "master"
-            :rev :newest)
-  :bind (("C-x j" . fzf));; or should I use fzf-find-file? not sure.
-  :config (setq fzf/args "-x --color bw --print-query --margin=1,0 --no-hscroll"
-                fzf/executable "fzf"
-                fzf/git-grep-args "-i --line-number %s"
-                ;; command used for `fzf-grep-*` functions
-                fzf/grep-command "rg --no-heading -nH"
-                ;; fzf/grep-command "grep -nrH")
-                ))
+(if (and (eq system-type 'windows-nt)
+         (version< emacs-version "30.1"))
+    (use-package fzf
+      ;; fuzzy find in emacs, fast way to open files deep in a tree
+      :defer t
+      :commands (fzf fzf-find-file)
+      :bind (("C-x j" . fzf));; or should I use fzf-find-file? not sure.
+      :config (setq fzf/args "-x --color bw --print-query --margin=1,0 --no-hscroll"
+                    fzf/executable "fzf"
+                    fzf/git-grep-args "-i --line-number %s"
+                    ;; command used for `fzf-grep-*` functions
+                    fzf/grep-command "rg --no-heading -nH"
+                    ;; fzf/grep-command "grep -nrH")
+                    ))
+  (require 'fzf-johnc-updated))
 
 (use-package rego-mode
   ;; OPA configuration language. As of 20250312-0217,
