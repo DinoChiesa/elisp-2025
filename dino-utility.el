@@ -613,7 +613,7 @@ filename."
 ;; Replace the function value of `dino-gcloud-auth-print-access-token'
 ;; with a memoized version. This makes restclient.el faster, for example.
 ;; To restore the original:
-;;        (memoize-restore 'dino-gcloud-auth-print-access-token)
+;;  (memoize-restore 'dino-gcloud-auth-print-access-token)
 (memoize 'dino-gcloud-auth-print-access-token "8 minutes")
 
 (defun dino-gcloud-auth-print-identity-token ()
