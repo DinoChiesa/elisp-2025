@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-August-02 00:58:39>
+;; Last saved: <2025-August-23 12:15:28>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1509,7 +1509,9 @@ then switch to the markdown output buffer."
   (turn-on-font-lock)
   (keymap-local-set "ESC C-R" #'indent-region)
   (turn-on-auto-revert-mode)
+  (apheleia-mode)
   (setq typescript-indent-level 2)
+  (keymap-local-set "C-c C-c"  #'comment-region)
   (display-line-numbers-mode)
   (auto-fill-mode -1)
   )
@@ -2092,7 +2094,9 @@ more information."
   :config
   (require 'dpc-sane-sorting)
   (setq chatgpt-shell-google-key (dpc-gemini/get-config-property "apikey"))
-  (chatgpt-shell-google-load-models) ;; CGS does not include complete list of Google models
+  ;; 20250823-1212 - chatgpt-shell currently has builtin support for latest Gemini models.
+  ;; Consider re-adding this when gemini-3.0 is released.
+  ;; (chatgpt-shell-google-load-models) ;; CGS does not include complete list of Google models
   (setq chatgpt-shell-model-version (dpc-gemini/get-config-property "default-model"))
 
   (setq chatgpt-shell-swap-model-selector
