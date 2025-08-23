@@ -63,7 +63,7 @@
   "Hook to run before making request.")
 
 
-;; this is the new advice pashky has recommended to avoid the
+;; This is the new advice pashky has recommended to avoid the
 ;; warnings like:
 ;;     Warning (bytecomp): assignment to free variable ‘success’
 
@@ -121,9 +121,7 @@
         (url (replace-regexp-in-string "#" "%23" (s-trim url)))
         (url-request-extra-headers '())
         (url-request-data (encode-coding-string entity 'utf-8)))
-
     (restclient-restore-header-variables)
-
     (dolist (header headers)
       (let* ((mapped (assoc-string (downcase (car header))
                                    '(("from" . url-personal-mail-address)
@@ -131,12 +129,10 @@
                                      ("accept-charset" . url-mime-charset-string)
                                      ("accept-language" . url-mime-language-string)
                                      ("accept" . url-mime-accept-string)))))
-
         (if mapped
             (set (cdr mapped) (cdr header))
           (setq url-request-extra-headers (cons header url-request-extra-headers)))
         ))
-
     (setq restclient-within-call t)
     (setq restclient-request-time-start (current-time))
     (run-hooks 'restclient-http-do-hook)
@@ -145,7 +141,9 @@
                                                restclient-same-buffer-response-name
                                              (format "*HTTP %s %s*" method url))) handle-args) nil restclient-inhibit-cookies)))
 
-(defvar restclient-content-type-regexp "^Content-[Tt]ype: \\(\\w+\\)/\\(?:[^\\+\r\n]*\\+\\)*\\([^;\r\n]+\\)")
+;; This regex isn't quite right. Headers are case insensitive.
+;; It's not Just the first character.
+(defvar restclient-content-type-regexp "^[Cc]ontent-[Tt]ype: \\(\\w+\\)/\\(?:[^\\+\r\n]*\\+\\)*\\([^;\r\n]+\\)")
 
 (defun restclient-prettify-response (method url)
   (save-excursion
@@ -161,12 +159,14 @@
                                                     )
                                                    '(("text/xml" . xml-mode)
                                                      ("application/xml" . xml-mode)
-                                                     ("application/json" . js-mode)
+                                                     ("application/json" . json-mode)
                                                      ("application/x-yaml" . yaml-mode)
                                                      ("image/png" . image-mode)
                                                      ("image/jpeg" . image-mode)
                                                      ("image/jpg" . image-mode)
                                                      ("image/gif" . image-mode)
+                                                     ;; Dino - added for event-stream.
+                                                     ("text/event-stream" . text-mode)
                                                      ("text/html" . html-mode))))))
                         (forward-line)) 0)))
       (setq end-of-headers (point))
@@ -177,12 +177,32 @@
               (or (assoc-default nil
                                  ;; magic mode matches
                                  '(("<\\?xml " . xml-mode)
-                                   ("{\\s-*\"" . js-mode))
+                                   ("{\\s-*\"" . json-mode))
                                  (lambda (re _dummy)
-                                   (looking-at re))) 'js-mode)))
+                                   (looking-at re))) 'json-mode)))
       (let ((headers (buffer-substring-no-properties start end-of-headers)))
         (when guessed-mode
           (delete-region start (point))
+
+          ;; dino - modified 20250819-0957
+          ;;
+          ;; Handle event-stream , assuming json-mode. If guessed-mode is
+          ;; text-mode, then it was event-stream. We then presume that the data
+          ;; payload is JSON. This is an unchecked assumption, but when the
+          ;; content-type is text/event-stream, there is no indication in the
+          ;; response of the content type of the "data". A better way would be
+          ;; to rely on a "well known" variable configured in the file,
+          ;; something like :-event-stream-media-type = json-mode
+          ;;
+          ;; But for now, I am thinking YAGNI.
+          (when (eq guessed-mode 'text-mode)
+            (when (and (looking-at "event: message")
+                       (re-search-forward "^data: " (+ (point) 23) t))
+              (delete-region start (point))
+              (save-excursion
+                (replace-string "\r" "" nil (point-min) (point-max)))
+              (setq guessed-mode 'json-mode)))
+
           (unless (eq guessed-mode 'image-mode)
             (apply guessed-mode '())
             (if (fboundp 'font-lock-flush)
@@ -203,7 +223,7 @@
               (fundamental-mode)
               (insert-image (create-image img nil t))))
 
-           ((eq guessed-mode 'js-mode)
+           ((eq guessed-mode 'json-mode)
             (let ((json-special-chars (remq (assoc ?/ json-special-chars) json-special-chars)))
               (ignore-errors (json-pretty-print-buffer)))
             (restclient-prettify-json-unicode)))
@@ -254,7 +274,7 @@ The buffer contains the raw HTTP response sent by the server."
                        (intern (downcase (match-string 1)))
                      'utf-8)))
     (if image?
-        ;; Dont' attempt to decode. Instead, just switch to the raw HTTP response buffer and
+        ;; Don't attempt to decode. Instead, just switch to the raw HTTP response buffer and
         ;; rename it to target-buffer-name.
         (with-current-buffer raw-http-response-buffer
           ;; We have to kill the target buffer if it exists, or `rename-buffer'
