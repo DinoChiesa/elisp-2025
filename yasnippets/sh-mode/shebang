@@ -2,4 +2,4 @@
 # name : !/bin/bash
 # --
 #!/bin/bash
-# -*- mode:shell-script; coding:utf-8; -*-
+# -*- mode:shell-script; coding:utf-8; sh-shell:bash -*-
