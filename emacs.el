@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-August-23 12:15:28>
+;; Last saved: <2025-September-23 16:57:56>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -11,8 +11,7 @@
 
 ;;; Code:
 (message "Running emacs.el...")
-;;(debug-on-entry 'package-initialize)
-(if (fboundp 'tool-bar-mode) (tool-bar-mode -1)) ;; we don't need no steenking icons
+(if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 
 (setq inhibit-splash-screen t)
 (setq initial-scratch-message ";;;  -*- lexical-binding: t; -*-\n;; scratch buffer\n")
@@ -563,7 +562,17 @@
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
   :config  (setq flymake-show-diagnostics-at-end-of-line t)
 
-  ;; NOTE: you still must invoke M-x eglot to start the server. or eglot-ensure
+  ;; disable eglot, specifically for json-mode
+  (setq eglot-server-programs
+        (remove-if
+         (lambda (association)
+           (let ((key (car association)))
+             (if (listp key)
+                 (memq 'json-mode key)
+               (eq 'json-mode key))))
+         eglot-server-programs))
+
+  ;; NOTE: you still must invoke M-x eglot to start the server. or `eglot-ensure'
   ;; in the mode hook.
   ;;
 
@@ -1869,6 +1878,7 @@ more information."
 
 (defun dino-json-mode-fn ()
   (display-line-numbers-mode)
+  ;; hierarchy: (prog-mode js-base-mode js-mode javascript-mode json-mode)
   ;;(turn-on-font-lock)
   ;;(flycheck-mode 0)
   ;; 20250111-1538
@@ -3796,10 +3806,11 @@ counteracts that. "
 
   ;; 20250718-1351
   ;; when running eglot in json-mode, I get all sorts of unhelpful
-  ;; tips.  json-mode is derivative of js-mode, so I need to not
+  ;; tips. json-mode is derivative of js-mode, so I need to not
   ;; use eglot when it's json-mode. For now anyway!
-  (if (not (eq major-mode 'json-mode))
-      (eglot-ensure))
+  ;; (unless (derived-mode-p 'json-mode)
+  ;;   (eglot-ensure))
+
   (apheleia-mode)
   (electric-pair-mode)
   (electric-operator-mode)
@@ -4051,6 +4062,12 @@ counteracts that. "
 
   (add-hook 'vdiff-mode-hook 'dino-vdiff-mode-fn))
 
+(defun dino-nginx-mode-fn()
+  (electric-pair-mode)
+  (display-line-numbers-mode))
+
+(add-hook 'nginx-mode-hook 'dino-nginx-mode-fn)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; restclient - invoke REST API calls from within Emacs
@@ -4073,6 +4090,10 @@ counteracts that. "
     (if (not (fboundp 'json-pretty-print-buffer))
         (defun json-pretty-print-buffer ()
           (json-prettify-buffer)))
+
+    (defun dino-restclient-mode-fn ()
+      (display-line-numbers-mode))
+    (add-hook 'restclient-mode-hook #'dino-restclient-mode-fn)
 
     (eval-after-load "url"
       '(progn
