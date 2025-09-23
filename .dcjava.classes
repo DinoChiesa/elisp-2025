@@ -728,3 +728,5 @@ jakarta.servlet.http.HttpServletResponse
 jakarta.servlet.http.Cookie
 com.github.benmanes.caffeine.cache.Cache
 org.springframework.http.ResponseCookie
+com.apigee.keymanagement.oauth.ApiProductValidationBean
+com.apigee.quota.QuotaBucketConfiguration
