@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-September-23 16:57:56>
+;; Last saved: <2025-September-27 15:57:22>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1548,6 +1548,12 @@ then switch to the markdown output buffer."
     (hs-minor-mode t)
     (display-line-numbers-mode)
     (dino-enable-delete-trailing-whitespace)
+    (keymap-local-set "ESC C-R" #'indent-region)
+    (keymap-local-set "ESC #"   #'dino/indent-buffer)
+    (keymap-local-set "C-c C-w" #'compare-windows)
+    (keymap-local-set "C-c C-c" #'comment-region)
+    (keymap-local-set "ESC ."   #'company-complete)
+    (keymap-local-set "ESC C-i" #'company-capf)
     )
 
   (add-hook 'powershell-mode-hook 'dino-powershell-mode-fn)
