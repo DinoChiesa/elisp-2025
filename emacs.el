@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-September-27 15:57:22>
+;; Last saved: <2025-September-27 16:04:29>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -2126,6 +2126,26 @@ more information."
   (lambda (_keyword err)
     (message (format "chatgpt-shell use: %s" (error-message-string err)))))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; agent-shell - 20250927-1558
+;;
+(use-package shell-maker
+  :ensure t)
+(use-package acp
+  :vc (:url "https://github.com/xenodium/acp.el"))
+(use-package agent-shell
+  :vc (:url "https://github.com/xenodium/agent-shell")
+
+  ;; ;; With string
+  ;; (setq agent-shell-google-authentication
+  ;;       (agent-shell-google-make-authentication :api-key "your-google-api-key-here"))
+
+  (setq agent-shell-google-authentication
+        (agent-shell-google-make-authentication
+         :api-key (lambda ()
+                    (dpc-gemini/get-config-property "apikey"))))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; auto-insert - 20241206-0142
