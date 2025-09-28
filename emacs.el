@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-September-27 16:04:29>
+;; Last saved: <2025-September-27 18:39:35>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -2130,6 +2130,16 @@ more information."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; agent-shell - 20250927-1558
 ;;
+;; I was not able to get this to work with the current gemini-cli, because
+;; of https://github.com/google-gemini/gemini-cli/issues/7880 .
+;; Modifying the acp.ts file within Gemini to use \n instead of EOL, and then
+;; rebuilding gemini-cli, allowed agent-shell to work.
+;;
+;; I had to modify agent-shell-google to use
+;;   :command "node"
+;;   :command-params '("c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js"
+;;                     "--experimental-acp")
+
 (use-package shell-maker
   :ensure t)
 (use-package acp
