@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-September-28 19:39:43>
+;; Last saved: <2025-September-28 19:58:02>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -686,8 +686,7 @@
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (keymap-local-set "C-c C-e" #'jsonnet-eval-buffer)
-  (keymap-local-set "C-c C-b" #'browse-url)
-  (display-line-numbers-mode))
+  (keymap-local-set "C-c C-b" #'browse-url))
 
 ;; The following is a scratchpad for fixups for jsonnetfmt and jsonnet lang
 ;; server. For the latter there are two options, and this will allow switching
@@ -953,8 +952,6 @@ server program."
     '(progn
        (add-to-list
         'flycheck-disabled-checkers 'go-build))) ;; go-gofmt?
-
-  (display-line-numbers-mode)
 
   ;; 20230918-1015
   (when (boundp 'apheleia-formatters)
@@ -1517,7 +1514,6 @@ then switch to the markdown output buffer."
 (defun dino-typescript-mode-fn ()
   (turn-on-font-lock)
   (keymap-local-set "ESC C-R" #'indent-region)
-  (turn-on-auto-revert-mode)
   (apheleia-mode)
   (setq typescript-indent-level 2)
   (keymap-local-set "C-c C-c"  #'comment-region)
@@ -1546,7 +1542,7 @@ then switch to the markdown output buffer."
   (defun dino-powershell-mode-fn ()
     (electric-pair-mode 1)
     (hs-minor-mode t)
-    (display-line-numbers-mode)
+    (display-line-numbers-mode) ;; powershell-mode is not derived from prog-mode
     (dino-enable-delete-trailing-whitespace)
     (keymap-local-set "ESC C-R" #'indent-region)
     (keymap-local-set "ESC #"   #'dino/indent-buffer)
@@ -1883,7 +1879,6 @@ more information."
 (defalias 'json-prettify-region 'json-reformat-region)
 
 (defun dino-json-mode-fn ()
-  (display-line-numbers-mode)
   ;; hierarchy: (prog-mode js-base-mode js-mode javascript-mode json-mode)
   ;;(turn-on-font-lock)
   ;;(flycheck-mode 0)
@@ -2225,6 +2220,7 @@ more information."
   (keymap-local-set "F"  #'dino-dired-do-find)
   (keymap-local-set "s"  #'dino-dired-sort-cycle)
   (dino-dired-sort-cycle "t") ;; by default, sort by time
+  (turn-on-auto-revert-mode)
   )
 
 ;;(add-hook 'dired-mode-hook 'dino-dired-mode-hook-fn)
@@ -2284,7 +2280,11 @@ just auto-corrects on common mis-spellings by me."
 (dino-define-global-abbrev-table)
 
 (defun dino-prog-mode-hook-fn ()
-  (abbrev-mode 1))
+  (abbrev-mode 1)
+  (turn-on-auto-revert-mode)
+  (display-line-numbers-mode)
+  (hc-highlight-trailing-whitespace)
+  )
 
 (add-hook 'prog-mode-hook 'dino-prog-mode-hook-fn)
 
@@ -2332,8 +2332,6 @@ just auto-corrects on common mis-spellings by me."
 (defun dino-c-mode-common-hook-fn ()
   (cond
    (window-system
-
-    (turn-on-auto-revert-mode)
 
     ;; RETURN means newline-and-indent in any c-mode buffer
     (local-set-key (kbd "RET") 'newline-and-indent)
@@ -2616,10 +2614,6 @@ colon."
          ;; with point inside the block, use these keys to hide/show
          (keymap-local-set "C-c >"  #'hs-hide-block)
          (keymap-local-set "C-c <"  #'hs-show-block)
-
-         ;; autorevert.el is built-in to emacs; if files
-         ;; are changed outside of emacs, the buffer auto-reverts.
-         (turn-on-auto-revert-mode)
 
          ;; allow fill-paragraph to work on xml code doc
          (set (make-local-variable 'paragraph-separate)
@@ -2969,10 +2963,6 @@ colon."
          (keymap-local-set "C-c >"  #'hs-hide-block)
          (keymap-local-set "C-c <"  #'hs-show-block)
 
-         ;; autorevert.el is built-in to emacs; if files
-         ;; are changed outside of emacs, the buffer auto-reverts.
-         (turn-on-auto-revert-mode)
-
          ;; never convert leading spaces to tabs:
          ;; (setting this variable automatically makes it local)
          (setq indent-tabs-mode nil)
@@ -2998,12 +2988,8 @@ colon."
          (local-set-key "\M-\\"   'cscomp-complete-at-point)
          ;;(local-set-key "\M-\\"   'cscomp-complete-at-point-menu)
          (local-set-key "\M-\."   'cscomp-complete-at-point-menu)
-
-         (display-line-numbers-mode)
-
          (message "dino-csharp-mode-fn: done.")
          )))
-
 
 (eval-after-load "csharp-mode"
   '(progn
@@ -3083,7 +3069,6 @@ colon."
   (show-paren-mode 1)
   (hl-line-mode 1)
   (company-mode)
-  (display-line-numbers-mode)
 
   ;; 20241228-0619
   ;; Like all TS modes, csharp-ts-mode relies on flyMAKE, not flycheck.
@@ -3101,15 +3086,11 @@ colon."
   (keymap-local-set "C-c >"  #'hs-hide-block)
   (keymap-local-set "C-c <"  #'hs-show-block)
 
-  ;; autorevert.el is built-in to emacs; if files
-  ;; are changed outside of emacs, the buffer auto-reverts.
-  (turn-on-auto-revert-mode)
   ;; never convert leading spaces to tabs:
   ;; (setting this variable automatically makes it local)
   (setq indent-tabs-mode nil)
   ;; the imenu stuff doesn't perform well; impractical
   (setq csharp-want-imenu nil)
-  (display-line-numbers-mode)
 
   (message "dino-csharp-ts-mode-fn: done.")
 
@@ -3548,9 +3529,6 @@ Does not consider word syntax tables.
   ;;(make-local-variable 'indent-tabs-mode)
   (setq indent-tabs-mode nil)
   (hl-line-mode 1)
-  (turn-on-auto-revert-mode)
-  (display-line-numbers-mode)
-  (hc-highlight-trailing-whitespace)
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
   (company-mode)
@@ -3572,6 +3550,7 @@ Does not consider word syntax tables.
 ;; Python
 
 (defun dino-python-mode-fn ()
+  ;; python-mode is not a prog-mode
   ;;(eglot) ;; never tried this
   ;;(apheleia-mode) ;; never tried this
 
@@ -3583,8 +3562,9 @@ Does not consider word syntax tables.
   (keymap-local-set "C-c C-w"  #'compare-windows)
 
   (set (make-local-variable 'indent-tabs-mode) nil)
-  (display-line-numbers-mode)
   (apheleia-mode)
+  (display-line-numbers-mode)
+  (turn-on-auto-revert-mode)
   (hc-highlight-trailing-whitespace)
   (electric-pair-mode)
   (yas-minor-mode)
@@ -3837,8 +3817,6 @@ counteracts that. "
   ;; eglot in the buffer, and completions should work automatically.
 
   (yas-minor-mode)
-  ;;(hs-minor-mode t)
-  (display-line-numbers-mode)
   (company-mode)
 
   ;; 20250718-1351
@@ -3851,7 +3829,6 @@ counteracts that. "
   (apheleia-mode)
   (electric-pair-mode)
   (electric-operator-mode)
-  (display-line-numbers-mode)
 
   ;; Avoid the error seen with vtsls:
   ;; "Request textDocument/onTypeFormatting failed with message: Cannot find provider for onTypeFormatting, the feature is possibly not supported by the current TypeScript version or disabled by settings."
@@ -3937,7 +3914,7 @@ counteracts that. "
   (set (make-local-variable 'c-basic-offset) 2)
 
   (electric-pair-mode)
-  (display-line-numbers-mode)
+
   (if (and (fboundp 'treesit-parser-list)
            (treesit-parser-list)
            (fboundp 'treesit-fold-mode))
