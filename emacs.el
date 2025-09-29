@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-September-27 18:39:35>
+;; Last saved: <2025-September-28 19:39:43>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -2130,12 +2130,12 @@ more information."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; agent-shell - 20250927-1558
 ;;
-;; I was not able to get this to work with the current gemini-cli, because
-;; of https://github.com/google-gemini/gemini-cli/issues/7880 .
+;; On Windows, I was not able to get this to work with the current gemini-cli,
+;; because of https://github.com/google-gemini/gemini-cli/issues/7880 .
 ;; Modifying the acp.ts file within Gemini to use \n instead of EOL, and then
 ;; rebuilding gemini-cli, allowed agent-shell to work.
 ;;
-;; I had to modify agent-shell-google to use
+;; Again, this is on Windows, I had to modify agent-shell-google to use
 ;;   :command "node"
 ;;   :command-params '("c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js"
 ;;                     "--experimental-acp")
@@ -2156,6 +2156,7 @@ more information."
          :api-key (lambda ()
                     (dpc-gemini/get-config-property "apikey"))))
   )
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; auto-insert - 20241206-0142
