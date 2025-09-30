@@ -509,9 +509,9 @@ characters that can't be set by the syntax-table alone.")
     (modify-syntax-entry ?{ "(}" powershell-mode-syntax-table)
     (modify-syntax-entry ?} "){" powershell-mode-syntax-table)
     (modify-syntax-entry ?[ "(]" powershell-mode-syntax-table)
-    (modify-syntax-entry ?] ")[" powershell-mode-syntax-table)
+                         (modify-syntax-entry ?] ")[" powershell-mode-syntax-table)
     (modify-syntax-entry ?( "()" powershell-mode-syntax-table)
-    (modify-syntax-entry ?) ")(" powershell-mode-syntax-table)
+                         (modify-syntax-entry ?) ")(" powershell-mode-syntax-table)
     (modify-syntax-entry ?` "\\" powershell-mode-syntax-table)
     (modify-syntax-entry ?_  "w" powershell-mode-syntax-table)
     (modify-syntax-entry ?=  "." powershell-mode-syntax-table)
@@ -539,28 +539,64 @@ characters that can't be set by the syntax-table alone.")
 (defun powershell-setup-menu ()
   "Adds a menu of PowerShell specific functions to the menu bar."
   (define-key (current-local-map) [menu-bar powershell-menu]
-    (cons "PowerShell" (make-sparse-keymap "PowerShell")))
+              (cons "PowerShell" (make-sparse-keymap "PowerShell")))
   (define-key (current-local-map) [menu-bar powershell-menu doublequote]
-    '(menu-item "DoubleQuote Selection" powershell-doublequote-selection
-                :key-sequence(kbd "M-\"")
-                :help "DoubleQuotes the selection escaping embedded double quotes"))
+              '(menu-item "DoubleQuote Selection" powershell-doublequote-selection
+                          :key-sequence(kbd "M-\"")
+                          :help "DoubleQuotes the selection escaping embedded double quotes"))
   (define-key (current-local-map) [menu-bar powershell-menu quote]
-    '(menu-item "SingleQuote Selection" powershell-quote-selection
-                :key-sequence (kbd "M-'")
-                :help "SingleQuotes the selection escaping embedded single quotes"))
+              '(menu-item "SingleQuote Selection" powershell-quote-selection
+                          :key-sequence (kbd "M-'")
+                          :help "SingleQuotes the selection escaping embedded single quotes"))
   (define-key (current-local-map) [menu-bar powershell-menu unquote]
-    '(menu-item "UnQuote Selection" powershell-unquote-selection
-                :key-sequence (kbd "C-'")
-                :help "Un-Quotes the selection un-escaping any escaped quotes"))
+              '(menu-item "UnQuote Selection" powershell-unquote-selection
+                          :key-sequence (kbd "C-'")
+                          :help "Un-Quotes the selection un-escaping any escaped quotes"))
   (define-key (current-local-map) [menu-bar powershell-menu escape]
-    '(menu-item "Escape Selection" powershell-escape-selection
-                :key-sequence (kbd "M-`")
-                :help "Escapes variables in the selection and extends existing escapes."))
+              '(menu-item "Escape Selection" powershell-escape-selection
+                          :key-sequence (kbd "M-`")
+                          :help "Escapes variables in the selection and extends existing escapes."))
   (define-key (current-local-map) [menu-bar powershell-menu dollarparen]
-    '(menu-item "DollarParen Selection" powershell-dollarparen-selection
-                :key-sequence (kbd "C-$")
-                :help "Wraps the selection in $()")))
+              '(menu-item "DollarParen Selection" powershell-dollarparen-selection
+                          :key-sequence (kbd "C-$")
+                          :help "Wraps the selection in $()")))
 
+
+(defun powershell-format-buffer ()
+  "Format PowerShell code of current buffer.
+Buffer must be a file buffer. It is saved first.
+
+Pre-requisite:
+ Install-Module -Name PSScriptAnalyzer -Force
+
+Requires the cross-platform pwsh."
+  (interactive)
+  (when (eq major-mode 'powershell-mode)
+    (when (not buffer-file-name)
+      (user-error "%s: current buffer %s must be a file" real-this-command (buffer-name)))
+    (when (buffer-modified-p) (save-buffer))
+    (let ((xbackupName (concat buffer-file-name "." (format-time-string "%Y%m%d%H%M%S") "~")))
+      (copy-file buffer-file-name xbackupName t)
+      (message (concat "\nBackup saved at: " xbackupName)))
+    (let ((xoutbuf (get-buffer-create "*xah-pwsh-format output*")))
+      (with-current-buffer xoutbuf (erase-buffer))
+      ;; By The Way there is no way to know if Invoke-Formatter is successful
+      (call-process-region
+       (format
+        "Set-Content \"%s\" (Invoke-Formatter -ScriptDefinition ([IO.File]::ReadAllText(\"%s\"))) -NoNewline;"
+        buffer-file-name
+        buffer-file-name)
+       nil
+       "pwsh"
+       nil xoutbuf nil
+       "-Command" "-")
+      (revert-buffer t t t)
+      (if (eq 1 (with-current-buffer xoutbuf (point-max)))
+          (progn
+            (kill-buffer xoutbuf))
+        (progn
+          (display-buffer xoutbuf)
+          (error "Error powershell-format-buffer %s failed" buffer-file-name))))))
 
 ;;; Eldoc support
 
