@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-September-28 19:58:02>
+;; Last saved: <2025-September-30 10:34:39>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -11,8 +11,8 @@
 
 ;;; Code:
 (message "Running emacs.el...")
+(require 'cl-seq)
 (if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
-
 (setq inhibit-splash-screen t)
 (setq initial-scratch-message ";;;  -*- lexical-binding: t; -*-\n;; scratch buffer\n")
 
@@ -564,7 +564,7 @@
 
   ;; disable eglot, specifically for json-mode
   (setq eglot-server-programs
-        (remove-if
+        (cl-remove-if
          (lambda (association)
            (let ((key (car association)))
              (if (listp key)
@@ -1544,12 +1544,13 @@ then switch to the markdown output buffer."
     (hs-minor-mode t)
     (display-line-numbers-mode) ;; powershell-mode is not derived from prog-mode
     (dino-enable-delete-trailing-whitespace)
-    (keymap-local-set "ESC C-R" #'indent-region)
     (keymap-local-set "ESC #"   #'dino/indent-buffer)
-    (keymap-local-set "C-c C-w" #'compare-windows)
-    (keymap-local-set "C-c C-c" #'comment-region)
     (keymap-local-set "ESC ."   #'company-complete)
     (keymap-local-set "ESC C-i" #'company-capf)
+    (keymap-local-set "ESC C-R" #'indent-region)
+    (keymap-local-set "C-c C-c" #'comment-region)
+    (keymap-local-set "C-c C-g" #'powershell-format-buffer)
+    (keymap-local-set "C-c C-w" #'compare-windows)
     )
 
   (add-hook 'powershell-mode-hook 'dino-powershell-mode-fn)
@@ -2142,16 +2143,31 @@ more information."
 (use-package agent-shell
   :vc (:url "https://github.com/xenodium/agent-shell")
 
-  ;; ;; With string
-  ;; (setq agent-shell-google-authentication
-  ;;       (agent-shell-google-make-authentication :api-key "your-google-api-key-here"))
-
+  ;; Auth via API key
   (setq agent-shell-google-authentication
-        (agent-shell-google-make-authentication
-         :api-key (lambda ()
-                    (dpc-gemini/get-config-property "apikey"))))
-  )
+        (agent-shell-google-make-authentication :api-key
+                                                (dpc-gemini/get-config-property "apikey")))
 
+  ;; API Key auth is necessary, at least at the moment.
+  ;; What I found: using the `:login t' approach starts Gemini, which then
+  ;; shows a URL in stderr, telling the user to login. In a graphical
+  ;; environment, the gemini client would just open up a URL in the browser, but
+  ;; that doesn't work with my tty.  So gemini-cli waits forever for the paste
+  ;; of an authz-code.
+  ;;
+  ;; This doesn't work; need to use API key auth or a graphical emacs.
+  ;;
+  ;; In theory the agent-shell could look at stderr and propagate the message to
+  ;; "open this URL and paste in the code".  But that's not happening right now.
+  ;;
+
+  ;; (setq agent-shell-google-authentication
+  ;;       (if (eq system-type 'windows-nt)
+  ;;           (agent-shell-google-make-authentication
+  ;;            :api-key (dpc-gemini/get-config-property "apikey"))
+  ;;         (agent-shell-google-make-authentication :login t)))
+
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; auto-insert - 20241206-0142
