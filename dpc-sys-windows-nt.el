@@ -74,4 +74,14 @@ there (and xargs, etc)."
  '(ls-lisp-use-localized-time-format t)
  '(temporary-file-directory (concat (getenv "HOME") "/AppData/Local/Temp")))
 
+;; 20250405-1501
+;;
+;; The Windows API is built entirely on top of UTF-16.
+;; This will not affect the coding system of the buffer, only of
+;; handling of the clipboard.
+(when (eq system-type 'windows-nt)
+  (set-next-selection-coding-system 'utf-16-le)
+  (set-selection-coding-system 'utf-16-le)
+  (set-clipboard-coding-system 'utf-16-le))
+
 (provide 'dpc-sys-windows-nt)

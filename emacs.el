@@ -1,8 +1,7 @@
-;;; -*- coding: utf-8; lexical-binding: t;  -*-
+;;; emacs.el -- Dino's .emacs setup file.   -*- coding: utf-8; lexical-binding: t;  -*-
 
-;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-September-30 10:34:39>
+;; Last saved: <2025-October-03 21:02:03>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -13,33 +12,21 @@
 (message "Running emacs.el...")
 (require 'cl-seq)
 (if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
+
 (setq inhibit-splash-screen t)
 (setq initial-scratch-message ";;;  -*- lexical-binding: t; -*-\n;; scratch buffer\n")
 
-;; not sure why but unicode chars are not being retained in this file.
+;; to make sure unicode chars are retained in this file.
 (set-language-environment 'utf-8)
 (set-default-coding-systems 'utf-8)
 (set-selection-coding-system 'utf-8)
 (set-locale-environment "en.UTF-8")
 (prefer-coding-system 'utf-8)
 
-;; 20250406 I think this needs to be system-wide. Setting it in a mode hook is too late,
+;; 20250406 this needs to be system-wide. Setting it in a mode hook is too late,
 ;; as the file local vars will have already been evaluated and set.
 (setq enable-local-variables t)
-
-;; 20250717-0619 - F10 will invoke `tmm-menubar'
-(setq tty-menu-open-use-tmm t)
-
-;; 20250405-1501
-;;
-;; The Windows API is built entirely on top of UTF-16.
-;; This will not affect the coding system of the buffer, only of
-;; handling of the clipboard.
-(when (eq system-type 'windows-nt)
-  (set-next-selection-coding-system 'utf-16-le)
-  (set-selection-coding-system 'utf-16-le)
-  (set-clipboard-coding-system 'utf-16-le))
-
+(setq tty-menu-open-use-tmm t) ;; 20250717-0619 - F10 will invoke `tmm-menubar'
 (setq visible-bell nil)
 (setq ring-bell-function `(lambda ()
                             (set-face-background 'default "DodgerBlue")
@@ -66,11 +53,11 @@
 
 ;; set truncation on side-by-side windows to nil.
 (setq truncate-partial-width-windows nil)
-
-(setq-default fill-column 80)
 (setq auto-save-interval 500)
 (setq case-fold-search nil)
 (setq comment-empty-lines t)
+
+(setq-default fill-column 80)
 
 (add-to-list 'load-path "~/elisp")
 
@@ -606,37 +593,6 @@
   :after eglot
   :config (eglot-booster-mode))
 
-;; 20250704-1025
-;; I never use this. Just using aider in a separate terminal seems
-;; fine to me.
-;;
-;; ;; 20250324-1743
-;; ;; For aider, there are two packages: aider.el and aidermacs.el .
-;; ;; Both are active.
-;; ;;
-;; ;; aider.el seems less ambitious. aidermacs aims to integrate with
-;; ;; existing emacs stuff; uses ediff, for example.
-;; ;; Beyond that I don't have a good feel for the differences.
-;; ;;
-;; ;; Also, it is possible to use aider side-by-side with emacs with
-;; ;; no elisp package at all.
-;;
-;; (use-package aidermacs
-;;   :defer 35
-;;   :bind (("C-c a" . aidermacs-transient-menu))
-;;   :config
-;;   ;; Enable minor mode for Aider files
-;;   (aidermacs-setup-minor-mode)
-;;   (setenv "AIDER_WEAK_MODEL" "gemini/2.5-flash-preview-05-20")
-;;   (setenv "AIDER_EDITOR_MODEL" "gemini/2.5-pro-exp-03-25")
-;;
-
-;;   :custom
-;;   ;; See the Configuration section below
-;;   (aidermacs-auto-commits t)
-;;   (aidermacs-use-architect-mode t)
-;;   (aidermacs-default-model "gemini/gemini-2.5-pro-exp-03-25"))
-
 
 (defun dino-jsonnet-mode-fn ()
   "buffer-specific jsonnet-mode setups"
@@ -664,7 +620,8 @@
     ;;  (flycheck-mode 1)
     (eglot-ensure)
     (company-mode)
-    (keymap-local-set "C-<tab>" #'company-complete)
+    ;;(keymap-local-set "C-<tab>" #'company-complete)
+    (define-key jsonnet-mode-map (kbd "C-<tab>") #'company-complete)
 
     (when (boundp 'apheleia-formatters)
       (apheleia-mode))
@@ -831,7 +788,7 @@ server program."
   ;; for marking ever-larger regions iteratively. Used rarely.
   :defer t
   ;; TODO: fix this keymap binding; it conflicts with the font resize key binding.
-  :config (keymap-global-set "C-=" 'er/expand-region))
+  :config (define-key global-map (kbd "C-=") 'er/expand-region))
 
 (use-package multiple-cursors
   ;; For visually editing similar things with one key sequence.
@@ -1045,17 +1002,6 @@ server program."
             ))
 
 
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;; autocomplete
-;; ;; adds auto-complete to various things like yasnippets or css colors, etc.
-;;
-;; ;; (add-to-list 'ac-dictionary-directories "/Users/Dino/elisp/autocomplete/ac-dict")
-;; (use-package auto-complete-config
-;;   :init (require 'yasnippet)
-;;   :defer t
-;;   :functions (ac-config-default)
-;;   :config (ac-config-default))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; web
@@ -1116,67 +1062,7 @@ then switch to the markdown output buffer."
   :hook (markdown-mode . dino-markdown-mode-fn))
 
 
-
-
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 20250713-1345
-;; This is rendered obsolete by global-text-scale-adjust in emacs v29+
-;;
-;; (use-package default-text-scale
-;;   :ensure t
-;;   :defer 21
-;;   :config (progn
-;;             (default-text-scale-mode)
-;;             (keymap-global-set "C-=" #'default-text-scale-increase)
-;;             (keymap-global-set "C--" #'default-text-scale-decrease)))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; ;; 20250223-1338 - this may be obsolete now.
-;; ;; I couldn't get eval-after-load to work with hl-line, so
-;; ;; I made this an after advice.
-;; (defadvice hl-line-mode (after
-;;                          dino-advise-hl-line-mode
-;;                          activate compile)
-;;   (set-face-background hl-line-face "gray18"))
-
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;; embark
-;; ;;
-;; ;; This is sort of a helper that provides hints for things you might want to do
-;; ;; with candidates. For examine in a minibuffer presenting a list of buffers or
-;; ;; files or functions, there is a set of things you might want to do with it.
-;; ;; For example, M-x find-file  ja C-x  will
-;; ;; - find file (prompt you)
-;; ;; - present files matching ja*
-;; ;; - C-x will be embark-export the list into a new Embark buffer, and you can
-;; ;;    then C-; (embark-act) on any of those items or a combination of those items.
-;; ;;
-;; ;; 20250405-2010 - This sounds neat but so far I am not using it very much.
-;; ;;
-;; (use-package embark
-;;   :ensure t
-;;   :demand t
-;;   :defer t
-;;
-;;   :bind
-;;   (("C-c ," . embark-act)         ;; pick some comfortable binding
-;;    ("C-c ;" . embark-dwim)        ;; good alternative: M-.
-;;    ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
-;;
-;;   :init
-;;   ;; Optionally replace the key help with a completing-read interface
-;;   (setq prefix-help-command #'embark-prefix-help-command)
-;;
-;;   :config
-;;   ;; Hide the mode line of the Embark live/completions buffers
-;;   (add-to-list 'display-buffer-alist
-;;                '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
-;;                  nil
-;;                  (window-parameters (mode-line-format . none)))))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; httpget
@@ -1757,12 +1643,16 @@ more information."
   (setq css-indent-offset 2
         completion-auto-help 'always
         )
-  (keymap-local-set "ESC C-R" #'indent-region)
-  (keymap-local-set "ESC #"   #'dino/indent-buffer)
-  (keymap-local-set "C-c C-w" #'compare-windows)
-  (keymap-local-set "C-c C-c" #'comment-region)
-  (keymap-local-set "ESC ."   #'company-complete)
-  (keymap-local-set "ESC C-i" #'company-capf)
+  ;; 20251003-1927
+  ;; I should convert all of these "keymap-local-set" calls everywhere.
+  ;; but I want to test a few first.
+  (define-key css-mode-map (kbd "ESC C-R") #'indent-region)
+  (define-key css-mode-map (kbd "ESC #")   #'dino/indent-buffer)
+  (define-key css-mode-map (kbd "C-c C-w") #'compare-windows)
+  (define-key css-mode-map (kbd "C-c C-c") #'comment-region)
+  ;;(keymap-local-set "ESC ."   #'company-complete)
+  (define-key css-mode-map (kbd "ESC .") #'company-complete)
+  (define-key css-mode-map (kbd "ESC C-i") #'company-capf)
 
   (turn-on-auto-revert-mode)
   (electric-pair-mode)
@@ -1775,8 +1665,8 @@ more information."
            (fboundp 'treesit-fold-mode))
       (progn
         (treesit-fold-mode)
-        (keymap-local-set "C-c >"  #'treesit-fold-close)
-        (keymap-local-set "C-c <"  #'treesit-fold-open)))
+        (define-key css-mode-map (kbd "C-c >")  #'treesit-fold-close)
+        (define-key css-mode-map (kbd "C-c <")  #'treesit-fold-open)))
 
   ;;(eglot-ensure) ;; maybe I will want this?
 
@@ -1938,7 +1828,7 @@ more information."
   :config
   (progn
     (thesaurus-set-bhl-api-key-from-file "~/elisp/.BigHugeLabs.apikey.txt")
-    (keymap-global-set "C-c C-t" #'thesaurus-choose-synonym-and-replace)))
+    (define-key global-map (kbd "C-c C-t") #'thesaurus-choose-synonym-and-replace)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1961,7 +1851,7 @@ more information."
 (use-package dictionary
   :defer t
   :commands (dictionary-lookup-definition dictionary-search)
-  :config (keymap-global-set "C-c C-d"  #'dictionary-lookup-definition)
+  :config (define-key global-map (kbd "C-c C-d")  #'dictionary-lookup-definition)
   (setq dictionary-use-single-buffer t)
   (setq dictionary-server "dict.org")
   (custom-set-faces
@@ -1969,25 +1859,6 @@ more information."
    '(dictionary-button-button        ((t (:family "Sans Serif"))))
    '(dictionary-button-face          ((t (:background "gray11" :foreground "LightSteelBlue")))))
   )
-
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;; wordnik (dictionary)
-;; ;; 20241227 - still works
-;; ;;
-;; (use-package wordnik
-;;   :defer t
-;;   :ensure nil
-;;   :config (progn
-;;             (wordnik-set-api-key-from-file "~/elisp/.wordnik.apikey.txt")
-;;             (define-key global-map (kbd "C-c ?") 'wordnik-show-definition)))
-
-
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;; spelchek
-;; ;; 20241227-1854 - Do I ever use this? It does not appear to be working.
-;; (require 'spelchek)
-;; (define-key global-map (kbd "C-x c") 'spelchek-choose-alternative-and-replace)
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2016,16 +1887,18 @@ more information."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gptel
 ;;
-;; A multi-LLM porcelain. Uses transient menu.  See also: chatgpt-shell .
-;; Unlike chatgpt-shell I think the intent of gptel is to be available in any
-;; buffer, at any moment, via gptel-send. You don't need a dedicated chat
-;; buffer.
+;; A multi-LLM porcelain. Uses transient menu.  See also: chatgpt-shell .  To
+;; contrast chatgpt-shell and gptel: the intent of gptel is to be available in
+;; any buffer, at any moment, via gptel-send. You don't need a dedicated chat
+;; buffer. chatgpt-shell uses a chat buffer.
 
 (defun dpc-gptel-setup ()
   "Invoked when gptel is loaded."
-  (gptel-make-gemini "Gemini"
-    :key (dpc-gemini/get-config-property "apikey")
-    :stream t)
+  (setq gptel-backend (gptel-make-gemini "Gemini"
+                        :key (dpc-gemini/get-config-property "apikey")
+                        :stream t))
+  ;; for transient menu different view?
+  ;;  (setq gptel-expert-commands t)
 
   (require 'cl-seq)
 
@@ -2053,7 +1926,7 @@ more information."
   (setq gptel-directives (cl-remove-if (lambda (pair)
                                          (and (consp pair) (equal (car pair) 'chat)))
                                        gptel-directives))
-  (keymap-global-set "C-c C-g s" #'gptel-send))
+  (define-key global-map (kbd "C-c C-g s") #'gptel-send))
 
 
 (use-package gptel
@@ -3607,153 +3480,64 @@ i.e M-x kmacro-set-counter."
   (interactive)
   (kmacro-set-counter 1))
 
-(keymap-global-set "<f5>" #'init-macro-counter-default)
-(keymap-global-set "<f6>" #'kmacro-insert-counter)
+(define-key global-map (kbd "<f5>") #'init-macro-counter-default)
+(define-key global-map (kbd "<f6>") #'kmacro-insert-counter)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-;; 20241214-2357
-;; js2-mode was created in 2008? by Steve Yegge, to fill a gap in js-mode,
-;; I think specifically regarding syntax highlighting. js2-mode's critical advance
-;; was to build an abstract syntax tree for the JS code, rather than just parsing the
-;; text. This was really cool, but at this point, js-mode + lsp-mode seems to be a
-;; better combination.
+;; 20251003-1933
+;; I think this is no longer needed. Also I use eglot, not lsp,
+;; so, it may be irrelevant.
 ;;
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;; JavaScript - js2-mode (new - 20180416-1511)
-;; (autoload 'js2-mode "js2-mode" nil t)
-;; ;;(eval-after-load 'js2-mode '(require 'setup-js2-mode))
-;; ;; Better imenu
-;; (add-hook 'js2-mode-hook #'js2-imenu-extras-mode)
+;; (defun dino-posframe-swap-background (str)
+;;   "HACK 20230627 the posframe package exposes an emacs bug, I
+;; think. After displaying a frame, as with the information from an
+;; LSP server showing the function definition, the background and
+;; foreground colors for the frame can ... change.  Even while the
+;; frame is still displayed. The background can sometimes revert to the
+;; default background, which is black. Used with a dark foreground, the
+;; signature definition can be unreadable.
 ;;
+;; You'd think just displaying a new frame would solve it but
+;; posframe caches the old frame and checks the frame params for new
+;; frames against the cached one. I guess for performance. Anyway
+;; the result is, once the bg color is munged, it stays that way.
 ;;
-;; (defun dino-js2-mode-fn ()
-;;   ;;(tern-mode)
-;;   (auto-complete-mode 0) ;; turn off auto-complete-mode
-;;   (lsp)
+;; The documented way to override the fg
+;; and bg for `lsp-signature-posframe' is to set the fg and bg
+;; properties on the `lsp-signature-posframe' face. Eg
 ;;
-;;   ;; lsp, when configured to use posframe for signature display, uses the
-;;   ;; background and foreground from the lsp-signature-posframe face to display
-;;   ;; the signature.
-;;   (set-face-attribute 'lsp-signature-posframe nil :background "LightSteelBlue1" )
-;;   ;; (set-face-attribute 'lsp-signature-posframe t :background "LightSteelBlue1")
-;;   ;; (face-attribute 'lsp-signature-posframe :background nil t)
-;;   ;; (face-attribute 'lsp-signature-posframe :foreground nil t)
-;;   (company-mode)
-;;   (company-box-mode)
-;;   (define-key company-mode-map (kbd "M-<tab>") 'company-complete)
-;;   (setq company-minimum-prefix-length 2
-;;         lsp-signature-function 'lsp-signature-posframe
-;;         js2-basic-offset 2)
-;;   )
-;; (add-hook 'js2-mode-hook #'dino-js2-mode-fn)
+;; (set-face-attribute 'lsp-signature-posframe nil :background \"lightyellow\") .
 ;;
-;; (defun dino-js2-apply-globals-from-jshintrc (&rest arguments)
-;;   "load extra globals from jshintrc when sending requests"
-;;   (js2-add-additional-externs (dino-read-globals-from-jshintrc)))
+;; This should directly affect the cached posframe, but because of the bug,
+;; somehow it does not.
 ;;
-;; (eval-after-load "js2-mode"
+;; This function swaps between two similar bg colors, to prevent
+;; posframe from caching the frame, which then... allows the frames
+;; to display properly. It swaps only when the input str is blank,
+;; which happens when the help is to disappear. That makes the face
+;; color ready for next time.
+;; "
+;;   (if (not str)
+;;       (let ((cur-bg (face-attribute 'lsp-signature-posframe :background nil t)))
+;;         (set-face-attribute 'lsp-signature-posframe nil :background
+;;                             (if (string= "LightSteelBlue1" cur-bg)
+;;                                 "SlateGray1" "LightSteelBlue1")))))
+;; (eval-after-load "lsp"
 ;;   '(progn
-;;      (advice-add 'js2-apply-jslint-globals :after #'dino-js2-apply-globals-from-jshintrc)))
-
-
-
-(defun dino-posframe-swap-background (str)
-  "HACK 20230627 the posframe package exposes an emacs bug, I
-think. After displaying a frame, as with the information from an
-LSP server showing the function definition, the background and
-foreground colors for the frame can ... change.  Even while the
-frame is still displayed. The background can sometimes revert to the
-default background, which is black. Used with a dark foreground, the
-signature definition can be unreadable.
-
-You'd think just displaying a new frame would solve it but
-posframe caches the old frame and checks the frame params for new
-frames against the cached one. I guess for performance. Anyway
-the result is, once the bg color is munged, it stays that way.
-
-The documented way to override the fg
-and bg for `lsp-signature-posframe' is to set the fg and bg
-properties on the `lsp-signature-posframe' face. Eg
-
-(set-face-attribute 'lsp-signature-posframe nil :background \"lightyellow\") .
-
-This should directly affect the cached posframe, but because of the bug,
-somehow it does not.
-
-This function swaps between two similar bg colors, to prevent
-posframe from caching the frame, which then... allows the frames
-to display properly. It swaps only when the input str is blank,
-which happens when the help is to disappear. That makes the face
-color ready for next time.
-"
-  (if (not str)
-      (let ((cur-bg (face-attribute 'lsp-signature-posframe :background nil t)))
-        (set-face-attribute 'lsp-signature-posframe nil :background
-                            (if (string= "LightSteelBlue1" cur-bg)
-                                "SlateGray1" "LightSteelBlue1")))))
-(eval-after-load "lsp"
-  '(progn
-     ;; I think this might help avoid a frame bug?
-     (plist-put lsp-signature-posframe-params :font "Menlo")
-     (advice-add 'lsp-signature-posframe :before #'dino-posframe-swap-background)))
-
-;;    (set-face-attribute 'lsp-signature-posframe nil :background "LightSteelBlue1" )
+;;      ;; I think this might help avoid a frame bug?
+;;      (plist-put lsp-signature-posframe-params :font "Menlo")
+;;      (advice-add 'lsp-signature-posframe :before #'dino-posframe-swap-background)))
 ;;
-;;     (advice-add 'lsp-signature-posframe :before #'dino-posframe-swap-background)
-;;     (advice-remove 'lsp-signature-posframe #'dino-posframe-swap-background)
+;; ;;    (set-face-attribute 'lsp-signature-posframe nil :background "LightSteelBlue1" )
+;; ;;
+;; ;;     (advice-add 'lsp-signature-posframe :before #'dino-posframe-swap-background)
+;; ;;     (advice-remove 'lsp-signature-posframe #'dino-posframe-swap-background)
 
-
-
-;; (js2r-add-keybindings-with-prefix "C-c C-m")
-
-;; xxx WHY have I deleted this?
-;;
-;; (defun dino-js2-mode-fn ()
-;;   (turn-on-font-lock)
-;;
-;;   (local-set-key "\M-\C-R"  'indent-region)
-;;   (local-set-key "\M-#"     'dino-indent-buffer)
-;;   (local-set-key "\C-c\C-c" 'comment-region)
-;;   (local-set-key (kbd "<C-tab>") 'yas-expand)
-;;
-;;   (set (make-local-variable 'indent-tabs-mode) nil)
-;;   ;; indent increment
-;;   (set (make-local-variable 'js-indent-level) 2)
-;;   (linum-on)
-;;
-;;   ;; use autopair for curlies, parens, square brackets.
-;;   ;; electric-pair-mode works better than autopair.el in 24.4,
-;;   ;; and is important for use with popup / auto-complete.
-;;   (if (or (not (fboundp 'version<)) (version< emacs-version "24.4"))
-;;       (progn (require 'autopair) (autopair-mode))
-;;     (electric-pair-mode))
-;;
-;;   ;; json-mode is a child mode of js-mode. Select different checker
-;;   ;; based on the file extension.
-;;   (require 'flycheck)
-;;   (if (and buffer-file-name
-;;            (file-name-directory buffer-file-name))
-;;        (progn
-;;          (flycheck-mode)
-;;          (flycheck-select-checker
-;;           (if (string-suffix-p ".json" buffer-file-name)
-;;               'json-jsonlint
-;;             'javascript-jshint))))
-;;
-;;   (yas-minor-mode-on)
-;;
-;;   (require 'smart-op) ;; for smart insertion of ++ and == and += etc
-;;   (smart-op-mode)
-;;   )
-;;
-;;
-;; (add-hook 'js2-mode-hook   'dino-js2-mode-fn)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JavaScript - js-mode (everything old is new again)
-
 
 (when (boundp 'apheleia-mode-alist)
   (push '(js-mode . prettier-javascript) apheleia-mode-alist)
@@ -4527,51 +4311,50 @@ Enable `recentf-mode' if it isn't already."
 ;;
 ;; (define-key global-map (kbd "C-;") nil) ;; works to unset a key
 
-(keymap-global-set "C-x 7"       #'dino-toggle-frame-split )
-(keymap-global-set "C-x C-b"     #'ibuffer) ; instead of buffer-list
-(keymap-global-set "C-x |"       #'align-regexp)
-(keymap-global-set "C-x ?"       #'describe-text-properties)
-(keymap-global-set "C-x w"       #'dino-fixup-linefeeds)
-;;(keymap-global-set "C-c g"       #'httpget)
-(keymap-global-set "C-c u"       #'dino-insert-uuid)
-(keymap-global-set "C-c f"       #'dino-insert-filename)
-(keymap-global-set "C-c C-l"     #'lorem-ipsum)
-(keymap-global-set "C-c b"       #'dino-base64-insert-file)
-(keymap-global-set "C-c 1"       #'just-one-space)
-(keymap-global-set "C-c s"       #'search-forward-regexp)
-(keymap-global-set "C-c y"       #'display-line-numbers-mode)
-(keymap-global-set "C-c q"       #'query-replace)
-(keymap-global-set "C-c c"       #'goto-char)
-(keymap-global-set "C-c r"       #'replace-regexp)
-(keymap-global-set "C-x t"       #'dino/insert-timeofday)
-(keymap-global-set "C-x C-d"     #'delete-window)
-(keymap-global-set "C-x x"       #'copy-to-register)
-(keymap-global-set "C-x g"       #'insert-register)
-(keymap-global-set "C-x p"       #'previous-window)
-(keymap-global-set "C-x C-p"     #'previous-window)
-(keymap-global-set "C-x n"       #'other-window)
-(keymap-global-set "C-c w"       #'where-is)
-(keymap-global-set "C-c C-w"     #'compare-windows)
-(keymap-global-set "C-c C-y"     #'dcjava-wacapps-intelligently-open-file)
-(keymap-global-set "C-c ~"       #'revert-buffer-unconditionally)
-(keymap-global-set "C-x ~"       #'dino/toggle-buffer-modified)
-(keymap-global-set "C-x C-g"     #'auto-fill-mode)
-(keymap-global-set "C-x C-e"     #'smarter-compile)
-(keymap-global-set "C-x E"       #'smarter-compile-run)
-(keymap-global-set "C-x e"       #'kmacro-end-and-call-macro)
-(keymap-global-set "ESC g"       #'goto-line)
-(keymap-global-set "ESC C-y"     #'yank-pop)
-(keymap-global-set "ESC C-h"     #'backward-kill-word)
-(keymap-global-set "C-x C-n"     #'next-error)
-(keymap-global-set "ESC SPC"     #'set-mark-command)
-(keymap-global-set "C-c k"       #'keymap-global-set)
-(keymap-global-set "C-x d"       #'dino-ediff-buffer-against-file)
-(keymap-global-set "C-x &"       #'dino/urlencode-region)
-(keymap-global-set "C-<"         #'beginning-of-defun)
-(keymap-global-set "C->"         #'end-of-defun)
-(keymap-global-set "C-c C-x C-c" #'calendar)
-(keymap-global-set "ESC C-\\"    #'help-for-help)
-(keymap-global-set "C-c C-d"     #'delete-trailing-whitespace)
+(define-key global-map (kbd "C-x 7")       #'dino-toggle-frame-split)
+(define-key global-map (kbd "C-x C-b")     #'ibuffer) ; instead of buffer-list
+(define-key global-map (kbd "C-x |")       #'align-regexp)
+(define-key global-map (kbd "C-x ?")       #'describe-text-properties)
+(define-key global-map (kbd "C-x w")       #'dino-fixup-linefeeds)
+(define-key global-map (kbd "C-c u")       #'dino-insert-uuid)
+(define-key global-map (kbd "C-c f")       #'dino-insert-filename)
+(define-key global-map (kbd "C-c C-l")     #'lorem-ipsum)
+(define-key global-map (kbd "C-c b")       #'dino-base64-insert-file)
+(define-key global-map (kbd "C-c 1")       #'just-one-space)
+(define-key global-map (kbd "C-c s")       #'search-forward-regexp)
+(define-key global-map (kbd "C-c y")       #'display-line-numbers-mode)
+(define-key global-map (kbd "C-c q")       #'query-replace)
+(define-key global-map (kbd "C-c c")       #'goto-char)
+(define-key global-map (kbd "C-c r")       #'replace-regexp)
+(define-key global-map (kbd "C-x t")       #'dino/insert-timeofday)
+(define-key global-map (kbd "C-x C-d")     #'delete-window)
+(define-key global-map (kbd "C-x x")       #'copy-to-register)
+(define-key global-map (kbd "C-x g")       #'insert-register)
+(define-key global-map (kbd "C-x p")       #'previous-window)
+(define-key global-map (kbd "C-x C-p")     #'previous-window)
+(define-key global-map (kbd "C-x n")       #'other-window)
+(define-key global-map (kbd "C-c w")       #'where-is)
+(define-key global-map (kbd "C-c C-w")     #'compare-windows)
+(define-key global-map (kbd "C-c C-y")     #'dcjava-wacapps-intelligently-open-file)
+(define-key global-map (kbd "C-c ~")       #'revert-buffer-unconditionally)
+(define-key global-map (kbd "C-x ~")       #'dino/toggle-buffer-modified)
+(define-key global-map (kbd "C-x C-g")     #'auto-fill-mode)
+(define-key global-map (kbd "C-x C-e")     #'smarter-compile)
+(define-key global-map (kbd "C-x E")       #'smarter-compile-run)
+(define-key global-map (kbd "C-x e")       #'kmacro-end-and-call-macro)
+(define-key global-map (kbd "ESC g")       #'goto-line)
+(define-key global-map (kbd "ESC C-y")     #'yank-pop)
+(define-key global-map (kbd "ESC C-h")     #'backward-kill-word)
+(define-key global-map (kbd "C-x C-n")     #'next-error)
+(define-key global-map (kbd "ESC SPC")     #'set-mark-command)
+(define-key global-map (kbd "C-c k")       #'keymap-global-set)
+(define-key global-map (kbd "C-x d")       #'dino-ediff-buffer-against-file)
+(define-key global-map (kbd "C-x &")       #'dino/urlencode-region)
+(define-key global-map (kbd "C-<")         #'beginning-of-defun)
+(define-key global-map (kbd "C->")         #'end-of-defun)
+(define-key global-map (kbd "C-c C-x C-c") #'calendar)
+(define-key global-map (kbd "ESC C-\\")    #'help-for-help)
+(define-key global-map (kbd "C-c C-d")     #'delete-trailing-whitespace)
 
 
 (define-key prog-mode-map (kbd "C-c d")   #'chatgpt-shell-describe-code)
