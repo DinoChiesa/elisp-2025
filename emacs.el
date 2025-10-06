@@ -1,7 +1,6 @@
 ;;; emacs.el -- Dino's .emacs setup file.   -*- coding: utf-8; lexical-binding: t;  -*-
 
 ;;
-;; Last saved: <2025-October-03 21:02:03>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -1922,19 +1921,18 @@ more information."
                       (push (cons symbol prompt-string) gptel-directives)))))))
         (error (message "[gptel-prompts] Error processing %s: %s" prompt-file err)))))
 
-  ;; remove the builtin chat directive
+  ;; remove the builtin chat directive. (can't remember why)
   (setq gptel-directives (cl-remove-if (lambda (pair)
                                          (and (consp pair) (equal (car pair) 'chat)))
                                        gptel-directives))
-  (define-key global-map (kbd "C-c C-g s") #'gptel-send))
+  )
 
 
 (use-package gptel
-  :defer 21
+  :bind (("C-c C-g s" . #'gptel-send))
   :ensure t
-  :commands (gptel-send gptel-make-gemini)
-  :config (dpc-gptel-setup)
-  )
+  :commands (gptel-send)
+  :config (dpc-gptel-setup) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; chatgpt-shell
@@ -2112,14 +2110,13 @@ more information."
   (turn-on-auto-revert-mode)
   )
 
-;;(add-hook 'dired-mode-hook 'dino-dired-mode-hook-fn)
 (use-package dired
   :ensure nil
+  :hook (dired-mode . dino-dired-mode-hook-fn)
   :config
   (require 'dino-dired-fixups)
   ;; eliminate the gid in dired when using ls-lisp (eg, on windows)
-  (setq ls-lisp-verbosity '(links uid))
-  :hook (dired-mode . dino-dired-mode-hook-fn))
+  (setq ls-lisp-verbosity '(links uid)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
