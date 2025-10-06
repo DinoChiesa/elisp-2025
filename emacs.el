@@ -2,7 +2,7 @@
 
 ;;; emacs.el -- Dino's .emacs setup file.
 ;;
-;; Last saved: <2025-September-30 10:34:39>
+;; Last saved: <2025-October-04 16:55:52>
 ;;
 ;; Works with v30.1 of emacs.
 ;;
@@ -2023,9 +2023,9 @@ more information."
 
 (defun dpc-gptel-setup ()
   "Invoked when gptel is loaded."
-  (gptel-make-gemini "Gemini"
-    :key (dpc-gemini/get-config-property "apikey")
-    :stream t)
+  (setq gptel-backend (gptel-make-gemini "Gemini"
+                        :key (dpc-gemini/get-config-property "apikey")
+                        :stream t))
 
   (require 'cl-seq)
 
@@ -2053,15 +2053,14 @@ more information."
   (setq gptel-directives (cl-remove-if (lambda (pair)
                                          (and (consp pair) (equal (car pair) 'chat)))
                                        gptel-directives))
-  (keymap-global-set "C-c C-g s" #'gptel-send))
+  )
 
 
 (use-package gptel
-  :defer 21
+  :bind (("C-c C-g s" . #'gptel-send))
   :ensure t
-  :commands (gptel-send gptel-make-gemini)
-  :config (dpc-gptel-setup)
-  )
+  :commands (gptel-send)
+  :config (dpc-gptel-setup) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; chatgpt-shell
@@ -2239,14 +2238,13 @@ more information."
   (turn-on-auto-revert-mode)
   )
 
-;;(add-hook 'dired-mode-hook 'dino-dired-mode-hook-fn)
 (use-package dired
   :ensure nil
+  :hook (dired-mode . dino-dired-mode-hook-fn)
   :config
   (require 'dino-dired-fixups)
   ;; eliminate the gid in dired when using ls-lisp (eg, on windows)
-  (setq ls-lisp-verbosity '(links uid))
-  :hook (dired-mode . dino-dired-mode-hook-fn))
+  (setq ls-lisp-verbosity '(links uid)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
