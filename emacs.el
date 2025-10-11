@@ -2016,11 +2016,12 @@ more information."
 ;; (setq agent-shell-google-gemini-command '("node"
 ;;       "c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js" "--experimental-acp"))
 ;;
-;; This is no longer necessary as the fix for handling EOL vs \n was merged into CLI.
+;; As of v0.9.0, this will be no longer necessary as the fix for
+;; handling EOL vs \n was merged into that release of the CLI.
 ;;
+
 (use-package shell-maker
   :ensure t)
-
 ;; With :vc, these get loaded from github; not sure if they are ever updated
 ;; after initial clone. Doc seems to suggest so.
 (use-package acp
@@ -2029,21 +2030,28 @@ more information."
   :vc (:url "https://github.com/xenodium/agent-shell" :rev :newest)
 
   :config
+  (setq acp-logging-enabled t) ;; helpful while it's new / evolving
+
   ;; Auth via API key
   (setq agent-shell-google-authentication
         (agent-shell-google-make-authentication :api-key
                                                 (dpc-gemini/get-config-property "apikey")))
-  (cond
-   ((not (eq system-type 'windows-nt))
-    ;; forcibly unset the project to allow prompt-free startup
-    (setq agent-shell-google-gemini-command
-          `("env" "GOOGLE_CLOUD_PROJECT=\"\"" "gemini" "--experimental-acp"))))
+  (setq agent-shell-google-gemini-command
+        (if (eq system-type 'windows-nt)
+            ;; There is a gcli bug (#7549) that flushes cached creds when --experimental-acp
+            ;; is enabled. As a result the user must ALWAYS re-authenticate. On a text
+            ;; terminal that causes a hang.  This forcibly unsets the project, and uses API
+            ;; key, to allow prompt-free startup.
+            `("env" "GOOGLE_CLOUD_PROJECT=\"\"" "gemini" "--experimental-acp")
+          ;; 20251011-1613 - patched version of gemini-cli
+          '("node"
+            "c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js" "--experimental-acp")))
 
+  ;; re-define this to trim the noise...
   (defun agent-shell-google--gemini-welcome-message (_config)
     "Return Gemini CLI ASCII art as per own repo using `shell-maker' CONFIG."
     (let ((art (agent-shell--indent-string 4 (agent-shell-google--gemini-ascii-art))))
       (concat "\n\n\n" art "\n\n      Welcome to Gemini within Emacs...\n\n")))
-
 
   ;; API Key auth is necessary, at least at the moment.
   ;; What I found: using the `:login t' approach starts Gemini, which then
@@ -2058,26 +2066,13 @@ more information."
   ;; "open this URL and paste in the code".  But that's not happening right now.
   ;;
   ;; Diagnosing this required
-  ;;   M-x agent-shell-toggle-logging
-  ;;(I am not sure hgow to force loggin on, instead of toggling it)
-
+  ;;    M-x agent-shell-toggle-logging or (setq acp-logging-enabled t)
+  ;;
   ;; Then you get buffers like this:
   ;;  *acp-(gemini)-10 log*                  165 Fundamental
   ;;  *acp-(gemini)-10 traffic*               39 ACP-traffic
   ;;
-  ;; And in the log buffer I can plainly see gemini cli is waiting for me
-  ;; to signin with the web form.  Why it is waiting for that, I am not clear.
-  ;; I thought setting the API key auth would preclude the use of that
-  ;; signin but I also think there is no way to set the authentication model of
-  ;; Gemini cli with a command line flag!  Was it supported previously?
-
-
-  ;; (setq agent-shell-google-authentication
-  ;;       (if (eq system-type 'windows-nt)
-  ;;           (agent-shell-google-make-authentication
-  ;;            :api-key (dpc-gemini/get-config-property "apikey"))
-  ;;         (agent-shell-google-make-authentication :login t)))
-
+  ;; And in the log buffer you can see gemini cli I/O.
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
