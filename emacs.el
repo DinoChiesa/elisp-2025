@@ -1997,16 +1997,13 @@ more information."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; agent-shell - 20250927-1558
 ;;
-;; On Windows, I was not able to get this to work with the current gemini-cli,
-;; because of https://github.com/google-gemini/gemini-cli/issues/7880 .
-;; Modifying the acp.ts file within Gemini to use \n instead of EOL, and then
-;; rebuilding gemini-cli, allowed agent-shell to work.
+;; On Windows, to make this work, with a patched version of gemini cli, I had to :
 ;;
-;; Again, this is on Windows, I had to modify agent-shell-google to use
-;;   :command "node"
-;;   :command-params '("c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js"
-;;                     "--experimental-acp")
-
+;; (setq agent-shell-google-gemini-command '("node"
+;;       "c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js" "--experimental-acp"))
+;;
+;; This is no longer necessary as the fix for handling EOL vs \n was merged into CLI.
+;;
 (use-package shell-maker
   :ensure t)
 (use-package acp
@@ -2014,10 +2011,22 @@ more information."
 (use-package agent-shell
   :vc (:url "https://github.com/xenodium/agent-shell")
 
+  :config
   ;; Auth via API key
   (setq agent-shell-google-authentication
         (agent-shell-google-make-authentication :api-key
                                                 (dpc-gemini/get-config-property "apikey")))
+  (cond
+   ((not (eq system-type 'windows-nt))
+    ;; forcibly unset the project to allow prompt-free startup
+    (setq agent-shell-google-gemini-command
+          `("env" "GOOGLE_CLOUD_PROJECT=\"\"" "gemini" "--experimental-acp"))))
+
+  (defun agent-shell-google--gemini-welcome-message (_config)
+    "Return Gemini CLI ASCII art as per own repo using `shell-maker' CONFIG."
+    (let ((art (agent-shell--indent-string 4 (agent-shell-google--gemini-ascii-art))))
+      (concat "\n\n\n" art "\n\n      Welcome to Gemini within Emacs...\n\n")))
+
 
   ;; API Key auth is necessary, at least at the moment.
   ;; What I found: using the `:login t' approach starts Gemini, which then
@@ -2031,6 +2040,20 @@ more information."
   ;; In theory the agent-shell could look at stderr and propagate the message to
   ;; "open this URL and paste in the code".  But that's not happening right now.
   ;;
+  ;; Diagnosing this required
+  ;;   M-x agent-shell-toggle-logging
+  ;;(I am not sure hgow to force loggin on, instead of toggling it)
+
+  ;; Then you get buffers like this:
+  ;;  *acp-(gemini)-10 log*                  165 Fundamental
+  ;;  *acp-(gemini)-10 traffic*               39 ACP-traffic
+  ;;
+  ;; And in the log buffer I can plainly see gemini cli is waiting for me
+  ;; to signin with the web form.  Why it is waiting for that, I am not clear.
+  ;; I thought setting the API key auth would preclude the use of that
+  ;; signin but I also think there is no way to set the authentication model of
+  ;; Gemini cli with a command line flag!  Was it supported previously?
+
 
   ;; (setq agent-shell-google-authentication
   ;;       (if (eq system-type 'windows-nt)
@@ -2099,13 +2122,14 @@ more information."
 
 (defun dino-dired-mode-hook-fn ()
   (hl-line-mode 1)
-  (keymap-local-set "C-c C-g"  #'dino-dired-kill-new-file-contents)
-  (keymap-local-set "C-c C-c"  #'dino-dired-copy-file-to-dir-in-other-window)
-  (keymap-local-set "C-c C-m"  #'dino-dired-move-file-to-dir-in-other-window)
-
-  (keymap-local-set "K"  #'dired-kill-subdir) ;; opposite of i (dired-maybe-insert-subdir)
-  (keymap-local-set "F"  #'dino-dired-do-find)
-  (keymap-local-set "s"  #'dino-dired-sort-cycle)
+  (define-key dired-mode-map (kbd "C-c C-g") #'dino-dired-kill-new-file-contents)
+  (define-key dired-mode-map (kbd "C-c C-c") #'dino-dired-copy-file-to-dir-in-other-window)
+  (define-key dired-mode-map (kbd "C-c C-m") #'dino-dired-move-file-to-dir-in-other-window)
+  (define-key dired-mode-map (kbd "C-c m")   #'magit-status)
+  ;; converse of i (dired-maybe-insert-subdir)
+  (define-key dired-mode-map (kbd "K")  #'dired-kill-subdir)
+  (define-key dired-mode-map (kbd "F")  #'dino-dired-do-find)
+  (define-key dired-mode-map (kbd "s")  #'dino-dired-sort-cycle)
   (dino-dired-sort-cycle "t") ;; by default, sort by time
   (turn-on-auto-revert-mode)
   )
@@ -2883,6 +2907,7 @@ colon."
      (add-hook  'csharp-mode-hook 'dino-csharp-mode-fn t)
 
      ;; 20250126-1013 - adjustments for indentation.
+     ;; Discover these with treesit-explore-mode .
      ;; This one is for the open curly for the using statement.
      ;; (The using _directive_ (for import at top of file) is different.)
      (setf (cdr (car csharp-ts-mode--indent-rules))
