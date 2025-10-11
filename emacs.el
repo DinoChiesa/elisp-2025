@@ -15,6 +15,19 @@
 (setq inhibit-splash-screen t)
 (setq initial-scratch-message ";;;  -*- lexical-binding: t; -*-\n;; scratch buffer\n")
 
+;; 20251011-1123
+;; On Windows
+;; Failed to verify signature archive-contents.sig:
+;; gpg: keyblock resource '/c/users/dpchi/c:/users/dpchi/.emacs.d/elpa/gnupg/pubring.kbx': No such file or directory
+;;
+;; Pay attention, the path is mangled.
+;; https://www.reddit.com/r/emacs/comments/ymzw78/windows_elpa_gnupg_and_keys_problems/
+;;
+;; This seems to solve it.
+(if (eq system-type 'windows-nt)
+    (setopt package-gnupghome-dir ".emacs.d/elpa/gnupg"))
+
+
 ;; to make sure unicode chars are retained in this file.
 (set-language-environment 'utf-8)
 (set-default-coding-systems 'utf-8)
@@ -1375,36 +1388,37 @@ then switch to the markdown output buffer."
   :load-path "~/elisp"
   :commands (yaml-pretty-mode))
 
+(defun dino-yaml-mode-fn ()
+  "My hook for YAML mode"
+  (interactive)
+  (turn-on-font-lock)
+  (turn-on-auto-revert-mode)
+  (display-line-numbers-mode)
+  (yaml-pretty-mode)
+  (define-key yaml-mode-map (kbd "C-c C-c")  #'comment-region)
+  ;;(make-local-variable 'indent-tabs-mode)
+  (setq indent-tabs-mode nil))
+
 (use-package yaml-mode
   :defer t
-  :config
-  (defun dino-yaml-mode-fn ()
-    "My hook for YAML mode"
-    (interactive)
-    (turn-on-font-lock)
-    (turn-on-auto-revert-mode)
-    (display-line-numbers-mode)
-    (yaml-pretty-mode)
-    (keymap-local-set "C-c C-c"  #'comment-region)
-    ;;(make-local-variable 'indent-tabs-mode)
-    (setq indent-tabs-mode nil))
-
-  (add-hook 'yaml-mode-hook 'dino-yaml-mode-fn)
+  :hook (yaml-mode . dino-yaml-mode-fn)
+  ;;:config
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Typescript
+
 (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode))
 
 (defun dino-typescript-mode-fn ()
   (turn-on-font-lock)
-  (keymap-local-set "ESC C-R" #'indent-region)
   (apheleia-mode)
   (setq typescript-indent-level 2)
-  (keymap-local-set "C-c C-c"  #'comment-region)
+  (define-key typescript-mode-map (kbd "ESC C-R") #'indent-region)
+  (define-key typescript-mode-map (kbd "C-c C-c")  #'comment-region)
   (display-line-numbers-mode)
-  (auto-fill-mode -1)
-  )
+  (auto-fill-mode -1))
+
 (add-hook 'typescript-mode-hook 'dino-typescript-mode-fn)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1414,31 +1428,30 @@ then switch to the markdown output buffer."
 ;; there, I think. One day I will convert.
 ;;
 
+(defun dino-powershell-mode-fn ()
+  (electric-pair-mode 1)
+  (hs-minor-mode t)
+  (display-line-numbers-mode) ;; powershell-mode is not derived from prog-mode
+  (add-hook 'before-save-hook #'dino-delete-trailing-whitespace nil t)
+  (define-key powershell-mode-map (kbd "ESC #")   #'dino/indent-buffer)
+  (define-key powershell-mode-map (kbd "ESC .")   #'company-complete)
+  (define-key powershell-mode-map (kbd "ESC C-i") #'company-capf)
+  (define-key powershell-mode-map (kbd "ESC C-R") #'indent-region)
+  (define-key powershell-mode-map (kbd "C-c C-c") #'comment-region)
+  (define-key powershell-mode-map (kbd "C-c C-g") #'powershell-format-buffer)
+  (define-key powershell-mode-map (kbd "C-c C-w") #'compare-windows)
+  )
+
 (use-package powershell-mode
   :if (file-exists-p "~/elisp/powershell-mode.el")
   :load-path "~/elisp"
   :pin manual
   :defer t
   :commands (powershell-mode)
+  :hook (powershell-mode . dino-powershell-mode-fn)
   :config
   (add-to-list 'auto-mode-alist '("\\.ps1\\'" . powershell-mode))
   (add-to-list 'auto-mode-alist '("\\.psm1\\'" . powershell-mode))
-
-  (defun dino-powershell-mode-fn ()
-    (electric-pair-mode 1)
-    (hs-minor-mode t)
-    (display-line-numbers-mode) ;; powershell-mode is not derived from prog-mode
-    (dino-enable-delete-trailing-whitespace)
-    (keymap-local-set "ESC #"   #'dino/indent-buffer)
-    (keymap-local-set "ESC ."   #'company-complete)
-    (keymap-local-set "ESC C-i" #'company-capf)
-    (keymap-local-set "ESC C-R" #'indent-region)
-    (keymap-local-set "C-c C-c" #'comment-region)
-    (keymap-local-set "C-c C-g" #'powershell-format-buffer)
-    (keymap-local-set "C-c C-w" #'compare-windows)
-    )
-
-  (add-hook 'powershell-mode-hook 'dino-powershell-mode-fn)
 
   (eval-after-load "hideshow"
     '(progn
@@ -2222,17 +2235,6 @@ just auto-corrects on common mis-spellings by me."
   )
 
 (add-hook 'text-mode-hook 'dino-text-mode-hook-fn)
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun dino-enable-delete-trailing-whitespace ()
-  "remove trailing whitespace"
-  (interactive)
-  ;; remove trailing whitespace in C files
-  ;; http://stackoverflow.com/questions/1931784
-  ;;(add-hook 'write-contents-functions 'dino-delete-trailing-whitespace)
-  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3770,8 +3772,11 @@ counteracts that. "
   ;; the ability to manually invoke google-java-format is still a good idea.
   (keymap-local-set "C-c C-g f"  #'dcjava-gformat-buffer)
 
-  (dino-enable-delete-trailing-whitespace)
-  )
+  ;; remove trailing whitespace in C files
+  ;; http://stackoverflow.com/questions/1931784
+  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local))
+
+
 
 (add-hook 'java-mode-hook 'dino-java-mode-fn)
 ;;(remove-hook 'java-ts-mode-hook 'dino-java-mode-fn)
