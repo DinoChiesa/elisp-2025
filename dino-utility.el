@@ -200,11 +200,9 @@ This is important when editing markdown files which use trailing whitespace
 to indicate a newline."
   (interactive)
   ;; see http://stackoverflow.com/questions/1931784
-  (remove-hook 'write-contents-functions 'dino-delete-trailing-whitespace))
-
-(defun dino-delete-trailing-whitespace ()
-  (save-excursion
-    (delete-trailing-whitespace)))
+  (remove-hook 'write-contents-functions 'delete-trailing-whitespace)
+  (remove-hook 'before-save-hook-functions 'delete-trailing-whitespace)
+  )
 
 (defvar dino-no-untabify-modes '(makefile-mode BSDmakefile salted-file-mode)
   "Normally my setup untabifies buffers before save. This list

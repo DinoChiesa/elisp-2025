@@ -20,7 +20,7 @@
 ;; Failed to verify signature archive-contents.sig:
 ;; gpg: keyblock resource '/c/users/dpchi/c:/users/dpchi/.emacs.d/elpa/gnupg/pubring.kbx': No such file or directory
 ;;
-;; Pay attention, the path is mangled.
+;; Pay attention: that path is mangled.
 ;; https://www.reddit.com/r/emacs/comments/ymzw78/windows_elpa_gnupg_and_keys_problems/
 ;;
 ;; This seems to solve it.
@@ -194,7 +194,7 @@
 (dino/maybe-add-to-exec-path
  (let ((home-dir (getenv "HOME")))
    (list
-    "c:/Program Files/Git/usr/bin"     ;; for diff, for apheleia
+    "c:/Program Files/Git/usr/bin"     ;; lots of unix utilities here for various purposes
     (dino/find-latest-nvm-version-bin-dir)
     (concat home-dir "/.dotnet/tools") ;; csharpier
     (concat home-dir "/bin")
@@ -218,11 +218,11 @@
 ;;
 ;; It works on the Windows machine, IFF the unix-y commands apheleia requires,
 ;; like diff, are available. This can be a problem because there are multiple
-;; disparate diff.exe tools installed on Windows typically, and apheleia depends
+;; disparate diff.exe tools available for Windows typically. apheleia depends
 ;; on the --rcs option for diff, which is not always supported.  The solution is
-;; to ensure that the right gnu diff.exe is available. There is one shipped with
-;; git; putting c:\program files\Git\usr\bin at the top of `exec-path' allows
-;; apheleia to work. This is done just above.  Of course, we still need the
+;; to ensure that the right gnu diff.exe is available. Git ships a set of unix utilities
+;; including diff; putting c:\program files\Git\usr\bin at the top of `exec-path' allows
+;; apheleia to work. This is done just above. Separately, we need the
 ;; appropriate apheleia formatter to be configured and available.
 ;;
 
@@ -932,7 +932,7 @@ server program."
   (require 'goflycheck)
   (flycheck-mode 1)
 
-  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
   )
 
 (add-hook 'go-mode-hook 'dino-go-mode-fn)
@@ -1407,6 +1407,7 @@ then switch to the markdown output buffer."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Typescript
+;;
 
 (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode))
 
@@ -1432,7 +1433,7 @@ then switch to the markdown output buffer."
   (electric-pair-mode 1)
   (hs-minor-mode t)
   (display-line-numbers-mode) ;; powershell-mode is not derived from prog-mode
-  (add-hook 'before-save-hook #'dino-delete-trailing-whitespace nil t)
+  (add-hook 'before-save-hook #'delete-trailing-whitespace nil t)
   (define-key powershell-mode-map (kbd "ESC #")   #'dino/indent-buffer)
   (define-key powershell-mode-map (kbd "ESC .")   #'company-complete)
   (define-key powershell-mode-map (kbd "ESC C-i") #'company-capf)
@@ -1737,7 +1738,7 @@ more information."
   (flycheck-select-checker
    (if (string= mode-name "SCSS") 'scss-stylelint 'css-stylelint))
 
-  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
   (setq indent-tabs-mode nil) )
 
 ;; one-time thing
@@ -2019,10 +2020,13 @@ more information."
 ;;
 (use-package shell-maker
   :ensure t)
+
+;; With :vc, these get loaded from github; not sure if they are ever updated
+;; after initial clone. Doc seems to suggest so.
 (use-package acp
-  :vc (:url "https://github.com/xenodium/acp.el"))
+  :vc (:url "https://github.com/xenodium/acp.el" :rev :newest))
 (use-package agent-shell
-  :vc (:url "https://github.com/xenodium/agent-shell")
+  :vc (:url "https://github.com/xenodium/agent-shell" :rev :newest)
 
   :config
   ;; Auth via API key
@@ -2271,8 +2275,7 @@ just auto-corrects on common mis-spellings by me."
 
     ;; remove trailing whitespace in C files
     ;; http://stackoverflow.com/questions/1931784
-    ;;(add-hook 'write-contents-functions 'dino-delete-trailing-whitespace)
-    (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
+    (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
 
     (message "dino-c-mode-common-hook-fn: done."))))
 
@@ -3007,7 +3010,7 @@ colon."
 
   (message "dino-csharp-ts-mode-fn: done.")
 
-  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
   )
 
 (eval-after-load "csharp-mode"
@@ -3336,7 +3339,7 @@ Does not consider word syntax tables.
       (modify-syntax-entry ?\' "\"" sgml-mode-syntax-table)
     (modify-syntax-entry ?\' ".")) ;; . = punctuation
 
-  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
   )
 
 (add-hook 'sgml-mode-hook 'dino-xml-mode-fn)
@@ -3447,7 +3450,7 @@ Does not consider word syntax tables.
   (company-mode)
   (apheleia-mode)
   (flycheck-mode)
-  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local))
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local))
 
 ;; add (emacs-lisp-mode . lisp-indent) to apheleia-mode-alist
 (add-hook 'emacs-lisp-mode-hook 'dino-elisp-mode-fn)
@@ -3623,7 +3626,7 @@ counteracts that. "
   ;; modes should NOT get the `delete-trailing-whitespace' treatment?
   ;; I dunno.
   (when (memq major-mode '(js-mode javascript-mode json-mode))
-    (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local))
+    (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local))
 
   ;;
   ;; eglot by default uses typescript-language-server as the server.
@@ -3774,7 +3777,7 @@ counteracts that. "
 
   ;; remove trailing whitespace in C files
   ;; http://stackoverflow.com/questions/1931784
-  (add-hook 'before-save-hook 'dino-delete-trailing-whitespace nil 'local))
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local))
 
 
 
