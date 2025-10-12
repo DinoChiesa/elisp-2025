@@ -632,7 +632,6 @@
     ;;  (flycheck-mode 1)
     (eglot-ensure)
     (company-mode)
-    ;;(keymap-local-set "C-<tab>" #'company-complete)
     (define-key jsonnet-mode-map (kbd "C-<tab>") #'company-complete)
 
     (when (boundp 'apheleia-formatters)
@@ -654,8 +653,8 @@
     )
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (keymap-local-set "C-c C-e" #'jsonnet-eval-buffer)
-  (keymap-local-set "C-c C-b" #'browse-url))
+  (define-key jsonnet-mode-map (kbd "C-c C-e") #'jsonnet-eval-buffer)
+  (define-key jsonnet-mode-map (kbd "C-c C-b") #'browse-url))
 
 ;; The following is a scratchpad for fixups for jsonnetfmt and jsonnet lang
 ;; server. For the latter there are two options, and this will allow switching
@@ -884,12 +883,10 @@ server program."
   (display-line-numbers-mode)
   (setq sh-basic-offset 2)
   (sh-electric-here-document-mode)
-
   (apheleia-mode)
   (dino/setup-shmode-for-apheleia)
-
-  (keymap-local-set "C-c C-g"  #'dino/shfmt-buffer)
-  (keymap-local-set "C-c C-c"  #'comment-region))
+  (define-key sh-mode-map (kbd "C-c C-g")  #'dino/shfmt-buffer)
+  (define-key sh-mode-map (kbd "C-c C-c")  #'comment-region))
 
 (add-hook 'sh-mode-hook 'dino-sh-mode-fn)
 
@@ -904,12 +901,12 @@ server program."
   ;;(setq-default)
   (setq tab-width 2
         standard-indent 2
-        indent-tabs-mode t) ;; golang prefers tabs, ugh
+        indent-tabs-mode t) ;; golang prefers tabs, wow, ugh
 
-  (keymap-local-set "ESC C-R" #'indent-region)
-  (keymap-local-set "ESC #"   #'dino/indent-buffer)
-  (keymap-local-set "C-c C-w" #'compare-windows)
-  (keymap-local-set "C-c C-c" #'comment-region)
+  (define-key go-mode-map (kbd "ESC C-R") #'indent-region)
+  (define-key go-mode-map (kbd "ESC #")   #'dino/indent-buffer)
+  (define-key go-mode-map (kbd "C-c C-w") #'compare-windows)
+  (define-key go-mode-map (kbd "C-c C-c") #'comment-region)
 
   (eval-after-load "smarter-compile"
     '(progn
@@ -931,9 +928,7 @@ server program."
   ;; still need this? 20241203-0215
   (require 'goflycheck)
   (flycheck-mode 1)
-
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
-  )
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local) )
 
 (add-hook 'go-mode-hook 'dino-go-mode-fn)
 
@@ -1017,22 +1012,19 @@ server program."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; web
+;;
+(defun dino-web-mode-fn ()
+  "My hook for web mode"
+  (turn-on-font-lock)
+  (display-line-numbers-mode)
+  ;; why I have to re-set this key is baffling to me.
+  ;; and this does not seem to work...
+  (define-key web-mode-map (kbd "ESC C-R")  #'indent-region)
+  (auto-fill-mode -1))
+
 (use-package web-mode
   :defer t
-  :config (progn
-            (defun dino-web-mode-fn ()
-              "My hook for web mode"
-              (turn-on-font-lock)
-              ;; minor-mode
-              ;;(hs-minor-mode 1)
-              (display-line-numbers-mode)
-              ;; why I have to re-set this key is baffling to me.
-              ;; and this does not seem to work...
-              (keymap-local-set "ESC C-R"  #'indent-region)
-              ;; Make sure autofill is OFF.
-              (auto-fill-mode -1))
-
-            (add-hook 'web-mode-hook 'dino-web-mode-fn)))
+  :hook (web-mode . dino-web-mode-fn))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1062,9 +1054,9 @@ then switch to the markdown output buffer."
   (modify-syntax-entry ?_ "w")
   (auto-fill-mode -1)
   (display-line-numbers-mode)
-  (keymap-local-set "C-c m s" #'dpc-markdown-standalone)
-  (keymap-local-set "C-c m d" #'delete-trailing-whitespace)
-  (keymap-local-set "C-c m |" #'markdown-table-align) ;; my favorite feature
+  (define-key markdown-mode-map (kbd "C-c m s") #'dpc-markdown-standalone)
+  (define-key markdown-mode-map (kbd "C-c m d") #'delete-trailing-whitespace)
+  (define-key markdown-mode-map (kbd "C-c m |") #'markdown-table-align) ;; my favorite feature
   )
 
 (use-package markdown-mode
@@ -1663,7 +1655,6 @@ more information."
   (define-key css-mode-map (kbd "ESC #")   #'dino/indent-buffer)
   (define-key css-mode-map (kbd "C-c C-w") #'compare-windows)
   (define-key css-mode-map (kbd "C-c C-c") #'comment-region)
-  ;;(keymap-local-set "ESC ."   #'company-complete)
   (define-key css-mode-map (kbd "ESC .") #'company-complete)
   (define-key css-mode-map (kbd "ESC C-i") #'company-capf)
 
@@ -1791,7 +1782,7 @@ more information."
   ;; The default checker is json-python-json, which has a command "python3".
   ;; On my version of windows,
   ;;
-  ;; (1) there is no "python3", the executable i sjust called "python" and it resides in c:\Python313 .
+  ;; (1) there is no "python3", the executable is just called "python" and it resides in c:\Python313 .
   ;;
   ;; (2) there is a directory on the path, ~\AppData\Local\Microsoft\WindowsApps, that has a
   ;; IO_REPARSE_TAG_APPEXECLINK named "python3.exe". Not all systems can handle these reparse
@@ -1812,24 +1803,14 @@ more information."
            (fboundp 'treesit-fold-mode))
       (progn
         (treesit-fold-mode)
-        (keymap-local-set "C-c >"  #'treesit-fold-close)
-        (keymap-local-set "C-c <"  #'treesit-fold-open)))
+        (define-key json-mode-map (kbd "C-c >")  #'treesit-fold-close)
+        (define-key json-mode-map (kbd "C-c <")  #'treesit-fold-open)))
   )
 
 (use-package json-mode
   :defer t
-  :config (progn
-            (require 'json-reformat)
-            ;;(autoload 'json-mode "json" nil t) ;; still need this?
-
-            ;; 20250710-1107 - still need this?
-            ;; ;; add a new element to the front of the list and it will shadow matches
-            ;; ;; further down the list.
-            ;; (add-to-list 'auto-mode-alist '("\\.json\\'" . json-mode))
-
-            (add-hook 'json-mode-hook   'dino-json-mode-fn)
-            (add-hook 'json-ts-mode-hook   'dino-json-mode-fn)
-            ))
+  :hook ((json-mode json-ts-mode) . dino-json-mode-fn)
+  :config (require 'json-reformat) )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1839,9 +1820,8 @@ more information."
 (use-package thesaurus
   :defer t
   :config
-  (progn
-    (thesaurus-set-bhl-api-key-from-file "~/elisp/.BigHugeLabs.apikey.txt")
-    (define-key global-map (kbd "C-c C-t") #'thesaurus-choose-synonym-and-replace)))
+  (thesaurus-set-bhl-api-key-from-file "~/elisp/.BigHugeLabs.apikey.txt")
+  (define-key global-map (kbd "C-c C-t") #'thesaurus-choose-synonym-and-replace))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2219,16 +2199,12 @@ just auto-corrects on common mis-spellings by me."
   (abbrev-mode 1)
   (dino-define-global-abbrev-table)
   (display-line-numbers-mode)
-  (keymap-local-set "C-c C-c"    #'center-paragraph)
-  (keymap-local-set "C-c i"      #'dino/indent-line-to-current-column)
-  (keymap-local-set "C-<insert>" #'uniline-mode)
-  (keymap-local-set "C-c m d"    #'delete-trailing-whitespace)
-
+  (define-key text-mode-map (kbd "C-c C-c")    #'center-paragraph)
+  (define-key text-mode-map (kbd "C-c i")      #'dino/indent-line-to-current-column)
+  (define-key text-mode-map (kbd "C-<insert>") #'uniline-mode)
+  (define-key text-mode-map (kbd "C-c m d")    #'delete-trailing-whitespace)
   ;;(variable-pitch-mode)
   ;;
-  ;; add new abbreviations above.
-  ;;
-
   ;; (require 'refill) ;; automatically refill paragraphs
   ;; (refill-mode 1)
   )
