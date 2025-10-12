@@ -23,19 +23,25 @@
 ;; Pay attention: that path is mangled.
 ;; https://www.reddit.com/r/emacs/comments/ymzw78/windows_elpa_gnupg_and_keys_problems/
 ;;
-;; This seems to solve it.
+;; Setting package-gnupghome-dir seems to solve it.
+;; Separately, disable inotify on Windows, telling auto-revert to use polling.
+;; Let's see if that improves things.
+;; TODO: (maybe?) consolidate all the Windows-specific stuff into one section?
 (if (eq system-type 'windows-nt)
-    (setopt package-gnupghome-dir ".emacs.d/elpa/gnupg"))
+    (progn
+      (setopt package-gnupghome-dir ".emacs.d/elpa/gnupg")
+      ;;(setq auto-revert-use-notify nil) ;; with lazy-revert, using this on all platforms
+      ))
 
 
-;; to make sure unicode chars are retained in this file.
+;; To make sure unicode chars are retained in this file.
 (set-language-environment 'utf-8)
 (set-default-coding-systems 'utf-8)
 (set-selection-coding-system 'utf-8)
 (set-locale-environment "en.UTF-8")
 (prefer-coding-system 'utf-8)
 
-;; 20250406 this needs to be system-wide. Setting it in a mode hook is too late,
+;; 20250406 This needs to be system-wide. Setting it in a mode hook is too late,
 ;; as the file local vars will have already been evaluated and set.
 (setq enable-local-variables t)
 (setq tty-menu-open-use-tmm t) ;; 20250717-0619 - F10 will invoke `tmm-menubar'
@@ -63,7 +69,6 @@
 ;; smaller sizes; I'm trying to avoid that with these settings.
 (setq split-height-threshold nil split-width-threshold nil)
 
-;; set truncation on side-by-side windows to nil.
 (setq truncate-partial-width-windows nil)
 (setq auto-save-interval 500)
 (setq case-fold-search nil)
@@ -295,6 +300,23 @@
   :defer 36
   :ensure t)
 
+(use-package lazy-revert
+  ;; A layer on top of auto-revert-mode, It reverts only those buffers that are
+  ;; currently _displayed_. For all others, flag them and revert when they get
+  ;; displayed. Performs better when there are 00's of buffers.
+  :ensure nil
+  :vc (:url "https://github.com/yilin-zhang/lazy-revert"
+       :rev :newest
+       :main-file "lazy-revert.el"
+       :branch "master")
+  :hook (after-init . lazy-revert-mode)
+  :config
+  (setq auto-revert-verbose t ; let us know when it happens
+        auto-revert-use-notify nil ; use polling, not inotify
+        auto-revert-stop-on-user-input nil
+        ;; Only prompts for confirmation when buffer is unsaved.
+        revert-without-query (list ".")))
+
 (use-package uniline
   ;; easily make line drawings with unicode symbols.
   :defer t)
@@ -322,6 +344,14 @@
   :load-path "~/elisp"
   :pin manual
   :defer t
+  :init
+  (defun dino-rego-mode-fn ()
+    (display-line-numbers-mode)
+    (when (and (boundp 'apheleia-formatters)
+               (alist-get 'rego-mode apheleia-mode-alist))
+      (apheleia-mode)))
+
+  :hook dino-rego-mode-fn
   :commands (rego-repl-show rego-mode)
 
   :config
@@ -332,13 +362,7 @@
     (when (not (alist-get 'rego-mode apheleia-mode-alist))
       (push '(rego-mode . opa-fmt) apheleia-mode-alist)))
 
-  (defun dino-rego-mode-fn ()
-    (display-line-numbers-mode)
-    (when (and (boundp 'apheleia-formatters)
-               (alist-get 'rego-mode apheleia-mode-alist))
-      (apheleia-mode)))
-
-  (add-hook 'rego-mode-hook 'dino-rego-mode-fn))
+  )
 
 (use-package treesit
   :defer t
@@ -425,23 +449,23 @@
            (cycle . 10))))
 
   :bind (:map  icomplete-vertical-mode-minibuffer-map
-               ;; icomplete-minibuffer-map <== use this for the non-vertical version.
-               ;; The following 4 bindings are defaults, unnecessary to set here:
-               ;; ("<down>" . icomplete-forward-completions)
-               ;; ("C-n" . icomplete-forward-completions)
-               ;; ("<up>" . icomplete-backward-completions)
-               ;; ("C-p" . icomplete-backward-completions)
-               ("TAB"       . icomplete-force-complete)
-               ("RET"       . icomplete-force-complete-and-exit)
-               ("C-c C-j"   . exit-minibuffer) ;; exit without completion
-               ;; toggle - I usually don't want this when it happens. (by mistake)
-               ("C-v"       . icomplete-vertical-mode)
+         ;; icomplete-minibuffer-map <== use this for the non-vertical version.
+         ;; The following 4 bindings are defaults, unnecessary to set here:
+         ;; ("<down>" . icomplete-forward-completions)
+         ;; ("C-n" . icomplete-forward-completions)
+         ;; ("<up>" . icomplete-backward-completions)
+         ;; ("C-p" . icomplete-backward-completions)
+         ("TAB"       . icomplete-force-complete)
+         ("RET"       . icomplete-force-complete-and-exit)
+         ("C-c C-j"   . exit-minibuffer) ;; exit without completion
+         ;; toggle - I usually don't want this when it happens. (by mistake)
+         ("C-v"       . icomplete-vertical-mode)
 
-               ;; ;; I installed & enabled embark, but I never began using it. (shrug)
-               ;; ("C-c ,"     . embark-act)
-               ;; ("C-x"       . embark-export) ;; temporarily in the minibuffer
-               ;; ("C-c ;"     . embark-collect)
-               )
+         ;; ;; I installed & enabled embark, but I never began using it. (shrug)
+         ;; ("C-c ,"     . embark-act)
+         ;; ("C-x"       . embark-export) ;; temporarily in the minibuffer
+         ;; ("C-c ;"     . embark-collect)
+         )
   )
 
 (use-package marginalia
@@ -455,9 +479,9 @@
   ;; sequence specifically for use in the minibuffer.  To make a binding in the
   ;; *Completions* buffer, add it to the `completion-list-mode-map'.
   :bind (:map minibuffer-local-map
-              ("M-A" . marginalia-cycle))
+         ("M-A" . marginalia-cycle))
 
-  :init
+  :config
   ;; Enable the mode right away. This forces loading the package.
   (marginalia-mode))
 
@@ -549,15 +573,15 @@
   :demand t
   :commands (eglot eglot-ensure)
   :bind (:map eglot-mode-map
-              ("C-c e a" . eglot-code-actions)
-              ("C-c e o" . eglot-code-actions-organize-imports)
-              ("C-c e r" . eglot-rename)
-              ("C-c e f" . eglot-format)
-              ("C-c e s" . eglot-shutdown)
-              ("C-c e C-s" . eglot-shutdown-all)
-              ("C-c e r" . eglot-reconnect)
-              ("C-c e c" . company-capf)
-              )
+         ("C-c e a" . eglot-code-actions)
+         ("C-c e o" . eglot-code-actions-organize-imports)
+         ("C-c e r" . eglot-rename)
+         ("C-c e f" . eglot-format)
+         ("C-c e s" . eglot-shutdown)
+         ("C-c e C-s" . eglot-shutdown-all)
+         ("C-c e r" . eglot-reconnect)
+         ("C-c e c" . company-capf)
+         )
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
   :config  (setq flymake-show-diagnostics-at-end-of-line t)
 
@@ -1384,7 +1408,7 @@ then switch to the markdown output buffer."
   "My hook for YAML mode"
   (interactive)
   (turn-on-font-lock)
-  (turn-on-auto-revert-mode)
+  ;;(turn-on-auto-revert-mode) ;; not needed with lazy-revert
   (display-line-numbers-mode)
   (yaml-pretty-mode)
   (define-key yaml-mode-map (kbd "C-c C-c")  #'comment-region)
@@ -1450,13 +1474,13 @@ then switch to the markdown output buffer."
     '(progn
        ;; hideshow for powershell
        (setq dpc-hs-settings-for-powershell-mode
-             '(powershell-mode
-               "{"                                 ;; regexp for start block
-               "}"                                 ;; regexp for end block
-               "[ \\t]*#"                          ;; regexp for comment start
-               forward-sexp                        ;; hs-forward-sexp-func
-               hs-c-like-adjust-block-beginning    ;; c-like adjust (1 char)
-               ))
+        '(powershell-mode
+          "{"                                 ;; regexp for start block
+          "}"                                 ;; regexp for end block
+          "[ \\t]*#"                          ;; regexp for comment start
+          forward-sexp                        ;; hs-forward-sexp-func
+          hs-c-like-adjust-block-beginning    ;; c-like adjust (1 char)
+          ))
 
        ;; replace:
        ;;(setf (cdr (rassoc 'powershell-mode hs-special-modes-alist) ) something-here)
@@ -1467,7 +1491,7 @@ then switch to the markdown output buffer."
        ;; delete:
        ;; (assq-delete-all 'powershell-mode hs-special-modes-alist)
        (unless (assoc 'powershell-mode hs-special-modes-alist)
-         (push dpc-hs-settings-for-powershell-mode hs-special-modes-alist)))))
+        (push dpc-hs-settings-for-powershell-mode hs-special-modes-alist)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1658,7 +1682,7 @@ more information."
   (define-key css-mode-map (kbd "ESC .") #'company-complete)
   (define-key css-mode-map (kbd "ESC C-i") #'company-capf)
 
-  (turn-on-auto-revert-mode)
+  ;;  (turn-on-auto-revert-mode) ;; in favor of lazy-revert
   (electric-pair-mode)
   (company-mode)
   (apheleia-mode)
@@ -2005,7 +2029,13 @@ more information."
 ;; With :vc, these get loaded from github; not sure if they are ever updated
 ;; after initial clone. Doc seems to suggest so.
 (use-package acp
-  :vc (:url "https://github.com/xenodium/acp.el" :rev :newest))
+  :vc (:url "https://github.com/xenodium/acp.el"
+       :rev :newest
+       :main-file "acp.el"
+       :branch "main")
+  )
+
+
 (use-package agent-shell
   :vc (:url "https://github.com/xenodium/agent-shell" :rev :newest)
 
@@ -2123,7 +2153,7 @@ more information."
   (define-key dired-mode-map (kbd "F")  #'dino-dired-do-find)
   (define-key dired-mode-map (kbd "s")  #'dino-dired-sort-cycle)
   (dino-dired-sort-cycle "t") ;; by default, sort by time
-  (turn-on-auto-revert-mode)
+  ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
   )
 
 (use-package dired
@@ -2183,7 +2213,7 @@ just auto-corrects on common mis-spellings by me."
 
 (defun dino-prog-mode-hook-fn ()
   (abbrev-mode 1)
-  (turn-on-auto-revert-mode)
+  ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
   (display-line-numbers-mode)
   (hc-highlight-trailing-whitespace)
   )
@@ -2887,15 +2917,15 @@ colon."
      ;; This one is for the open curly for the using statement.
      ;; (The using _directive_ (for import at top of file) is different.)
      (setf (cdr (car csharp-ts-mode--indent-rules))
-           (cons
-            '((parent-is "using_statement") parent-bol 0)
-            (cdr (car csharp-ts-mode--indent-rules))))
+      (cons
+       '((parent-is "using_statement") parent-bol 0)
+       (cdr (car csharp-ts-mode--indent-rules))))
      ;; This rule is for the opening curly brace on anonymous lambdas, when the
      ;; open curly is on a new line.
      (setf (cdr (car csharp-ts-mode--indent-rules))
-           (cons
-            '((parent-is "lambda_expression") parent-bol 0)
-            (cdr (car csharp-ts-mode--indent-rules))))
+      (cons
+       '((parent-is "lambda_expression") parent-bol 0)
+       (cdr (car csharp-ts-mode--indent-rules))))
      (setq-local treesit-simple-indent-rules csharp-ts-mode--indent-rules)
      ))
 
@@ -3229,16 +3259,16 @@ Does not consider word syntax tables.
 (when (boundp 'apheleia-formatters)
   ;; TODO: use smarter path resolution here
   (push '(dino-xmlpretty .
-                         ("java" "-jar"
-                          "/Users/dchiesa/dev/java/XmlPretty/target/com.google.dchiesa-xml-prettifier-20230725.jar"
-                          "-"))
+          ("java" "-jar"
+           "/Users/dchiesa/dev/java/XmlPretty/target/com.google.dchiesa-xml-prettifier-20230725.jar"
+           "-"))
         apheleia-formatters)
 
   ;; TODO: use smarter path resolution here
   (push '(xml-prettier .
-                       ("/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"
-                        "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
-                        "--stdin-filepath" "foo.xml"))
+          ("/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"
+           "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
+           "--stdin-filepath" "foo.xml"))
         apheleia-formatters)
 
   ;; 20250401-1837
@@ -3264,7 +3294,7 @@ Does not consider word syntax tables.
   )
 
 (defun dino-xml-mode-fn ()
-  (turn-on-auto-revert-mode)
+  ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
   (hs-minor-mode 1)
   (setq hs-isearch-open t)
   ;; 20250702-2204
@@ -3323,16 +3353,16 @@ Does not consider word syntax tables.
     `(:schemaLocators
       [
        (:rootElement t
-                     :searchPaths
-                     [
-                      ,(file-name-concat home-dir "/newdev/apigee-schema-inference/dist/schema")
-                      ])
+        :searchPaths
+        [
+         ,(file-name-concat home-dir "/newdev/apigee-schema-inference/dist/schema")
+         ])
        (:locationHint ,(concat xsd-cachedir "/schema_map.json"))
        (:patterns [(:pattern "*.csproj"
-                             ;;:path ,(concat xsd-cachedir "/Microsoft.Build.CommonTypes.xsd")
-                             :path ,(file-name-concat xsd-cachedir "/Microsoft.Build.Core.xsd")
-                             :useDefaultNamespace t
-                             )])
+                    ;;:path ,(concat xsd-cachedir "/Microsoft.Build.CommonTypes.xsd")
+                    :path ,(file-name-concat xsd-cachedir "/Microsoft.Build.Core.xsd")
+                    :useDefaultNamespace t
+                    )])
        ]
       )))
 
@@ -3342,11 +3372,11 @@ Does not consider word syntax tables.
     (add-to-list
      'eglot-server-programs
      `(nxml-mode .
-                 (,(file-name-concat xmllsp-loc ".venv/bin/python")
-                  ,(file-name-concat xmllsp-loc "xml_language_server/xmllsp.py")
-                  "--log-level"
-                  "INFO"
-                  :initializationOptions dpc-xmllsp-init-options)))))
+       (,(file-name-concat xmllsp-loc ".venv/bin/python")
+        ,(file-name-concat xmllsp-loc "xml_language_server/xmllsp.py")
+        "--log-level"
+        "INFO"
+        :initializationOptions dpc-xmllsp-init-options)))))
 
 ;; For fixing up if I've messed up the above:
 ;;
@@ -3421,7 +3451,12 @@ Does not consider word syntax tables.
   (company-mode)
   (apheleia-mode)
   (flycheck-mode)
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local))
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
+  (require 'elisp-fix-indent)
+  (advice-add #'calculate-lisp-indent :override #'efi/calculate-lisp-indent)
+  ;;(advice-remove 'calculate-lisp-indent #'efi~calculate-lisp-indent)
+  )
+
 
 ;; add (emacs-lisp-mode . lisp-indent) to apheleia-mode-alist
 (add-hook 'emacs-lisp-mode-hook 'dino-elisp-mode-fn)
@@ -3451,7 +3486,7 @@ Does not consider word syntax tables.
   (set (make-local-variable 'indent-tabs-mode) nil)
   (apheleia-mode)
   (display-line-numbers-mode)
-  (turn-on-auto-revert-mode)
+  ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
   (hc-highlight-trailing-whitespace)
   (electric-pair-mode)
   (yas-minor-mode)
@@ -3913,11 +3948,11 @@ counteracts that. "
     (eval-after-load "url"
       '(progn
          (defun dino-url-http-cleaner-request (old-function &rest arguments)
-           "make url-http be less chatty when sending requests"
-           (let (url-mime-charset-string
-                 url-extensions-header
-                 (url-user-agent "User-Agent: emacs/url-http.el\r\n"))
-             (apply old-function arguments)))
+          "make url-http be less chatty when sending requests"
+          (let (url-mime-charset-string
+                url-extensions-header
+                (url-user-agent "User-Agent: emacs/url-http.el\r\n"))
+           (apply old-function arguments)))
          ;; to disable at runtime:
          ;; (ad-disable-advice 'url-http-create-request 'around 'dino-url-eliminate-giant-useless-header)
          (advice-add #'url-http-create-request :around #'dino-url-http-cleaner-request)))))
@@ -4259,9 +4294,11 @@ Enable `recentf-mode' if it isn't already."
 (put 'narrow-to-region 'disabled nil)
 
 
-;; auto-revert for all files.
-(add-hook 'find-file-hook
-          (lambda () (turn-on-auto-revert-mode)))
+;; 20251012-0900
+;; Trying out lazy-revert
+;; ;; auto-revert for all files.
+;; (add-hook 'find-file-hook
+;;           (lambda () (turn-on-auto-revert-mode)))
 
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
