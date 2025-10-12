@@ -23,13 +23,28 @@
 ;; Pay attention: that path is mangled.
 ;; https://www.reddit.com/r/emacs/comments/ymzw78/windows_elpa_gnupg_and_keys_problems/
 ;;
-;; Setting package-gnupghome-dir seems to solve it.
-;; Separately, disable inotify on Windows, telling auto-revert to use polling.
-;; Let's see if that improves things.
+;; Setting package-gnupghome-dir to a "WSL" type form, seems to solve it.
+;; eg "/c/users/dpchi/.emacs.d/elpa/gnupg/"
+;;
+;; Separately, there was an update from Stephen Monnier to the
+;; gnu-elpa-keyring-update package (v2025.10.1 from 2025-Oct-09).
+;; There may have been a problem that was more general. In any case this
+;; seems to work now. Not sure if I still need it, but I think it's staying.
+;;
 ;; TODO: (maybe?) consolidate all the Windows-specific stuff into one section?
 (if (eq system-type 'windows-nt)
     (progn
-      (setopt package-gnupghome-dir ".emacs.d/elpa/gnupg")
+      (setopt package-gnupghome-dir
+              (concat
+               (replace-regexp-in-string "c:/" "/c/"
+                                         (replace-regexp-in-string "\\\\" "/" (getenv "HOME")))
+               "/.emacs.d/elpa/gnupg")
+
+
+              ;; (concat
+              ;;  (replace-regexp-in-string "\\\\" "/" (getenv "HOME")) "/.emacs.d/elpa/gnupg")
+
+              )
       ;;(setq auto-revert-use-notify nil) ;; with lazy-revert, using this on all platforms
       ))
 
@@ -197,7 +212,7 @@
 ;; csharpier, shfmt, aider and more - need exec-path AND/or environment PATH to be set.
 ;; Any nodejs tool installed via "npm i -g" (eg ) should be on the path already.
 (dino/maybe-add-to-exec-path
- (let ((home-dir (getenv "HOME")))
+ (let ((home-dir (replace-regexp-in-string "\\\\" "/" (getenv "HOME"))))
    (list
     "c:/Program Files/Git/usr/bin"     ;; lots of unix utilities here for various purposes
     (dino/find-latest-nvm-version-bin-dir)
