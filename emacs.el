@@ -320,25 +320,24 @@
   ;; rego-mode on MELPA is out of date and unmaintained.
   :if (file-exists-p "~/elisp/rego-mode.el")
   :load-path "~/elisp"
+  :init
+  (defun dino-rego-mode-fn ()
+    (display-line-numbers-mode)
+    (when (and (boundp 'apheleia-formatters)
+               (alist-get 'rego-mode apheleia-mode-alist))
+      (apheleia-mode)))
+  :hook dino-rego-mode-fn
   :pin manual
   :defer t
   :commands (rego-repl-show rego-mode)
-
   :config
   (when (boundp 'apheleia-formatters)
     (when (not (alist-get 'opa-fmt apheleia-formatters))
       (push '(opa-fmt . ("opa" "fmt"))
             apheleia-formatters))
     (when (not (alist-get 'rego-mode apheleia-mode-alist))
-      (push '(rego-mode . opa-fmt) apheleia-mode-alist)))
+      (push '(rego-mode . opa-fmt) apheleia-mode-alist))))
 
-  (defun dino-rego-mode-fn ()
-    (display-line-numbers-mode)
-    (when (and (boundp 'apheleia-formatters)
-               (alist-get 'rego-mode apheleia-mode-alist))
-      (apheleia-mode)))
-
-  (add-hook 'rego-mode-hook 'dino-rego-mode-fn))
 
 (use-package treesit
   :defer t
@@ -1376,26 +1375,25 @@ then switch to the markdown output buffer."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; yaml
 
-(use-package yaml-pretty-mode
-  :load-path "~/elisp"
-  :commands (yaml-pretty-mode))
-
-(defun dino-yaml-mode-fn ()
-  "My hook for YAML mode"
-  (interactive)
-  (turn-on-font-lock)
-  (turn-on-auto-revert-mode)
-  (display-line-numbers-mode)
-  (yaml-pretty-mode)
-  (define-key yaml-mode-map (kbd "C-c C-c")  #'comment-region)
-  ;;(make-local-variable 'indent-tabs-mode)
-  (setq indent-tabs-mode nil))
-
 (use-package yaml-mode
   :defer t
-  :hook (yaml-mode . dino-yaml-mode-fn)
-  ;;:config
-  )
+  :init (defun dino-yaml-mode-fn ()
+          "My hook for YAML mode"
+          (interactive)
+          (turn-on-font-lock)
+          (turn-on-auto-revert-mode)
+          (display-line-numbers-mode)
+          (yaml-pretty-mode)
+          (define-key yaml-mode-map (kbd "C-c C-c")  #'comment-region)
+          ;;(make-local-variable 'indent-tabs-mode)
+          (setq indent-tabs-mode nil))
+  :hook  dino-yaml-mode-fn )
+
+
+(use-package yaml-pretty-mode
+  :defer t
+  :load-path "~/elisp"
+  :commands (yaml-pretty-mode))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Typescript
@@ -1421,31 +1419,30 @@ then switch to the markdown output buffer."
 ;; there, I think. One day I will convert.
 ;;
 
-(defun dino-powershell-mode-fn ()
-  (electric-pair-mode 1)
-  (hs-minor-mode t)
-  (display-line-numbers-mode) ;; powershell-mode is not derived from prog-mode
-  (add-hook 'before-save-hook #'delete-trailing-whitespace nil t)
-  (define-key powershell-mode-map (kbd "ESC #")   #'dino/indent-buffer)
-  (define-key powershell-mode-map (kbd "ESC .")   #'company-complete)
-  (define-key powershell-mode-map (kbd "ESC C-i") #'company-capf)
-  (define-key powershell-mode-map (kbd "ESC C-R") #'indent-region)
-  (define-key powershell-mode-map (kbd "C-c C-c") #'comment-region)
-  (define-key powershell-mode-map (kbd "C-c C-g") #'powershell-format-buffer)
-  (define-key powershell-mode-map (kbd "C-c C-w") #'compare-windows)
-  )
 
 (use-package powershell-mode
+  :defer t
   :if (file-exists-p "~/elisp/powershell-mode.el")
   :load-path "~/elisp"
   :pin manual
-  :defer t
+  :init (defun dino-powershell-mode-fn ()
+          (electric-pair-mode 1)
+          (hs-minor-mode t)
+          (display-line-numbers-mode) ;; powershell-mode is not derived from prog-mode
+          (add-hook 'before-save-hook #'delete-trailing-whitespace nil t)
+          (define-key powershell-mode-map (kbd "ESC #")   #'dino/indent-buffer)
+          (define-key powershell-mode-map (kbd "ESC .")   #'company-complete)
+          (define-key powershell-mode-map (kbd "ESC C-i") #'company-capf)
+          (define-key powershell-mode-map (kbd "ESC C-R") #'indent-region)
+          (define-key powershell-mode-map (kbd "C-c C-c") #'comment-region)
+          (define-key powershell-mode-map (kbd "C-c C-g") #'powershell-format-buffer)
+          (define-key powershell-mode-map (kbd "C-c C-w") #'compare-windows)
+          )
   :commands (powershell-mode)
   :hook (powershell-mode . dino-powershell-mode-fn)
   :config
   (add-to-list 'auto-mode-alist '("\\.ps1\\'" . powershell-mode))
   (add-to-list 'auto-mode-alist '("\\.psm1\\'" . powershell-mode))
-
   (eval-after-load "hideshow"
     '(progn
        ;; hideshow for powershell
@@ -1482,7 +1479,6 @@ then switch to the markdown output buffer."
   ;;   )
   (add-to-list 'auto-mode-alist '("\\.lua\\'" . lua-mode))
   (add-to-list 'interpreter-mode-alist '("lua" . lua-mode)))
-
 
 ;;
 ;; (eval-after-load "lua-mode"
@@ -1641,125 +1637,123 @@ more information."
 ;; I am not sure what it gives me, while I am editing CSS. Completion?
 ;; Also I am not sure what css-ts-mode gives me? or does completion come from TS?
 
-(defun dino-css-mode-fn ()
-  "My hook for CSS mode"
-  (interactive)
-  ;; (turn-on-font-lock) ;; need this?
-  (setq css-indent-offset 2
-        completion-auto-help 'always
-        )
-  ;; 20251003-1927
-  ;; I should convert all of these "keymap-local-set" calls everywhere.
-  ;; but I want to test a few first.
-  (define-key css-mode-map (kbd "ESC C-R") #'indent-region)
-  (define-key css-mode-map (kbd "ESC #")   #'dino/indent-buffer)
-  (define-key css-mode-map (kbd "C-c C-w") #'compare-windows)
-  (define-key css-mode-map (kbd "C-c C-c") #'comment-region)
-  (define-key css-mode-map (kbd "ESC .") #'company-complete)
-  (define-key css-mode-map (kbd "ESC C-i") #'company-capf)
-
-  (turn-on-auto-revert-mode)
-  (electric-pair-mode)
-  (company-mode)
-  (apheleia-mode)
-  (display-line-numbers-mode)
-
-  (if (and (fboundp 'treesit-parser-list)
-           (treesit-parser-list)
-           (fboundp 'treesit-fold-mode))
-      (progn
-        (treesit-fold-mode)
-        (define-key css-mode-map (kbd "C-c >")  #'treesit-fold-close)
-        (define-key css-mode-map (kbd "C-c <")  #'treesit-fold-open)))
-
-  ;;(eglot-ensure) ;; maybe I will want this?
-
-  ;; 20250524-1624
-  ;; Microsoft produces a CSS language server as part of (VS)Code OSS.  But they do not
-  ;; *package it* as an independent executable.  It's packaged only as part of VSCode. There
-  ;; have been attempts to extract the CSS Lang server from VSCode and re-package it, for
-  ;; example https://github.com/hrsh7th/vscode-langservers-extracted .  The way it works:
-  ;; the build script clones the VSCode repo and then tries building just what's necessary I
-  ;; guess, for the CSS lang server (and maybe a few others).  but (a) that repo hasn't been
-  ;; updated in a while, and (b) the build doesn't work.
-  ;;
-  ;; There is a relevant repo that is being maintained:
-  ;; https://github.com/microsoft/vscode-css-languageservice But that is a
-  ;; library, service? not a tool or LSP.  There is no "npm run" script for it.
-  ;; I asked Gemini how I could use it, and it advised me run a thing that is
-  ;; based on an extraction that was done 7 years ago.
-  ;; https://www.npmjs.com/package/vscode-css-languageserver-bin .  If I say I
-  ;; don't want that, it advises me to build my own server that packages this
-  ;; library. I tried that, see ~/dev/my-css-language-server , it also didn't
-  ;; work.  I don't recall what the obstacle was there.
-  ;;
-  ;; Finally, I resorted to just running the CSS lang server that is packaged in
-  ;; the VSCode installation. This works on Windows and Linux. Of course I have
-  ;; to install vscode to get it.
-  ;;
-  ;; I am not sure what specifically I am getting out of the LSP here; tree-sitter
-  ;; gives me completions and syntax highlighting. Is there refactoring or other stuff
-  ;; the LSP gives me? (shrug)
-
-  ;; (let* ((vscode-server-program
-  ;;         (file-name-concat (if (eq system-type 'windows-nt)
-  ;;                               (file-name-concat (getenv "HOME")
-  ;;                                                 "AppData/Local/Programs/Microsoft VS Code")
-  ;;                             "/usr/share/code")
-  ;;                           "resources/app/extensions/css-language-features/server/dist/node/cssServerMain.js")))
-  ;;   (if (file-exists-p vscode-server-program)
-  ;;       (add-to-list 'eglot-server-programs
-  ;;                    `((css-mode css-ts-mode)
-  ;;                      . ,(list "node" vscode-server-program "--stdio")))
-  ;;     ))
-
-  ;;
-  ;; To fix if I have broken things:
-  ;; (setq eglot-server-programs (assoc-delete-all '(css-mode css-ts-mode) eglot-server-programs ))
-
-  ;; To install the external flycheck checkers:
-  ;;
-  ;; npm install -g csslint  # not sure needed any longer!
-  ;; npm install -g stylelint stylelint-config-standard stylelint-scss
-  ;;
-  ;; check what you have installed globally:
-  ;;   npm ls -g
-
-  (flycheck-mode)
-  (flycheck-select-checker
-   (if (string= mode-name "SCSS") 'scss-stylelint 'css-stylelint))
-
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
-  (setq indent-tabs-mode nil) )
-
 ;; one-time thing
 (dino/maybe-register-vscode-server-for-eglot '(css-mode css-ts-mode))
-
 
 (use-package css-mode
   :defer t
   :ensure nil
-  :config (progn
-            ;;(autoload 'css-mode "css-mode" "Mode for editing Cascading Stylesheets." t)
-            (require 'flycheck)
-            ;; Overwrite existing scss-stylelint checker to not use --syntax flag
-            (flycheck-define-checker scss-stylelint
-              "A SCSS syntax and style checker using stylelint. See URL `http://stylelint.io/'."
-              :command ("stylelint"
-                        (eval flycheck-stylelint-args)
-                        ;; "--syntax" "scss"
-                        (option-flag "--quiet" flycheck-stylelint-quiet)
-                        (config-file "--config" flycheck-stylelintrc))
-              :standard-input t
-              :error-parser #'flycheck-parse-stylelint
-              :modes (scss-mode css-mode))
+  :init (defun dino-css-mode-fn ()
+          "My hook for CSS mode"
+          (interactive)
+          ;; (turn-on-font-lock) ;; need this?
+          (setq css-indent-offset 2
+                completion-auto-help 'always
+                )
+          ;; 20251003-1927
+          ;; I should convert all of these "keymap-local-set" calls everywhere.
+          ;; but I want to test a few first.
+          (define-key css-mode-map (kbd "ESC C-R") #'indent-region)
+          (define-key css-mode-map (kbd "ESC #")   #'dino/indent-buffer)
+          (define-key css-mode-map (kbd "C-c C-w") #'compare-windows)
+          (define-key css-mode-map (kbd "C-c C-c") #'comment-region)
+          (define-key css-mode-map (kbd "ESC .") #'company-complete)
+          (define-key css-mode-map (kbd "ESC C-i") #'company-capf)
 
-            (when (boundp 'apheleia-mode-alist)
-              (setf (alist-get 'css-mode apheleia-mode-alist) 'prettier-css)
-              (setf (alist-get 'css-ts-mode apheleia-mode-alist) 'prettier-css))
+          (turn-on-auto-revert-mode)
+          (electric-pair-mode)
+          (company-mode)
+          (apheleia-mode)
+          (display-line-numbers-mode)
 
-            (add-hook 'css-ts-mode-hook 'dino-css-mode-fn)
-            (add-hook 'css-mode-hook 'dino-css-mode-fn)))
+          (if (and (fboundp 'treesit-parser-list)
+                   (treesit-parser-list)
+                   (fboundp 'treesit-fold-mode))
+              (progn
+                (treesit-fold-mode)
+                (define-key css-mode-map (kbd "C-c >")  #'treesit-fold-close)
+                (define-key css-mode-map (kbd "C-c <")  #'treesit-fold-open)))
+
+          ;;(eglot-ensure) ;; maybe I will want this?
+
+          ;; 20250524-1624
+          ;; Microsoft produces a CSS language server as part of (VS)Code OSS.  But they do not
+          ;; *package it* as an independent executable.  It's packaged only as part of VSCode. There
+          ;; have been attempts to extract the CSS Lang server from VSCode and re-package it, for
+          ;; example https://github.com/hrsh7th/vscode-langservers-extracted .  The way it works:
+          ;; the build script clones the VSCode repo and then tries building just what's necessary I
+          ;; guess, for the CSS lang server (and maybe a few others).  but (a) that repo hasn't been
+          ;; updated in a while, and (b) the build doesn't work.
+          ;;
+          ;; There is a relevant repo that is being maintained:
+          ;; https://github.com/microsoft/vscode-css-languageservice But that is a
+          ;; library, service? not a tool or LSP.  There is no "npm run" script for it.
+          ;; I asked Gemini how I could use it, and it advised me run a thing that is
+          ;; based on an extraction that was done 7 years ago.
+          ;; https://www.npmjs.com/package/vscode-css-languageserver-bin .  If I say I
+          ;; don't want that, it advises me to build my own server that packages this
+          ;; library. I tried that, see ~/dev/my-css-language-server , it also didn't
+          ;; work.  I don't recall what the obstacle was there.
+          ;;
+          ;; Finally, I resorted to just running the CSS lang server that is packaged in
+          ;; the VSCode installation. This works on Windows and Linux. Of course I have
+          ;; to install vscode to get it.
+          ;;
+          ;; I am not sure what specifically I am getting out of the LSP here; tree-sitter
+          ;; gives me completions and syntax highlighting. Is there refactoring or other stuff
+          ;; the LSP gives me? (shrug)
+
+          ;; (let* ((vscode-server-program
+          ;;         (file-name-concat (if (eq system-type 'windows-nt)
+          ;;                               (file-name-concat (getenv "HOME")
+          ;;                                                 "AppData/Local/Programs/Microsoft VS Code")
+          ;;                             "/usr/share/code")
+          ;;                           "resources/app/extensions/css-language-features/server/dist/node/cssServerMain.js")))
+          ;;   (if (file-exists-p vscode-server-program)
+          ;;       (add-to-list 'eglot-server-programs
+          ;;                    `((css-mode css-ts-mode)
+          ;;                      . ,(list "node" vscode-server-program "--stdio")))
+          ;;     ))
+
+          ;;
+          ;; To fix if I have broken things:
+          ;; (setq eglot-server-programs (assoc-delete-all '(css-mode css-ts-mode) eglot-server-programs ))
+
+          ;; To install the external flycheck checkers:
+          ;;
+          ;; npm install -g csslint  # not sure needed any longer!
+          ;; npm install -g stylelint stylelint-config-standard stylelint-scss
+          ;;
+          ;; check what you have installed globally:
+          ;;   npm ls -g
+
+          (flycheck-mode)
+          (flycheck-select-checker
+           (if (string= mode-name "SCSS") 'scss-stylelint 'css-stylelint))
+
+          (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
+          (setq indent-tabs-mode nil) )
+
+  :hook ((css-mode css-ts-mode) . dino-css-mode-fn)
+  :config
+  ;;(autoload 'css-mode "css-mode" "Mode for editing Cascading Stylesheets." t)
+  (require 'flycheck)
+  ;; Overwrite existing scss-stylelint checker to not use --syntax flag
+  (flycheck-define-checker scss-stylelint
+    "A SCSS syntax and style checker using stylelint. See URL `http://stylelint.io/'."
+    :command ("stylelint"
+              (eval flycheck-stylelint-args)
+              ;; "--syntax" "scss"
+              (option-flag "--quiet" flycheck-stylelint-quiet)
+              (config-file "--config" flycheck-stylelintrc))
+    :standard-input t
+    :error-parser #'flycheck-parse-stylelint
+    :modes (scss-mode css-mode))
+
+  (when (boundp 'apheleia-mode-alist)
+    (setf (alist-get 'css-mode apheleia-mode-alist) 'prettier-css)
+    (setf (alist-get 'css-ts-mode apheleia-mode-alist) 'prettier-css)))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1773,42 +1767,43 @@ more information."
 ;; function alias
 (defalias 'json-prettify-region 'json-reformat-region)
 
-(defun dino-json-mode-fn ()
-  ;; hierarchy: (prog-mode js-base-mode js-mode javascript-mode json-mode)
-  ;;(turn-on-font-lock)
-  ;;(flycheck-mode 0)
-  ;; 20250111-1538
-  ;;
-  ;; The default checker is json-python-json, which has a command "python3".
-  ;; On my version of windows,
-  ;;
-  ;; (1) there is no "python3", the executable is just called "python" and it resides in c:\Python313 .
-  ;;
-  ;; (2) there is a directory on the path, ~\AppData\Local\Microsoft\WindowsApps, that has a
-  ;; IO_REPARSE_TAG_APPEXECLINK named "python3.exe". Not all systems can handle these reparse
-  ;; points, see
-  ;; https://jpsoft.com/forums/threads/dir-reports-meaningless-symlink-information.9839/ .
-  ;;
-  ;; Not really sure why that directory is on the path.
-  ;;
-  ;; This change modifies the command to just "python". Because c:\Python313 has python.exe,
-  ;; and because c:\python313 lies before that WindowsApps directory with the reparse points,
-  ;; flycheck finds the command successfully and is able to execute the checker.
-  ;;
-  (if (eq system-type 'windows-nt)
-      (setf (car (flycheck-checker-get 'json-python-json 'command))
-            "python"))
-  (if (and (fboundp 'treesit-parser-list)
-           (treesit-parser-list)
-           (fboundp 'treesit-fold-mode))
-      (progn
-        (treesit-fold-mode)
-        (define-key json-mode-map (kbd "C-c >")  #'treesit-fold-close)
-        (define-key json-mode-map (kbd "C-c <")  #'treesit-fold-open)))
-  )
 
 (use-package json-mode
   :defer t
+  :init (defun dino-json-mode-fn ()
+          ;; hierarchy: (prog-mode js-base-mode js-mode javascript-mode json-mode)
+          ;;(turn-on-font-lock)
+          ;;(flycheck-mode 0)
+          ;; 20250111-1538
+          ;;
+          ;; The default checker is json-python-json, which has a command "python3".
+          ;; On my version of windows,
+          ;;
+          ;; (1) there is no "python3", the executable is just called "python" and it resides in c:\Python313 .
+          ;;
+          ;; (2) there is a directory on the path, ~\AppData\Local\Microsoft\WindowsApps, that has a
+          ;; IO_REPARSE_TAG_APPEXECLINK named "python3.exe". Not all systems can handle these reparse
+          ;; points, see
+          ;; https://jpsoft.com/forums/threads/dir-reports-meaningless-symlink-information.9839/ .
+          ;;
+          ;; Not really sure why that directory is on the path.
+          ;;
+          ;; This change modifies the command to just "python". Because c:\Python313 has python.exe,
+          ;; and because c:\python313 lies before that WindowsApps directory with the reparse points,
+          ;; flycheck finds the command successfully and is able to execute the checker.
+          ;;
+          (if (eq system-type 'windows-nt)
+              (setf (car (flycheck-checker-get 'json-python-json 'command))
+                    "python"))
+          (if (and (fboundp 'treesit-parser-list)
+                   (treesit-parser-list)
+                   (fboundp 'treesit-fold-mode))
+              (progn
+                (treesit-fold-mode)
+                (define-key json-mode-map (kbd "C-c >")  #'treesit-fold-close)
+                (define-key json-mode-map (kbd "C-c <")  #'treesit-fold-open)))
+          )
+
   :hook ((json-mode json-ts-mode) . dino-json-mode-fn)
   :config (require 'json-reformat) )
 
@@ -1918,8 +1913,7 @@ more information."
   ;; remove the builtin chat directive. (can't remember why)
   (setq gptel-directives (cl-remove-if (lambda (pair)
                                          (and (consp pair) (equal (car pair) 'chat)))
-                                       gptel-directives))
-  )
+                                       gptel-directives)))
 
 
 (use-package gptel
@@ -1954,19 +1948,21 @@ more information."
   ;;:load-path "~/newdev/elisp-projects/chatgpt-shell" ;; linux
   :commands (chatgpt-shell)
   :ensure t ;; restore this later if loading from (M)ELPA
-  ;; :requires (dpc-gemini) - No. See note above.
+  :hook dino-chatgpt-shell-mode-fn
+  :bind (("C-c t" . chatgpt-shell-google-toggle-grounding-with-google-search)
+         ("C-c l" . chatgpt-shell-google-load-models)
+         ("C-c p" . chatgpt-shell-prompt-compose)
+         ("C-c r" . chatgpt-shell-refactor-code)
+         ("C-c d" . chatgpt-shell-describe-code)
+         ("C-c f" . chatgpt-shell-proofread-region))
 
   :init
   ;; avoid flycheck warning about the following functions? This seems dumb.
   (declare-function chatgpt-shell-google-toggle-grounding-with-google-search "ext:chatgpt-shell-google")
 
   (defun dino-chatgpt-shell-mode-fn ()
-    (keymap-local-set "C-c t" #'chatgpt-shell-google-toggle-grounding-with-google-search)
-    (keymap-local-set "C-c l" #'chatgpt-shell-google-load-models)
-    (keymap-local-set "C-c p" #'chatgpt-shell-prompt-compose)
-    (keymap-local-set "C-c r" #'chatgpt-shell-refactor-code)
-    (keymap-local-set "C-c d" #'chatgpt-shell-describe-code)
-    (keymap-local-set "C-c f" #'chatgpt-shell-proofread-region))
+    "this used to have keybindings, now it is empty."
+    t)
 
   :config
   (require 'dpc-sane-sorting)
@@ -1980,8 +1976,6 @@ more information."
         (lambda (candidates)
           (completing-read "Swap to: "
                            (dpc-ss-completion-fn candidates 'sorted-sanely) nil t)))
-
-  (add-hook 'chatgpt-shell-mode-hook #'dino-chatgpt-shell-mode-fn)
 
   :catch
   (lambda (_keyword err)
@@ -2061,52 +2055,52 @@ more information."
 ;; builtin to emaccs
 (use-package autoinsert
   :defer t
-  :config (progn
-            (auto-insert-mode 1);; global minor mode
-            (setq auto-insert-query nil) ;; no prompt before auto-insertion
-            (setq auto-insert-directory "~/elisp/auto-insert-content")
+  :config
+  (auto-insert-mode 1);; global minor mode
+  (setq auto-insert-query nil) ;; no prompt before auto-insertion
+  (setq auto-insert-directory "~/elisp/auto-insert-content")
 
-            (use-package auto-insert-plus
-              :load-path "~/elisp"
-              :ensure nil)
+  (use-package auto-insert-plus
+    :load-path "~/elisp"
+    :ensure nil)
 
-            ;; specify the template to use for various filename regexi:
-            (setq auto-insert-alist
-                  (aip/fixup-auto-insert-alist
-                   ;; TODO: generate this alist dynamically from the files found in the directory.
-                   '(
-                     ("\\.cs$"                      .  "Template.cs" )
-                     ("\\.css$"                     .  "Template.css" )
-                     ("\\.asp$"                     .  "Template.asp" )
-                     ("\\.aspx$"                    .  "Template.aspx" )
-                     ("\\.aml$"                     .  "Template.aml" )
-                     ("\\.csproj$"                  .  "Template.csproj" )
-                     ("\\.vb$"                      .  "Template.vb" )
-                     ("\\.vbs$"                     .  "Template.vbs" )
-                     ("\\.java$"                    .  "Template.java" )
-                     ("PostProcessMsi\\.js$"        .  "Template-PostProcessMsi.js" )
-                     ("\\.js$"                      .  "Template.js" )
-                     ("\\.jsonnet$"                 .  "Template.jsonnet" )
-                     ("\\.wsf$"                     .  "Template.wsf" )
-                     ("\\.htm$"                     .  "Template.htm" )
-                     ("\\.html$"                    .  "Template.html" )
-                     ("\\.c$"                       .  "Template.c" )
-                     ("\\.wsc$"                     .  "Template.wsc" )
-                     ("\\.ashx$"                    .  "Template.ashx" )
-                     ("\\(-\\|\\.\\)vb\\.ashx$"     .  "Template-vb.ashx" )
-                     ("\\(-\\|\\.\\)cs\\.ashx$"     .  "Template.ashx" )
-                     ("\-vb\\.ashx$"                .  "Template-vb.ashx" )
-                     ("\\.wsdl$"                    .  "Template.wsdl" )
-                     ("\\.xsd$"                     .  "Template.xsd" )
-                     ("\\.xsl$"                     .  "Template.xsl" )
-                     ("\\.ssml$"                    .  "Template.ssml" )
-                     ("\\.bat$"                     .  "Template.bat" )
-                     ("\\.cmd$"                     .  "Template.bat" )
-                     ("makefile$"                   .  "Template.makefile" )
-                     ("\\.wixproj$"                 .  "Template.wixproj" )
-                     ("\\.rss$"                     .  "Template.rss" )
-                     ("\\.org$"                     .  "Template.org" )
-                     ) ))))
+  ;; specify the template to use for various filename regexi:
+  (setq auto-insert-alist
+        (aip/fixup-auto-insert-alist
+         ;; TODO: generate this alist dynamically from the files found in the directory.
+         '(
+           ("\\.cs$"                      .  "Template.cs" )
+           ("\\.css$"                     .  "Template.css" )
+           ("\\.asp$"                     .  "Template.asp" )
+           ("\\.aspx$"                    .  "Template.aspx" )
+           ("\\.aml$"                     .  "Template.aml" )
+           ("\\.csproj$"                  .  "Template.csproj" )
+           ("\\.vb$"                      .  "Template.vb" )
+           ("\\.vbs$"                     .  "Template.vbs" )
+           ("\\.java$"                    .  "Template.java" )
+           ("PostProcessMsi\\.js$"        .  "Template-PostProcessMsi.js" )
+           ("\\.js$"                      .  "Template.js" )
+           ("\\.jsonnet$"                 .  "Template.jsonnet" )
+           ("\\.wsf$"                     .  "Template.wsf" )
+           ("\\.htm$"                     .  "Template.htm" )
+           ("\\.html$"                    .  "Template.html" )
+           ("\\.c$"                       .  "Template.c" )
+           ("\\.wsc$"                     .  "Template.wsc" )
+           ("\\.ashx$"                    .  "Template.ashx" )
+           ("\\(-\\|\\.\\)vb\\.ashx$"     .  "Template-vb.ashx" )
+           ("\\(-\\|\\.\\)cs\\.ashx$"     .  "Template.ashx" )
+           ("\-vb\\.ashx$"                .  "Template-vb.ashx" )
+           ("\\.wsdl$"                    .  "Template.wsdl" )
+           ("\\.xsd$"                     .  "Template.xsd" )
+           ("\\.xsl$"                     .  "Template.xsl" )
+           ("\\.ssml$"                    .  "Template.ssml" )
+           ("\\.bat$"                     .  "Template.bat" )
+           ("\\.cmd$"                     .  "Template.bat" )
+           ("makefile$"                   .  "Template.makefile" )
+           ("\\.wixproj$"                 .  "Template.wixproj" )
+           ("\\.rss$"                     .  "Template.rss" )
+           ("\\.org$"                     .  "Template.org" )
+           ) )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
