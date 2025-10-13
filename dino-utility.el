@@ -1,4 +1,4 @@
-;;; dino-utility.el --- utility functions for dino
+;;; dino-utility.el --- utility functions for dino   -*- coding: utf-8; lexical-binding: t;  -*-
 ;;
 ;; Author: Dino Chiesa
 ;; Created: Wed, 17 Jul 2013  12:06
@@ -1188,25 +1188,25 @@ given KEY to do the lookup. I no longer use this password store. "
 (eval-after-load "nxml-mode"
   '(progn
      (defun nxml-where ()
-       "Display the hierarchy of XML elements the point is on, as a path."
-       (interactive)
-       (let ((path nil))
-         (save-excursion
-           (save-restriction
-             (widen)
-             (while (and (< (point-min) (point)) ;; Doesn't error if point is at beginning of buffer
-                         (condition-case nil
-                             (progn
-                               (nxml-backward-up-element) ; always returns nil
-                               t)
-                           (error nil)))
-               (setq path (cons (xmltok-start-tag-local-name) path)))
-             (let ((xpath (concat "/" (mapconcat 'identity path "/"))))
-               (if (called-interactively-p t)
-                   (progn
-                     (kill-new xpath)
-                     (message "%s" xpath))
-                 xpath))))))))
+      "Display the hierarchy of XML elements the point is on, as a path."
+      (interactive)
+      (let ((path nil))
+       (save-excursion
+         (save-restriction
+           (widen)
+           (while (and (< (point-min) (point)) ;; Doesn't error if point is at beginning of buffer
+                   (condition-case nil
+                       (progn
+                         (nxml-backward-up-element) ; always returns nil
+                         t)
+                     (error nil)))
+            (setq path (cons (xmltok-start-tag-local-name) path)))
+           (let ((xpath (concat "/" (mapconcat 'identity path "/"))))
+            (if (called-interactively-p t)
+                (progn
+                  (kill-new xpath)
+                  (message "%s" xpath))
+              xpath))))))))
 
 ;; to fake self-insert
 (defun insert-as-self (CHAR N)

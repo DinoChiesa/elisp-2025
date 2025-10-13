@@ -23,19 +23,40 @@
 ;; Pay attention: that path is mangled.
 ;; https://www.reddit.com/r/emacs/comments/ymzw78/windows_elpa_gnupg_and_keys_problems/
 ;;
-;; This seems to solve it.
+;; Setting package-gnupghome-dir to a "WSL" type form, seems to solve it.
+;; eg "/c/users/dpchi/.emacs.d/elpa/gnupg/"
+;;
+;; Separately, there was an update from Stephen Monnier to the
+;; gnu-elpa-keyring-update package (v2025.10.1 from 2025-Oct-09).
+;; There may have been a problem that was more general. In any case this
+;; seems to work now. Not sure if I still need it, but I think it's staying.
+;;
+;; TODO: (maybe?) consolidate all the Windows-specific stuff into one section?
 (if (eq system-type 'windows-nt)
-    (setopt package-gnupghome-dir ".emacs.d/elpa/gnupg"))
+    (progn
+      (setopt package-gnupghome-dir
+              (concat
+               (replace-regexp-in-string "c:/" "/c/"
+                                         (replace-regexp-in-string "\\\\" "/" (getenv "HOME")))
+               "/.emacs.d/elpa/gnupg")
 
 
-;; to make sure unicode chars are retained in this file.
+              ;; (concat
+              ;;  (replace-regexp-in-string "\\\\" "/" (getenv "HOME")) "/.emacs.d/elpa/gnupg")
+
+              )
+      ;;(setq auto-revert-use-notify nil) ;; with lazy-revert, using this on all platforms
+      ))
+
+
+;; To make sure unicode chars are retained in this file.
 (set-language-environment 'utf-8)
 (set-default-coding-systems 'utf-8)
 (set-selection-coding-system 'utf-8)
 (set-locale-environment "en.UTF-8")
 (prefer-coding-system 'utf-8)
 
-;; 20250406 this needs to be system-wide. Setting it in a mode hook is too late,
+;; 20250406 This needs to be system-wide. Setting it in a mode hook is too late,
 ;; as the file local vars will have already been evaluated and set.
 (setq enable-local-variables t)
 (setq tty-menu-open-use-tmm t) ;; 20250717-0619 - F10 will invoke `tmm-menubar'
@@ -63,7 +84,6 @@
 ;; smaller sizes; I'm trying to avoid that with these settings.
 (setq split-height-threshold nil split-width-threshold nil)
 
-;; set truncation on side-by-side windows to nil.
 (setq truncate-partial-width-windows nil)
 (setq auto-save-interval 500)
 (setq case-fold-search nil)
@@ -192,7 +212,7 @@
 ;; csharpier, shfmt, aider and more - need exec-path AND/or environment PATH to be set.
 ;; Any nodejs tool installed via "npm i -g" (eg ) should be on the path already.
 (dino/maybe-add-to-exec-path
- (let ((home-dir (getenv "HOME")))
+ (let ((home-dir (replace-regexp-in-string "\\\\" "/" (getenv "HOME"))))
    (list
     "c:/Program Files/Git/usr/bin"     ;; lots of unix utilities here for various purposes
     (dino/find-latest-nvm-version-bin-dir)
@@ -295,6 +315,23 @@
   :defer 36
   :ensure t)
 
+(use-package lazy-revert
+  ;; A layer on top of auto-revert-mode, It reverts only those buffers that are
+  ;; currently _displayed_. For all others, flag them and revert when they get
+  ;; displayed. Performs better when there are 00's of buffers.
+  :ensure nil
+  :vc (:url "https://github.com/yilin-zhang/lazy-revert"
+            :rev :newest
+            :main-file "lazy-revert.el"
+            :branch "master")
+  :hook (after-init . lazy-revert-mode)
+  :config
+  (setq auto-revert-verbose t ; let us know when it happens
+        auto-revert-use-notify nil ; use polling, not inotify
+        auto-revert-stop-on-user-input nil
+        ;; Only prompts for confirmation when buffer is unsaved.
+        revert-without-query (list ".")))
+
 (use-package uniline
   ;; easily make line drawings with unicode symbols.
   :defer t)
@@ -329,6 +366,14 @@
   :hook dino-rego-mode-fn
   :pin manual
   :defer t
+  :init
+  (defun dino-rego-mode-fn ()
+    (display-line-numbers-mode)
+    (when (and (boundp 'apheleia-formatters)
+               (alist-get 'rego-mode apheleia-mode-alist))
+      (apheleia-mode)))
+
+  :hook dino-rego-mode-fn
   :commands (rego-repl-show rego-mode)
   :config
   (when (boundp 'apheleia-formatters)
@@ -337,7 +382,6 @@
             apheleia-formatters))
     (when (not (alist-get 'rego-mode apheleia-mode-alist))
       (push '(rego-mode . opa-fmt) apheleia-mode-alist))))
-
 
 (use-package treesit
   :defer t
@@ -456,7 +500,7 @@
   :bind (:map minibuffer-local-map
               ("M-A" . marginalia-cycle))
 
-  :init
+  :config
   ;; Enable the mode right away. This forces loading the package.
   (marginalia-mode))
 
@@ -1389,7 +1433,6 @@ then switch to the markdown output buffer."
           (setq indent-tabs-mode nil))
   :hook  dino-yaml-mode-fn )
 
-
 (use-package yaml-pretty-mode
   :defer t
   :load-path "~/elisp"
@@ -1755,7 +1798,6 @@ more information."
     (setf (alist-get 'css-ts-mode apheleia-mode-alist) 'prettier-css)))
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JSON
 (defun json-prettify-buffer ()
@@ -1999,7 +2041,13 @@ more information."
 ;; With :vc, these get loaded from github; not sure if they are ever updated
 ;; after initial clone. Doc seems to suggest so.
 (use-package acp
-  :vc (:url "https://github.com/xenodium/acp.el" :rev :newest))
+  :vc (:url "https://github.com/xenodium/acp.el"
+            :rev :newest
+            :main-file "acp.el"
+            :branch "main")
+  )
+
+
 (use-package agent-shell
   :vc (:url "https://github.com/xenodium/agent-shell" :rev :newest)
 
@@ -2117,7 +2165,7 @@ more information."
   (define-key dired-mode-map (kbd "F")  #'dino-dired-do-find)
   (define-key dired-mode-map (kbd "s")  #'dino-dired-sort-cycle)
   (dino-dired-sort-cycle "t") ;; by default, sort by time
-  (turn-on-auto-revert-mode)
+  ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
   )
 
 (use-package dired
@@ -2177,7 +2225,7 @@ just auto-corrects on common mis-spellings by me."
 
 (defun dino-prog-mode-hook-fn ()
   (abbrev-mode 1)
-  (turn-on-auto-revert-mode)
+  ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
   (display-line-numbers-mode)
   (hc-highlight-trailing-whitespace)
   )
@@ -3258,7 +3306,7 @@ Does not consider word syntax tables.
   )
 
 (defun dino-xml-mode-fn ()
-  (turn-on-auto-revert-mode)
+  ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
   (hs-minor-mode 1)
   (setq hs-isearch-open t)
   ;; 20250702-2204
@@ -3415,7 +3463,12 @@ Does not consider word syntax tables.
   (company-mode)
   (apheleia-mode)
   (flycheck-mode)
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local))
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
+  (require 'elisp-fix-indent)
+  (advice-add #'calculate-lisp-indent :override #'efi/calculate-lisp-indent)
+  ;;(advice-remove 'calculate-lisp-indent #'efi~calculate-lisp-indent)
+  )
+
 
 ;; add (emacs-lisp-mode . lisp-indent) to apheleia-mode-alist
 (add-hook 'emacs-lisp-mode-hook 'dino-elisp-mode-fn)
@@ -3445,7 +3498,7 @@ Does not consider word syntax tables.
   (set (make-local-variable 'indent-tabs-mode) nil)
   (apheleia-mode)
   (display-line-numbers-mode)
-  (turn-on-auto-revert-mode)
+  ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
   (hc-highlight-trailing-whitespace)
   (electric-pair-mode)
   (yas-minor-mode)
@@ -4253,9 +4306,11 @@ Enable `recentf-mode' if it isn't already."
 (put 'narrow-to-region 'disabled nil)
 
 
-;; auto-revert for all files.
-(add-hook 'find-file-hook
-          (lambda () (turn-on-auto-revert-mode)))
+;; 20251012-0900
+;; Trying out lazy-revert
+;; ;; auto-revert for all files.
+;; (add-hook 'find-file-hook
+;;           (lambda () (turn-on-auto-revert-mode)))
 
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
