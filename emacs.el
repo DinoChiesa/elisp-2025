@@ -321,9 +321,9 @@
   ;; displayed. Performs better when there are 00's of buffers.
   :ensure nil
   :vc (:url "https://github.com/yilin-zhang/lazy-revert"
-            :rev :newest
-            :main-file "lazy-revert.el"
-            :branch "master")
+       :rev :newest
+       :main-file "lazy-revert.el"
+       :branch "master")
   :hook (after-init . lazy-revert-mode)
   :config
   (setq auto-revert-verbose t ; let us know when it happens
@@ -468,23 +468,23 @@
            (cycle . 10))))
 
   :bind (:map  icomplete-vertical-mode-minibuffer-map
-               ;; icomplete-minibuffer-map <== use this for the non-vertical version.
-               ;; The following 4 bindings are defaults, unnecessary to set here:
-               ;; ("<down>" . icomplete-forward-completions)
-               ;; ("C-n" . icomplete-forward-completions)
-               ;; ("<up>" . icomplete-backward-completions)
-               ;; ("C-p" . icomplete-backward-completions)
-               ("TAB"       . icomplete-force-complete)
-               ("RET"       . icomplete-force-complete-and-exit)
-               ("C-c C-j"   . exit-minibuffer) ;; exit without completion
-               ;; toggle - I usually don't want this when it happens. (by mistake)
-               ("C-v"       . icomplete-vertical-mode)
+         ;; icomplete-minibuffer-map <== use this for the non-vertical version.
+         ;; The following 4 bindings are defaults, unnecessary to set here:
+         ;; ("<down>" . icomplete-forward-completions)
+         ;; ("C-n" . icomplete-forward-completions)
+         ;; ("<up>" . icomplete-backward-completions)
+         ;; ("C-p" . icomplete-backward-completions)
+         ("TAB"       . icomplete-force-complete)
+         ("RET"       . icomplete-force-complete-and-exit)
+         ("C-c C-j"   . exit-minibuffer) ;; exit without completion
+         ;; toggle - I usually don't want this when it happens. (by mistake)
+         ("C-v"       . icomplete-vertical-mode)
 
-               ;; ;; I installed & enabled embark, but I never began using it. (shrug)
-               ;; ("C-c ,"     . embark-act)
-               ;; ("C-x"       . embark-export) ;; temporarily in the minibuffer
-               ;; ("C-c ;"     . embark-collect)
-               )
+         ;; ;; I installed & enabled embark, but I never began using it. (shrug)
+         ;; ("C-c ,"     . embark-act)
+         ;; ("C-x"       . embark-export) ;; temporarily in the minibuffer
+         ;; ("C-c ;"     . embark-collect)
+         )
   )
 
 (use-package marginalia
@@ -498,7 +498,7 @@
   ;; sequence specifically for use in the minibuffer.  To make a binding in the
   ;; *Completions* buffer, add it to the `completion-list-mode-map'.
   :bind (:map minibuffer-local-map
-              ("M-A" . marginalia-cycle))
+         ("M-A" . marginalia-cycle))
 
   :config
   ;; Enable the mode right away. This forces loading the package.
@@ -592,15 +592,15 @@
   :demand t
   :commands (eglot eglot-ensure)
   :bind (:map eglot-mode-map
-              ("C-c e a" . eglot-code-actions)
-              ("C-c e o" . eglot-code-actions-organize-imports)
-              ("C-c e r" . eglot-rename)
-              ("C-c e f" . eglot-format)
-              ("C-c e s" . eglot-shutdown)
-              ("C-c e C-s" . eglot-shutdown-all)
-              ("C-c e r" . eglot-reconnect)
-              ("C-c e c" . company-capf)
-              )
+         ("C-c e a" . eglot-code-actions)
+         ("C-c e o" . eglot-code-actions-organize-imports)
+         ("C-c e r" . eglot-rename)
+         ("C-c e f" . eglot-format)
+         ("C-c e s" . eglot-shutdown)
+         ("C-c e C-s" . eglot-shutdown-all)
+         ("C-c e r" . eglot-reconnect)
+         ("C-c e c" . company-capf)
+         )
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
   :config  (setq flymake-show-diagnostics-at-end-of-line t)
 
@@ -933,6 +933,12 @@ server program."
 
 (add-hook 'sh-mode-hook 'dino-sh-mode-fn)
 
+(defun dino-conf-toml-mode-fn ()
+  (display-line-numbers-mode)
+  (hc-highlight-trailing-whitespace)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local) )
+
+(add-hook 'conf-toml-mode-hook #'dino-conf-toml-mode-fn)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; golang
@@ -1490,13 +1496,13 @@ then switch to the markdown output buffer."
     '(progn
        ;; hideshow for powershell
        (setq dpc-hs-settings-for-powershell-mode
-             '(powershell-mode
-               "{"                                 ;; regexp for start block
-               "}"                                 ;; regexp for end block
-               "[ \\t]*#"                          ;; regexp for comment start
-               forward-sexp                        ;; hs-forward-sexp-func
-               hs-c-like-adjust-block-beginning    ;; c-like adjust (1 char)
-               ))
+        '(powershell-mode
+          "{"                                 ;; regexp for start block
+          "}"                                 ;; regexp for end block
+          "[ \\t]*#"                          ;; regexp for comment start
+          forward-sexp                        ;; hs-forward-sexp-func
+          hs-c-like-adjust-block-beginning    ;; c-like adjust (1 char)
+          ))
 
        ;; replace:
        ;;(setf (cdr (rassoc 'powershell-mode hs-special-modes-alist) ) something-here)
@@ -1507,7 +1513,7 @@ then switch to the markdown output buffer."
        ;; delete:
        ;; (assq-delete-all 'powershell-mode hs-special-modes-alist)
        (unless (assoc 'powershell-mode hs-special-modes-alist)
-         (push dpc-hs-settings-for-powershell-mode hs-special-modes-alist)))))
+        (push dpc-hs-settings-for-powershell-mode hs-special-modes-alist)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2042,9 +2048,9 @@ more information."
 ;; after initial clone. Doc seems to suggest so.
 (use-package acp
   :vc (:url "https://github.com/xenodium/acp.el"
-            :rev :newest
-            :main-file "acp.el"
-            :branch "main")
+       :rev :newest
+       :main-file "acp.el"
+       :branch "main")
   )
 
 
@@ -2929,15 +2935,15 @@ colon."
      ;; This one is for the open curly for the using statement.
      ;; (The using _directive_ (for import at top of file) is different.)
      (setf (cdr (car csharp-ts-mode--indent-rules))
-           (cons
-            '((parent-is "using_statement") parent-bol 0)
-            (cdr (car csharp-ts-mode--indent-rules))))
+      (cons
+       '((parent-is "using_statement") parent-bol 0)
+       (cdr (car csharp-ts-mode--indent-rules))))
      ;; This rule is for the opening curly brace on anonymous lambdas, when the
      ;; open curly is on a new line.
      (setf (cdr (car csharp-ts-mode--indent-rules))
-           (cons
-            '((parent-is "lambda_expression") parent-bol 0)
-            (cdr (car csharp-ts-mode--indent-rules))))
+      (cons
+       '((parent-is "lambda_expression") parent-bol 0)
+       (cdr (car csharp-ts-mode--indent-rules))))
      (setq-local treesit-simple-indent-rules csharp-ts-mode--indent-rules)
      ))
 
@@ -3271,16 +3277,16 @@ Does not consider word syntax tables.
 (when (boundp 'apheleia-formatters)
   ;; TODO: use smarter path resolution here
   (push '(dino-xmlpretty .
-                         ("java" "-jar"
-                          "/Users/dchiesa/dev/java/XmlPretty/target/com.google.dchiesa-xml-prettifier-20230725.jar"
-                          "-"))
+          ("java" "-jar"
+           "/Users/dchiesa/dev/java/XmlPretty/target/com.google.dchiesa-xml-prettifier-20230725.jar"
+           "-"))
         apheleia-formatters)
 
   ;; TODO: use smarter path resolution here
   (push '(xml-prettier .
-                       ("/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"
-                        "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
-                        "--stdin-filepath" "foo.xml"))
+          ("/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"
+           "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
+           "--stdin-filepath" "foo.xml"))
         apheleia-formatters)
 
   ;; 20250401-1837
@@ -3365,16 +3371,16 @@ Does not consider word syntax tables.
     `(:schemaLocators
       [
        (:rootElement t
-                     :searchPaths
-                     [
-                      ,(file-name-concat home-dir "/newdev/apigee-schema-inference/dist/schema")
-                      ])
+        :searchPaths
+        [
+         ,(file-name-concat home-dir "/newdev/apigee-schema-inference/dist/schema")
+         ])
        (:locationHint ,(concat xsd-cachedir "/schema_map.json"))
        (:patterns [(:pattern "*.csproj"
-                             ;;:path ,(concat xsd-cachedir "/Microsoft.Build.CommonTypes.xsd")
-                             :path ,(file-name-concat xsd-cachedir "/Microsoft.Build.Core.xsd")
-                             :useDefaultNamespace t
-                             )])
+                    ;;:path ,(concat xsd-cachedir "/Microsoft.Build.CommonTypes.xsd")
+                    :path ,(file-name-concat xsd-cachedir "/Microsoft.Build.Core.xsd")
+                    :useDefaultNamespace t
+                    )])
        ]
       )))
 
@@ -3384,11 +3390,11 @@ Does not consider word syntax tables.
     (add-to-list
      'eglot-server-programs
      `(nxml-mode .
-                 (,(file-name-concat xmllsp-loc ".venv/bin/python")
-                  ,(file-name-concat xmllsp-loc "xml_language_server/xmllsp.py")
-                  "--log-level"
-                  "INFO"
-                  :initializationOptions dpc-xmllsp-init-options)))))
+       (,(file-name-concat xmllsp-loc ".venv/bin/python")
+        ,(file-name-concat xmllsp-loc "xml_language_server/xmllsp.py")
+        "--log-level"
+        "INFO"
+        :initializationOptions dpc-xmllsp-init-options)))))
 
 ;; For fixing up if I've messed up the above:
 ;;
@@ -3506,6 +3512,7 @@ Does not consider word syntax tables.
 
 (add-hook 'python-ts-mode-hook 'dino-python-mode-fn)
 (add-hook 'python-mode-hook 'dino-python-mode-fn)
+(add-hook 'python-ts-mode-hook 'dino-python-mode-fn)
 
 (with-eval-after-load 'apheleia
   (setf (alist-get 'python-ts-mode apheleia-mode-alist)
@@ -3960,11 +3967,11 @@ counteracts that. "
     (eval-after-load "url"
       '(progn
          (defun dino-url-http-cleaner-request (old-function &rest arguments)
-           "make url-http be less chatty when sending requests"
-           (let (url-mime-charset-string
-                 url-extensions-header
-                 (url-user-agent "User-Agent: emacs/url-http.el\r\n"))
-             (apply old-function arguments)))
+          "make url-http be less chatty when sending requests"
+          (let (url-mime-charset-string
+                url-extensions-header
+                (url-user-agent "User-Agent: emacs/url-http.el\r\n"))
+           (apply old-function arguments)))
          ;; to disable at runtime:
          ;; (ad-disable-advice 'url-http-create-request 'around 'dino-url-eliminate-giant-useless-header)
          (advice-add #'url-http-create-request :around #'dino-url-http-cleaner-request)))))
