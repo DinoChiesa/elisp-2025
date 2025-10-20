@@ -2153,6 +2153,7 @@ more information."
   (define-key dired-mode-map (kbd "C-c C-c") #'dino-dired-copy-file-to-dir-in-other-window)
   (define-key dired-mode-map (kbd "C-c C-m") #'dino-dired-move-file-to-dir-in-other-window)
   (define-key dired-mode-map (kbd "C-c m")   #'magit-status)
+  (define-key dired-mode-map (kbd "C-x m")   #'magit-status)
   ;; converse of i (dired-maybe-insert-subdir)
   (define-key dired-mode-map (kbd "K")  #'dired-kill-subdir)
   (define-key dired-mode-map (kbd "F")  #'dino-dired-do-find)
