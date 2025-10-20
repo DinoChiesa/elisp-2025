@@ -400,13 +400,9 @@
   :pin manual )
 
 (use-package icomplete
-  ;; icomplete-vertical WAS a third-party thing, but as of emacs 28, it is now a
-  ;; feature of the builtin icomplete-mode.  It gives equivalent or better
-  ;; behavior as compared to the old independent module, though the configuration
-  ;; options are slightly different.
+  ;; as of emacs 28, icomplete-vertical is a feature of the builtin icomplete-mode.
   :demand t
-  :requires (dpc-sane-sorting dino-utility) ;; looking atthe doc I am not sure :requires exists!
-
+  :requires (dpc-sane-sorting dino-utility)
   ;; Gemini says the  order of evaluation is :custom, then :init, then :config.
   :custom
   ;; For info: C-h v completion-styles-alist
@@ -423,7 +419,21 @@
   (icomplete-vertical-mode)
 
   ;; Fixup the categories for a few things.
-  ;; I tried doing this in a dolist, but it was not satisfactory.
+  ;;
+  ;; `completion-category-overrides' is a list of category-specific user overrides
+  ;; for completion metadata.  Each override has the shape (CATEGORY . ALIST)
+  ;; where ALIST is an association list that can specify properties to givern sort
+  ;; order, filtering, cycle size, and more.
+  ;;
+  ;; The way it works: The caller of completing-read designates the category by
+  ;; dynamically binding the special variable `completion-category' before calling
+  ;; completing-read.
+  ;;
+  ;; I tried modifying the variable in a dolist, but it was not satisfactory.
+  ;;
+  ;; NB: magit does use `completing-read' but does not use `completion-category'.
+  ;; So there is no way to affect the sort order of various selections. For example
+  ;; when selecting a branch, the candidates are sorted by length. (headslap)
   (setq completion-category-overrides
         (dino/insert-or-modify-alist-entry
          completion-category-overrides
@@ -461,6 +471,24 @@
          `((styles . (basic substring))
            (cycle-sort-function . ,#'dpc-ss-sort-files)
            (cycle . 10))))
+
+  ;; ;; 20251020-1243 magit stuff - this needs to be sorted out.
+  ;; ;; 1. Define a category just for branches
+  ;; (setq completion-category-overrides
+  ;;       (dino/insert-or-modify-alist-entry
+  ;;        completion-category-overrides
+  ;;        'magit-branch
+  ;;        `((cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first))))
+
+  ;; ;; 2. Define the advice function
+  ;; (defun dino-magit-branch-checkout-advice (orig-fun &rest args)
+  ;;   "Wrap `magit-branch-checkout' to set a custom category for its completer."
+  ;;   (let ((completion-category 'magit-branch))
+  ;;     (apply orig-fun args)))
+
+  ;; ;; 3. Add the advice to the specific command
+  ;; (advice-add 'magit-branch-checkout :around #'dino-magit-branch-checkout-advice)
+
 
   :bind (:map  icomplete-vertical-mode-minibuffer-map
          ;; icomplete-minibuffer-map <== use this for the non-vertical version.
