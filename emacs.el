@@ -33,20 +33,15 @@
 ;;
 ;; TODO: (maybe?) consolidate all the Windows-specific stuff into one section?
 (if (eq system-type 'windows-nt)
-    (progn
-      (setopt package-gnupghome-dir
-              (concat
-               (replace-regexp-in-string "c:/" "/c/"
-                                         (replace-regexp-in-string "\\\\" "/" (getenv "HOME")))
-               "/.emacs.d/elpa/gnupg")
+    (setopt package-gnupghome-dir
+            (concat
+             (replace-regexp-in-string "c:/" "/c/"
+                                       (replace-regexp-in-string "\\\\" "/" (getenv "HOME")))
+             "/.emacs.d/elpa/gnupg")))
 
 
-              ;; (concat
-              ;;  (replace-regexp-in-string "\\\\" "/" (getenv "HOME")) "/.emacs.d/elpa/gnupg")
-
-              )
-      ;;(setq auto-revert-use-notify nil) ;; with lazy-revert, using this on all platforms
-      ))
+;; (concat
+;;  (replace-regexp-in-string "\\\\" "/" (getenv "HOME")) "/.emacs.d/elpa/gnupg")
 
 
 ;; To make sure unicode chars are retained in this file.
@@ -2050,9 +2045,7 @@ more information."
   :vc (:url "https://github.com/xenodium/acp.el"
        :rev :newest
        :main-file "acp.el"
-       :branch "main")
-  )
-
+       :branch "main"))
 
 (use-package agent-shell
   :vc (:url "https://github.com/xenodium/agent-shell" :rev :newest)
@@ -2166,6 +2159,7 @@ more information."
   (define-key dired-mode-map (kbd "C-c C-c") #'dino-dired-copy-file-to-dir-in-other-window)
   (define-key dired-mode-map (kbd "C-c C-m") #'dino-dired-move-file-to-dir-in-other-window)
   (define-key dired-mode-map (kbd "C-c m")   #'magit-status)
+  (define-key dired-mode-map (kbd "C-x m")   #'magit-status)
   ;; converse of i (dired-maybe-insert-subdir)
   (define-key dired-mode-map (kbd "K")  #'dired-kill-subdir)
   (define-key dired-mode-map (kbd "F")  #'dino-dired-do-find)
@@ -3508,7 +3502,8 @@ Does not consider word syntax tables.
   (hc-highlight-trailing-whitespace)
   (electric-pair-mode)
   (yas-minor-mode)
-  (show-paren-mode 1))
+  (show-paren-mode 1)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local) )
 
 (add-hook 'python-ts-mode-hook 'dino-python-mode-fn)
 (add-hook 'python-mode-hook 'dino-python-mode-fn)
