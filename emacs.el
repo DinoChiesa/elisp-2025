@@ -2,7 +2,7 @@
 
 ;;
 ;;
-;; Works with v30.1 of emacs.
+;; Works with v30.1+ of emacs.
 ;;
 
 ;;; Commentary:
@@ -17,6 +17,7 @@
 
 ;; 20251011-1123
 ;; On Windows
+;; when using `install-package'
 ;; Failed to verify signature archive-contents.sig:
 ;; gpg: keyblock resource '/c/users/dpchi/c:/users/dpchi/.emacs.d/elpa/gnupg/pubring.kbx': No such file or directory
 ;;
@@ -28,10 +29,10 @@
 ;;
 ;; Separately, there was an update from Stephen Monnier to the
 ;; gnu-elpa-keyring-update package (v2025.10.1 from 2025-Oct-09).
-;; There may have been a problem that was more general. In any case this
-;; seems to work now. Not sure if I still need it, but I think it's staying.
+;; There may have been a problem that was more general. In any case, my tests
+;; subsequent to that, shows that I still need this, so for now it's staying.
 ;;
-;; TODO: (maybe?) consolidate all the Windows-specific stuff into one section?
+;; TODO: (maybe) consolidate all the Windows-specific stuff into one section?
 (if (eq system-type 'windows-nt)
     (setopt package-gnupghome-dir
             (concat
@@ -253,6 +254,20 @@
                 (cl-dolist (item apheleia-formatters)
                   (when (and (consp (cdr item)) (equal "apheleia-npx" (cadr item)))
                     (setf (cadr item) "npx.ps1"))))
+
+            ;; 20251025-0909
+            ;; Was having trouble with apheleia + prettier causing copyright symbols
+            ;; and other unicode chars to be converted to ASCII, specifically on Windows.
+            ;; It turns out my powershell defaults for text encoding in the shell were
+            ;; the culprit.  In npx.ps1, which is delivered by nvm?, this command:
+            ;;   `$input | & node.exe "$basedir/node_modules/npm/bin/npx-cli.js" $args`
+            ;; ...specifically the piped input, converts © to ┬⌐ .
+            ;; Modifying that file to do
+            ;;   $OutputEncoding = [System.Text.Encoding]::UTF8
+            ;;   [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+            ;; before running the piped input to node.exe, avoids the problem.
+            ;; See also npx.ps1.txt here in this directory.  If I ever upgrade nvm,
+            ;; I will probably need to re-apply these changes.
 
             ;; 20250223-1330
             ;;

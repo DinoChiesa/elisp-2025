@@ -1,0 +1,54 @@
+##
+## Saturday, 25 October 2025, 09:27
+## Included here just for posterity. This file is shipped by nvm, and normally
+## lives at C:\nvm4w\nodejs\npx.ps1 . The changes here modify the encoding so
+## that apheleia and prettier work properly on Windows. If I update nvm, I may
+## need to re-apply the changes.
+## 
+
+
+#!/usr/bin/env pwsh
+$basedir=Split-Path $MyInvocation.MyCommand.Definition -Parent
+
+# Dino - 20251019-1503, for apheleia-mode
+# Apply desired UTF8 settings
+$OriginalConsoleOutputEncoding = [Console]::OutputEncoding
+$OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+$exe=""
+if ($PSVersionTable.PSVersion -lt "6.0" -or $IsWindows) {
+  # Fix case when both the Windows and Linux builds of Node
+  # are installed in the same directory
+  $exe=".exe"
+}
+$ret=0
+if (Test-Path "$basedir/node$exe") {
+  # Support pipeline input
+  if ($MyInvocation.ExpectingInput) {
+    # write-host "1a"
+    $input | & "$basedir/node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
+  } else {
+    # write-host "1b"
+    & "$basedir/node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
+  }
+  $ret=$LASTEXITCODE
+} else {
+  # Support pipeline input
+  if ($MyInvocation.ExpectingInput) {
+    # write-host "2a"
+    $input | & "node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
+  } else {
+    # write-host "2b"
+    & "node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
+  }
+  $ret=$LASTEXITCODE
+}
+
+# Restore the original encoding settings before the script exits
+$OutputEncoding = $OriginalOutputEncoding
+[Console]::OutputEncoding = $OriginalConsoleOutputEncoding
+
+#write-host "goodbye"
+
+exit $ret
