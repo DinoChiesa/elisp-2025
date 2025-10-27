@@ -2054,6 +2054,18 @@ more information."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; time zones
+;;
+;; ui in emacs to translate timezones
+;;
+(use-package time-zones
+  :vc (:url "https://github.com/xenodium/time-zones"
+       :rev :newest
+       :main-file "time-zones.el"
+       :branch "main"))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; agent-shell - 20250927-1558
 ;;
 ;; On Windows, to make this work, with a patched version of gemini cli, I had to :
