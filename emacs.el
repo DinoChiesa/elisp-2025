@@ -32,7 +32,7 @@
 ;; There may have been a problem that was more general. In any case, my tests
 ;; subsequent to that, shows that I still need this, so for now it's staying.
 ;;
-;; TODO: (maybe) consolidate all the Windows-specific stuff into one section?
+;; TODO: (maybe) consolidate all the Windows-specific stuff into one section.
 (if (eq system-type 'windows-nt)
     (setopt package-gnupghome-dir
             (concat
@@ -346,10 +346,6 @@
   ;; easily make line drawings with unicode symbols.
   :defer t)
 
-;; 20251025-1020
-;; Why is fzf-johnc-updated loaded only if emacs is GREATER than or equal to
-;; 30.1? Maybe the updates depends on something first made available in 30.1.
-;;
 (if ;;(or (not (eq system-type 'windows-nt))
     (version< emacs-version "30.1")
     (use-package fzf
@@ -364,6 +360,7 @@
                     fzf/grep-command "rg --no-heading -nH"
                     ;; fzf/grep-command "grep -nrH")
                     ))
+  ;; fzf-johnc-updated depends on something first made available in 30.1.
   (require 'fzf-johnc-updated))
 
 (use-package rego-mode
