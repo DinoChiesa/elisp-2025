@@ -2,7 +2,7 @@
 
 ;;
 ;;
-;; Works with v30.1 of emacs.
+;; Works with v30.1+ of emacs.
 ;;
 
 ;;; Commentary:
@@ -17,6 +17,7 @@
 
 ;; 20251011-1123
 ;; On Windows
+;; when using `install-package'
 ;; Failed to verify signature archive-contents.sig:
 ;; gpg: keyblock resource '/c/users/dpchi/c:/users/dpchi/.emacs.d/elpa/gnupg/pubring.kbx': No such file or directory
 ;;
@@ -28,10 +29,10 @@
 ;;
 ;; Separately, there was an update from Stephen Monnier to the
 ;; gnu-elpa-keyring-update package (v2025.10.1 from 2025-Oct-09).
-;; There may have been a problem that was more general. In any case this
-;; seems to work now. Not sure if I still need it, but I think it's staying.
+;; There may have been a problem that was more general. In any case, my tests
+;; subsequent to that, shows that I still need this, so for now it's staying.
 ;;
-;; TODO: (maybe?) consolidate all the Windows-specific stuff into one section?
+;; TODO: (maybe) consolidate all the Windows-specific stuff into one section?
 (if (eq system-type 'windows-nt)
     (setopt package-gnupghome-dir
             (concat
@@ -254,6 +255,20 @@
                   (when (and (consp (cdr item)) (equal "apheleia-npx" (cadr item)))
                     (setf (cadr item) "npx.ps1"))))
 
+            ;; 20251025-0909
+            ;; Was having trouble with apheleia + prettier causing copyright symbols
+            ;; and other unicode chars to be converted to ASCII, specifically on Windows.
+            ;; It turns out my powershell defaults for text encoding in the shell were
+            ;; the culprit.  In npx.ps1, which is delivered by nvm?, this command:
+            ;;   `$input | & node.exe "$basedir/node_modules/npm/bin/npx-cli.js" $args`
+            ;; ...specifically the piped input, converts © to ┬⌐ .
+            ;; Modifying that file to do
+            ;;   $OutputEncoding = [System.Text.Encoding]::UTF8
+            ;;   [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+            ;; before running the piped input to node.exe, avoids the problem.
+            ;; See also npx.ps1.txt here in this directory.  If I ever upgrade nvm,
+            ;; I will probably need to re-apply these changes.
+
             ;; 20250223-1330
             ;;
             ;; I learned today that modifying `apheleia-mode-alist' is
@@ -331,6 +346,10 @@
   ;; easily make line drawings with unicode symbols.
   :defer t)
 
+;; 20251025-1020
+;; Why is fzf-johnc-updated loaded only if emacs is GREATER than or equal to
+;; 30.1? Maybe the updates depends on something first made available in 30.1.
+;;
 (if ;;(or (not (eq system-type 'windows-nt))
     (version< emacs-version "30.1")
     (use-package fzf
@@ -361,14 +380,6 @@
   :hook dino-rego-mode-fn
   :pin manual
   :defer t
-  :init
-  (defun dino-rego-mode-fn ()
-    (display-line-numbers-mode)
-    (when (and (boundp 'apheleia-formatters)
-               (alist-get 'rego-mode apheleia-mode-alist))
-      (apheleia-mode)))
-
-  :hook dino-rego-mode-fn
   :commands (rego-repl-show rego-mode)
   :config
   (when (boundp 'apheleia-formatters)
@@ -3523,34 +3534,45 @@ Does not consider word syntax tables.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Python
 
+(use-package flymake-ruff
+  :ensure t)
+
 (defun dino-python-mode-fn ()
   ;; python-mode is not a prog-mode
-  ;;(eglot) ;; never tried this
-  ;;(apheleia-mode) ;; never tried this
+  ;;(eglot) ;; not sure about this
 
-  (keymap-local-set "ESC C-R" #'indent-region)
-  (keymap-local-set "ESC #"   #'dino/indent-buffer)
-  (keymap-local-set "C-c C-c" #'comment-region)
-  (keymap-local-set "C-c C-d" #'delete-trailing-whitespace)
+  (define-key python-mode-map (kbd "ESC C-R") #'indent-region)
+  (define-key python-mode-map (kbd "ESC #")   #'dino/indent-buffer)
+  (define-key python-mode-map (kbd "C-c C-c") #'comment-region)
+  (define-key python-mode-map (kbd "C-c C-d") #'delete-trailing-whitespace)
   ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
-  (keymap-local-set "C-c C-w"  #'compare-windows)
-
+  (define-key python-mode-map (kbd "C-c C-w")  #'compare-windows)
   (set (make-local-variable 'indent-tabs-mode) nil)
   (apheleia-mode)
   (display-line-numbers-mode)
-  ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
   (hc-highlight-trailing-whitespace)
   (electric-pair-mode)
   (yas-minor-mode)
   (show-paren-mode 1)
+  ;; 20251025-1311
+  (flymake-mode)
+  (flymake-ruff-load)
+  ;; Using (debug-on-variable-change 'python-check-command), I found that
+  ;; python-mode sets python-check-command to be pyflakes.
+  ;; This will reset it.
+  (setq python-check-command "ruff")
+
   (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local) )
 
 (add-hook 'python-ts-mode-hook 'dino-python-mode-fn)
 (add-hook 'python-mode-hook 'dino-python-mode-fn)
-(add-hook 'python-ts-mode-hook 'dino-python-mode-fn)
 
 (with-eval-after-load 'apheleia
   (setf (alist-get 'python-ts-mode apheleia-mode-alist)
+        ;; 20251025-1309
+        ;; ruff is a replacement for longtime formatter black
+        ;; On Windows: powershell -c "irm https://astral.sh/ruff/install.ps1 | iex" .
+        ;; It gets installed to ~\.local\bin\ruff.exe
         '(ruff-isort ruff)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3781,7 +3803,7 @@ counteracts that. "
   (let ((gformat-command (dcjava-gformat-command
                           (concat (getenv "HOME") "/bin"))))
     (if gformat-command
-        ;; change the existing google-java-format in the builtin aphelia-formatters
+        ;; change the existing google-java-format in the builtin apheleia-formatters
         (setf (alist-get 'google-java-format apheleia-formatters)
               `,(split-string gformat-command " +")))))
 
