@@ -1,0 +1,6 @@
+# -*- mode: snippet -*-
+# name: <Condition...>
+# key: cond
+# --
+$>  <Condition>${2:request.header.authorization = null}</Condition>
+

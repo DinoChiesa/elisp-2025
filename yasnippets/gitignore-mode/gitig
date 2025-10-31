@@ -1,0 +1,27 @@
+# key : gitig
+# name : gitig
+# --
+
+**/#*.*#
+**/*.*~
+**/#*#
+**/*~
+
+**/target/
+**/*.class
+
+**/node_modules/
+
+.env
+
+.venv/
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+NOT-USED/
+
+
+

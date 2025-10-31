@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: auth
+# key: auth
+# --
+$><Authentication>
+  $>${1:$$(yas-choose-value (list "<GoogleIDToken>\n      <Audience ref='foo' useTargetUrl='true'/>\n      <IncludeEmail>true</IncludeEmail>\n    </GoogleIDToken>"  "<GoogleAccessToken>\n     <Scopes>\n        <Scope>https://www.googleapis.com/auth/cloud-platform</Scope>\n      </Scopes>\n    </GoogleAccessToken>"))}
+$></Authentication>
