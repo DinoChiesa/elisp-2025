@@ -203,17 +203,20 @@ An example use of this function:
           `(metadata (category . ,category-symbol))
         (complete-with-action action candidates string pred)))))
 
-;; This category, `sorted-sanely', is for sorting of anything... LLM models in the
-;; swap-model chooser, commands, etc. Anything that needs a sane sort order.  Without an
-;; overrides, minibuffer sorts first by length, then alphabetically, which seems
-;; insane. With an override, the user (me) can pre-empt that default sorting.  Providing
-;; a cycle-sort-function in the metadata works for initial display, but does not work
-;; when filtering happens.  Sorting with an active filter (like we've typed a few
-;; characters) happens correctly only with a category override which specifies a
-;; cycle-sort-function, which means I need a completion function that specifies a
-;; category. Eg, see above `dpc-ss-completion-fn'.  Then add the category, in this case
-;; `sorted-sanely', to `completion-category-overrides', and the right sorting will
-;; happen.
+;; This category, `sorted-sanely', is for sorting of anything... LLM models in the swap-model
+;; chooser, commands, etc. Anything that needs a sane sort order.  Without an overrides,
+;; minibuffer sorts first by length, then alphabetically, which seems insane. With an override,
+;; the user (me) can pre-empt that default sorting.  Providing a cycle-sort-function in the
+;; metadata works for initial display, but does not work when filtering happens.  Sorting with
+;; an active filter (like we've typed a few characters) happens correctly only with a category
+;; override which specifies a cycle-sort-function, which means to make this work, the existing
+;; call of `completing-read' must specify a category. As an example, `find-file' uses a
+;; category, so I can use this `completion-category-overrides' trick to modify sorting for it.
+;; Conversely, the completing-read in magit does not specify a category when reading a branch
+;; name, so I cannot use the overrides trick to modify sorting for magit purposes.  As an
+;; example of using a category, see above `dpc-ss-completion-fn'.  To specify the sorting for a
+;; category, add the category, in this case `sorted-sanely', to `completion-category-overrides',
+;; and the right sorting will happen.
 (setq completion-category-overrides
       (dino/insert-or-modify-alist-entry completion-category-overrides
                                          'sorted-sanely
