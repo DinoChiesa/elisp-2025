@@ -44,7 +44,6 @@
 ;; (concat
 ;;  (replace-regexp-in-string "\\\\" "/" (getenv "HOME")) "/.emacs.d/elpa/gnupg")
 
-
 ;; To make sure unicode chars are retained in this file.
 (set-language-environment 'utf-8)
 (set-default-coding-systems 'utf-8)
@@ -363,28 +362,35 @@
   ;; fzf-johnc-updated depends on something first made available in 30.1.
   (require 'fzf-johnc-updated))
 
+(defun dino-rego-mode-fn ()
+  (display-line-numbers-mode)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
+  (setq tab-width 4
+        standard-indent 2
+        indent-tabs-mode t) ;; opa fmt uses tabs, euuhhh.
+  (when (and (boundp 'apheleia-formatters)
+             (alist-get 'rego-mode apheleia-mode-alist))
+    (apheleia-mode)))
+
 (use-package rego-mode
   ;; OPA configuration language. As of 20250312-0217,
   ;; rego-mode on MELPA is out of date and unmaintained.
   :if (file-exists-p "~/elisp/rego-mode.el")
   :load-path "~/elisp"
-  :init
-  (defun dino-rego-mode-fn ()
-    (display-line-numbers-mode)
-    (when (and (boundp 'apheleia-formatters)
-               (alist-get 'rego-mode apheleia-mode-alist))
-      (apheleia-mode)))
+  ;;:init
   :hook dino-rego-mode-fn
   :pin manual
   :defer t
   :commands (rego-repl-show rego-mode)
   :config
+  (add-hook 'rego-mode-hook #'dino-rego-mode-fn)
   (when (boundp 'apheleia-formatters)
     (when (not (alist-get 'opa-fmt apheleia-formatters))
       (push '(opa-fmt . ("opa" "fmt"))
             apheleia-formatters))
     (when (not (alist-get 'rego-mode apheleia-mode-alist))
       (push '(rego-mode . opa-fmt) apheleia-mode-alist))))
+
 
 (use-package treesit
   :defer t
@@ -958,6 +964,7 @@ server program."
   (setq sh-basic-offset 2)
   (sh-electric-here-document-mode)
   (apheleia-mode)
+  (hs-minor-mode) ;; show: C-c @ C-s  hide: C-c @ C-h
   (dino/setup-shmode-for-apheleia)
   (define-key sh-mode-map (kbd "C-c C-g")  #'dino/shfmt-buffer)
   (define-key sh-mode-map (kbd "C-c C-c")  #'comment-region))
@@ -1052,41 +1059,40 @@ server program."
   :ensure t
   :defines (yas-snippet-dirs yas-prompt-functions)
   :functions (yas-global-mode yas-expand-snippet)
-  :config (progn
-            (setq yas-snippet-dirs (list "~/elisp/yasnippets"))
-            (yas-global-mode 1)
-            ;; (setq yas-prompt-functions '(yas-dropdown-prompt
-            ;;                              yas-completing-prompt
-            ;;                              yas-maybe-ido-prompt yas-no-prompt))
-            ;; prettier popup choices when running in a windowed environment:
-            (setq yas-prompt-functions '(yas-x-prompt yas-dropdown-prompt))
+  :config
+  (setq yas-snippet-dirs (list "~/elisp/yasnippets"))
+  (yas-global-mode 1)
+  ;; set prompt functions as appropriate with text vs graphical emacs
+  (setq yas-prompt-functions
+        (if (display-graphic-p)
+            '(yas-x-prompt yas-dropdown-prompt yas-completing-prompt)
+          '(yas-completing-prompt yas-maybe-ido-prompt yas-no-prompt)))
 
-            ;;(yas-load-directory (car yas-snippet-dirs))
-            ;; ------------------------------------------------
-            ;; Expand snippet synchronously
-            (defvar yas--recursive-edit-flag nil)
+  ;; ------------------------------------------------
+  ;; Expand snippet synchronously
+  (defvar yas--recursive-edit-flag nil)
 
-            ;; this is used in some of my apigee.el templates
-            (defun yas-expand-sync ()
-              "Execute `yas-expand'. This function exits after expanding snippet."
-              (interactive)
-              (let ((yas--recursive-edit-flag t))
-                (call-interactively 'yas-expand)
-                (recursive-edit)))
+  ;; this is used in some of my apigee.el templates
+  (defun yas-expand-sync ()
+    "Execute `yas-expand'. This function exits after expanding snippet."
+    (interactive)
+    (let ((yas--recursive-edit-flag t))
+      (call-interactively 'yas-expand)
+      (recursive-edit)))
 
-            (defun yas-expand-snippet-sync (content &optional start end expand-env)
-              "Execute `yas-expand-snippet'. This function exits after expanding snippet."
-              (let ((yas--recursive-edit-flag t))
-                ;;(sit-for 0.6) ;; timing issue?
-                (yas-expand-snippet content start end expand-env)
-                ;;(sit-for 0.2) ;; timing issue?
-                (recursive-edit)))
+  (defun yas-expand-snippet-sync (content &optional start end expand-env)
+    "Execute `yas-expand-snippet'. This function exits after expanding snippet."
+    (let ((yas--recursive-edit-flag t))
+      ;;(sit-for 0.6) ;; timing issue?
+      (yas-expand-snippet content start end expand-env)
+      ;;(sit-for 0.2) ;; timing issue?
+      (recursive-edit)))
 
-            (defun my-yas-after-exit-snippet-hook--recursive-edit ()
-              (when yas--recursive-edit-flag
-                (throw 'exit nil)))
-            (add-hook 'yas-after-exit-snippet-hook 'my-yas-after-exit-snippet-hook--recursive-edit)
-            ))
+  (defun my-yas-after-exit-snippet-hook--recursive-edit ()
+    (when yas--recursive-edit-flag
+      (throw 'exit nil)))
+  (add-hook 'yas-after-exit-snippet-hook 'my-yas-after-exit-snippet-hook--recursive-edit)
+  )
 
 
 
@@ -3371,16 +3377,15 @@ Does not consider word syntax tables.
   ;; M-C-i to get completion popups, whether from nxml or eglot
   (company-mode)
   (display-line-numbers-mode)
-
+  (setq yas-indent-line 'nil)
   (keymap-local-set "ESC C-R" #'indent-region)
   (keymap-local-set "C-c n"   #'sgml-name-char) ;; inserts entity ref of pressed char
   (keymap-local-set "M-#"     #'dino-xml-pretty-print-buffer)
   (keymap-local-set "C-c f"   #'dino-replace-filename-no-extension)
   (keymap-local-set "ESC C-i" #'company-capf)
-
-  (keymap-local-set "C-<"      #'nxml-backward-element)
-  (keymap-local-set "C->"      #'nxml-forward-element)
-  (keymap-local-set "C-c C-c"  #'dino-xml-comment-region)
+  (keymap-local-set "C-<"     #'nxml-backward-element)
+  (keymap-local-set "C->"     #'nxml-forward-element)
+  (keymap-local-set "C-c C-c" #'dino-xml-comment-region)
 
   (setq nxml-sexp-element-flag t
         nxml-child-indent 2
@@ -4246,7 +4251,6 @@ counteracts that. "
   (if (file-remote-p (buffer-file-name))
       (setq-local vc-handled-backends nil)))
 (add-hook 'find-file-hook 'dino-vc-off-if-remote)
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
