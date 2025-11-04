@@ -485,6 +485,8 @@
          `((styles . (basic substring))
            (cycle-sort-function . ,#'dpc-ss-sort-files)
            (cycle . 10))))
+  (add-to-list 'completion-ignored-extensions "#")
+  (add-to-list 'completion-ignored-extensions "~")
 
   ;; ;; 20251020-1243 magit stuff - this needs to be sorted out.
   ;; ;; 1. Define a category just for branches
@@ -2113,14 +2115,16 @@ more information."
                                                 (dpc-gemini/get-config-property "apikey")))
   (setq agent-shell-google-gemini-command
         (if (eq system-type 'windows-nt)
-            ;; There is a gcli bug (#7549) that flushes cached creds when --experimental-acp
-            ;; is enabled. As a result the user must ALWAYS re-authenticate. On a text
-            ;; terminal that causes a hang.  This forcibly unsets the project, and uses API
-            ;; key, to allow prompt-free startup.
-            `("env" "GOOGLE_CLOUD_PROJECT=\"\"" "gemini" "--experimental-acp")
-          ;; 20251011-1613 - patched version of gemini-cli
-          '("node"
-            "c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js" "--experimental-acp")))
+            ;; 20251011-1613 - patched version of gemini-cli
+            (let ((patched-geminicli "c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js"))
+              (if (file-exists-p patched-geminicli)
+                  '("node" patched-geminicli "--experimental-acp")
+                '("gemini" "--experimental-acp")))
+          ;; There is a gcli bug (#7549) that flushes cached creds when --experimental-acp
+          ;; is enabled. As a result the user must ALWAYS re-authenticate. On a text
+          ;; terminal that causes a hang.  This forcibly unsets the project, and uses API
+          ;; key, to allow prompt-free startup.
+          `("env" "GOOGLE_CLOUD_PROJECT=\"\"" "gemini" "--experimental-acp")))
 
   ;; re-define this to trim the noise...
   (defun agent-shell-google--gemini-welcome-message (_config)
