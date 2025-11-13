@@ -72,6 +72,7 @@
 (setq messages-buffer-max-lines 2500)
 (setq completion-auto-help nil)
 (put 'eval-expression 'disabled nil)
+(setq xterm-max-cut-length 262144)
 
 ;; 20250610-0852 - split windows ??? sensibly?
 ;;
