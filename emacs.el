@@ -908,13 +908,8 @@ server program."
   )
 
 (use-package wgrep
-  ;; superpower: edit files in a grep or rg output buffer. Amazing.
-  :defer t
-  ;;:if (file-exists-p "~/elisp/wgrep.el")
-  ;;:load-path "~/elisp"
-  :commands (wgrep-setup)
+  :commands (wgrep-setup wgrep-change-to-wgrep-mode)
   :config (keymap-set grep-mode-map "C-c C-p" #'wgrep-change-to-wgrep-mode))
-
 
 (use-package apigee
   :if (file-exists-p "~/elisp/apigee/apigee.el")
