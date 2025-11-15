@@ -917,7 +917,8 @@ server program."
   :defer t
   :commands
   (apigee-new-proxy apigee-deploy-proxy apigee-import-and-deploy-proxy
-                    apigee-lint-asset apigee-add-policy apigee-add-target
+                    apigee-lint-asset apigee-validate-xml-for-asset
+                    apigee-add-policy apigee-add-target
                     apigee-inject-proxy-revision-logic)
 
   :bind (("C-c a i" . apigee-import-and-deploy-proxy))
@@ -928,9 +929,9 @@ server program."
            (found-apigeecli (file-exists-p apigeecli-path)))
       (if (not found-apigeecli)
           (setq apigeecli-path (executable-find "apigeecli")
-                found-apigeecli (file-exists-p apigeecli-path)))
+                found-apigeecli (and apigeecli-path (file-exists-p apigeecli-path))))
       (if (not found-apigeecli)
-          (error "cannot find apigeecli")
+          (message "cannot find apigeecli")
         (setf (alist-get 'apigeecli apigee-programs-alist)
               apigeecli-path)))
     (let* ((gcloud-cmd "gcloud")
@@ -942,7 +943,7 @@ server program."
     (let* ((apigeelint-cli-path "~/apigeelint/cli.js")
            (found-apigeelint (file-exists-p apigeelint-cli-path)))
       (if (not found-apigeelint)
-          (error "cannot find apigeelint")
+          (message "cannot find apigeelint")
         (setf (alist-get 'apigeelint apigee-programs-alist)
               (format "node %s" apigeelint-cli-path))))
     (if (and (getenv "ENV")(getenv "ORG"))
