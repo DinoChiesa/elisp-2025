@@ -921,10 +921,16 @@ server program."
                     apigee-add-policy apigee-add-target
                     apigee-inject-proxy-revision-logic)
 
-  :bind (("C-c a i" . apigee-import-and-deploy-proxy))
+  :bind (("C-c a i" . apigee-import-and-deploy-proxy)
+         ("C-c a v" . apigee-validate-xml-for-asset)
+         ("C-c a l" . apigee-lint-asset))
 
   :config
   (progn
+    (if-let* ((candidate-dir "~/newdev/apigee-schema-inference/dist")
+              (schema-dir (file-name-concat candidate-dir "schemas" ))
+              (_ (file-directory-p schema-dir)))
+        (setq apigee-xmlschema-validator-home candidate-dir))
     (let* ((apigeecli-path "~/.apigeecli/bin/apigeecli")
            (found-apigeecli (file-exists-p apigeecli-path)))
       (if (not found-apigeecli)
