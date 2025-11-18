@@ -431,11 +431,11 @@ eg, :basicauth := (base64-encode-string
   (restclient-http-parse-current-and-do
    '(lambda (method url headers entity)
       (kill-new (format "curl -i %s -X %s \\\n '%s'%s"
-                        (mapconcat (lambda (header) (format "-H '%s: %s' \\\n" (car header) (cdr header))) headers " ")
-                        method
-                        url
-                        (if (> (string-width entity) 0)
-                            (format "\\\n -d '%s'" entity) "")))
+                 (mapconcat (lambda (header) (format "-H '%s: %s' \\\n" (car header) (cdr header))) headers " ")
+                 method
+                 url
+                 (if (> (string-width entity) 0)
+                     (format "\\\n -d '%s'" entity) "")))
       (message "curl command copied to clipboard."))))
 
 (defun restclient--find-extract-commands ()
@@ -459,6 +459,16 @@ eg, :basicauth := (base64-encode-string
               (throw 'stop-scanning nil)))
           (forward-line 1)))
       (nreverse commands))))
+
+(defun restclient--strip-surrounding-quotes (str)
+  "Remove surrounding quotes from STR if it begins and ends with them.
+Returns the original string if conditions aren't met."
+  (if (and (stringp str)
+           (>= (length str) 2)                ; Ensure length is at least 2 ("")
+           (string-prefix-p "\"" str)         ; Check if starts with "
+           (string-suffix-p "\"" str))        ; Check if ends with "
+      (substring str 1 -1)                    ; Return content between indices
+    str))                                     ; Return original string otherwise
 
 
 (defun restclient--process-extract-commands (commands)
@@ -484,7 +494,8 @@ eg, :basicauth := (base64-encode-string
                         (shell-command-on-region (point-min) (point-max) command output-buffer nil))
                       (with-current-buffer output-buffer
                         (let ((result (s-trim (buffer-substring-no-properties (point-min) (point-max)))))
-                          (push (format "%s = %s" varname result) results))))
+                          (push (format "%s = %s" varname
+                                        (restclient--strip-surrounding-quotes result)) results))))
                   (when (buffer-live-p output-buffer)
                     (kill-buffer output-buffer)))))
 
