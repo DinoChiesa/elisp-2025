@@ -1,3 +1,30 @@
+;; a bunch of things I don't use, but might, in the future?
+
+
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; to highlight trailing whitespace
+;; ;;
+;; ;; Why not load this from MELPA?
+;; ;;
+;; (use-package highlight-chars
+;;   :load-path "~/elisp"
+;;   :defer t
+;;   :commands (hc-toggle-highlight-trailing-whitespace)
+;;   :autoload (hc-highlight-trailing-whitespace)
+;;   :config (progn
+;;             (defun dino-enable-highlight-trailing-ws-based-on-extension ()
+;;               "turns on highlighting of trailing whitespace based on file extension"
+;;               (let ((extension (file-name-extension buffer-file-name))
+;;                     (extensions-that-get-highlighting '("md" "css" "java" "js" "go" "py" "ts") ))
+;;                 (if (member extension extensions-that-get-highlighting)
+;;                     (hc-highlight-trailing-whitespace))))
+;;
+;;             (add-hook 'find-file-hook 'dino-enable-highlight-trailing-ws-based-on-extension)))
+
+
+
+
 ;; 20250704-1025
 ;; I never use this. Just using aider in a separate terminal seems
 ;; fine to me.

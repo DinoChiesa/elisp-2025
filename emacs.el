@@ -84,6 +84,7 @@
 (setq auto-save-interval 500)
 (setq case-fold-search nil)
 (setq comment-empty-lines t)
+(setq-default show-trailing-whitespace t)
 
 (setq-default fill-column 80)
 
@@ -978,7 +979,6 @@ server program."
 
 (defun dino-conf-toml-mode-fn ()
   (display-line-numbers-mode)
-  (hc-highlight-trailing-whitespace)
   (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local) )
 
 (add-hook 'conf-toml-mode-hook #'dino-conf-toml-mode-fn)
@@ -2288,7 +2288,7 @@ just auto-corrects on common mis-spellings by me."
   (abbrev-mode 1)
   ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
   (display-line-numbers-mode)
-  (hc-highlight-trailing-whitespace)
+  (setq show-trailing-whitespace t)
   )
 
 (add-hook 'prog-mode-hook 'dino-prog-mode-hook-fn)
@@ -3481,26 +3481,6 @@ Does not consider word syntax tables.
 
 
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; to highlight trailing whitespace
-;;
-(use-package highlight-chars
-  :load-path "~/elisp"
-  :defer t
-  :commands (hc-toggle-highlight-trailing-whitespace)
-  :autoload (hc-highlight-trailing-whitespace)
-  :config (progn
-            (defun dino-enable-highlight-trailing-ws-based-on-extension ()
-              "turns on highlighting of trailing whitespace based on file extension"
-              (let ((extension (file-name-extension buffer-file-name))
-                    (extensions-that-get-highlighting '("md" "css" "java" "js" "go" "py" "ts") ))
-                (if (member extension extensions-that-get-highlighting)
-                    (hc-highlight-trailing-whitespace))))
-
-            (add-hook 'find-file-hook 'dino-enable-highlight-trailing-ws-based-on-extension)))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; elisp mode
 ;;
@@ -3559,7 +3539,6 @@ Does not consider word syntax tables.
   (set (make-local-variable 'indent-tabs-mode) nil)
   (apheleia-mode)
   (display-line-numbers-mode)
-  (hc-highlight-trailing-whitespace)
   (electric-pair-mode)
   (yas-minor-mode)
   (show-paren-mode 1)
