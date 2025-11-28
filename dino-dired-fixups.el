@@ -210,9 +210,9 @@ This works with files or directories."
          (delq nil (mapcar #'(lambda (w)
                                (let* ((b (window-buffer w))
                                       (m (mode-for-buffer b)))
-                                 (and (eq m 'dired-mode)
-                                      (not (eq b (current-buffer)))
-                                      b)))
+                                (and (eq m 'dired-mode)
+                                 (not (eq b (current-buffer)))
+                                 b)))
                            (window-list)))))
 
     (unless (= (length other-visible-dired-buffers) 1)
@@ -235,7 +235,7 @@ This works with files or directories."
                          (cadr fns))
                         (t
                          (car fns)))))
-                  (funcall fn f dst-dir 1)))
+                 (funcall fn f dst-dir 1)))
             (dired-get-marked-files nil))
       (with-current-buffer (car other-visible-dired-buffers)
         (revert-buffer))
@@ -271,28 +271,28 @@ and quit."
   (walk-windows
    #'(lambda (win)
        (with-selected-window win
-         (when (eq major-mode 'dired-mode)
-           (if (file-attributes default-directory)
-               ;; there are attributes, the dir exists
-               (let ((mod (gethash default-directory dired-file-modification-hash)))
-                 (unless (and mod
-                              (equal mod (nth 5 (file-attributes
-                                                 default-directory))))
-                   (setq mod (nth 5 (file-attributes default-directory)))
-                   (puthash default-directory mod dired-file-modification-hash)
-                   (dired-revert)))
-             ;; else, the dired buffer points to a dir that no longer exists
-             (let ((zombie-buffer (window-buffer win)))
-               (kill-buffer zombie-buffer))))))
+        (when (eq major-mode 'dired-mode)
+         (if (file-attributes default-directory)
+             ;; there are attributes, the dir exists
+             (let ((mod (gethash default-directory dired-file-modification-hash)))
+              (unless (and mod
+                       (equal mod (nth 5 (file-attributes
+                                          default-directory))))
+               (setq mod (nth 5 (file-attributes default-directory)))
+               (puthash default-directory mod dired-file-modification-hash)
+               (dired-revert)))
+           ;; else, the dired buffer points to a dir that no longer exists
+           (let ((zombie-buffer (window-buffer win)))
+            (kill-buffer zombie-buffer))))))
    ;;(condition-case nil (delete-window win) (error nil)))))))
    'no-mini 'all-frames))
 
 (run-with-idle-timer 1 t 'maybe-revert-dired-buffers)
 
 
-;; This is a well-known fn name normally provided by dired-x, which I do
-;; not use.  So I provide my own definition. When opening a file from
-;; dired, it will use the command guessed here.
+;; When opening a file from dired, it will use the command guessed here.  A
+;; function by this name was originally by dired-x, which I do not use, hence
+;; this definition.
 (defun dired-guess-shell-command (prompt files)
   "invoked by `dired-read-shell-command' to read the shell command
 for a given file or set of files. This function makes an intelligent guess."
