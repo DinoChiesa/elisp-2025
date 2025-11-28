@@ -364,10 +364,13 @@ The buffer contains the raw HTTP response sent by the server."
       (restclient--unique-vars vars))))
 
 (defun restclient-var (name)
-  "return the value of a var in the restclient context.
-eg, :basicauth := (base64-encode-string
-                   (concat (restclient-var \":userNAME\")
-                      \":\" (restclient-var \":pwd\"))
+  "return the value of a var with NAME in the restclient context.
+Often used to set other vars.
+
+Usage example:
+   :basicauth := (base64-encode-string
+                 (concat (restclient-var \":username\")
+                    \":\" (restclient-var \":pwd\"))
 "
   (cdr (assoc name vars)))
 
@@ -403,11 +406,12 @@ eg, :basicauth := (base64-encode-string
                (entity (restclient-replace-all-in-string vars entity))
                ;; dino - modified 20241105-1500
                ;; To compactify json optionally.
-               ;; This is necessary for some API servers. (5g Apigee portals)
+               ;; This is necessary for some API servers. (5g Apigee portals,
+               ;; Google Cloud Logging, others?)
                (ctype-hdr (or
                            (cdr (assoc "content-type" headers))
                            (cdr (assoc "Content-Type" headers))))
-               ;; rely on a variable
+               ;; rely on a well-known variable
                (compact-var (cdr (assoc ":-compact-json" vars)))
                (want-compact-json (and
                                    ctype-hdr
