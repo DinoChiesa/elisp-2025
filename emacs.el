@@ -15,6 +15,24 @@
 (setq inhibit-splash-screen t)
 (setq initial-scratch-message ";;;  -*- lexical-binding: t; -*-\n;; scratch buffer\n")
 
+
+;; ;; 20251207-1356
+;; ;; How is the t symbol getting placed into post-command-hook?
+;; ;; https://www.reddit.com/r/emacs/comments/1pgv23b/postcommandhook_contains_t/
+;; ;;
+;; ;; I don't think I care anymore. It happens even with "emacs -Q".  Sure seems like
+;; ;; it is intended behavior, despite what Google search and gemini tells me.
+;;
+;; (setq post-command-hook nil)
+;; (add-variable-watcher 'post-command-hook
+;;                       (lambda (symbol newval operation _where)
+;;                         (when (memq t newval)
+;;                           (message "⚠️ post-command-hook set to value containing t by: %s" operation)
+;;                           (message "Old value: %S" (symbol-value symbol)) ; The old value before the change
+;;                           (message "New value: %S" newval)
+;;                           ;; Force Emacs to enter the debugger to get a backtrace
+;;                           (debug))))
+
 ;; 20251011-1123
 ;; On Windows
 ;; when using `install-package'
@@ -148,7 +166,7 @@
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; dino's utility functions
+;; my own various unorganized utility functions
 ;;
 (use-package dino-utility
   :load-path "~/elisp"
@@ -165,6 +183,16 @@
              dino/find-executable-in-paths)
   :config
   (add-hook 'before-save-hook 'dino/untabify-maybe))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; timestamp insertion functions
+;;
+(use-package dino-timestamp
+  :load-path "~/elisp"
+  :defer t
+  :pin manual
+  :commands (dts/insert-currentTimeMillis dts/insert-timeofday))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Some configuration specific for system-types.
@@ -318,7 +346,7 @@
 (use-package indent-bars
   ;; helpful for yaml and json and etc.
   :defer 19
-  :ensure t)
+  :ensure t )
 
 (use-package x509-mode
   ;; View certs, CRLs, & related, in emacs. Relies on the
@@ -613,7 +641,6 @@
             (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
             ))
 
-
 ;; ;; for diagnosing flycheck checks (any mode)
 ;; (defun dpc/flycheck-command-logger (lst)
 ;;   "logs the LST, then returns the LST"
@@ -625,6 +652,7 @@
 ;; (setq flycheck-command-wrapper-function #'identity)
 
 (defun dino-start-eglot-unless-remote ()
+  "Start eglot unless file is remote."
   (unless (file-remote-p default-directory)
     (eglot-ensure)))
 
@@ -807,57 +835,6 @@ server program."
   )
 
 
-;; (defun dino-fixup-jsonnet-command ()
-;;   "For some reason, When I put this in the =dino-jsonnet-package-config= fn
-;; I get an error:
-;; Error (use-package): jsonnet-mode/:config: Symbol’s function definition
-;;    is void: \(setf\ flycheck-checker-get\)
-;;
-;; Putting it in this fn is an attempt to isolate and avoid the problem.
-;; Jeez.
-;; "
-;;   (interactive)
-;;
-;;
-;;   ;; (flycheck-define-checker jsonnet-for-dino
-;;   ;;   "A Python syntax and style checker using flake8"
-;;   ;;          :command ("flake8"
-;;   ;;                     "--format=default"
-;;   ;;                     (config-file "--config" flycheck-flake8rc)
-;;   ;;                     (option "--max-complexity" flycheck-flake8-maximum-complexity nil
-;;   ;;                       flycheck-option-int)
-;;   ;;                     (option "--max-line-length" flycheck-flake8-maximum-line-length nil
-;;   ;;                       flycheck-option-int)
-;;   ;;                     "-")
-;;   ;;          :standard-input t
-;;   ;;          :error-filter fix-flake8
-;;   ;;          :error-patterns
-;;   ;;          ((warning line-start
-;;   ;;             "stdin:" line ":" (optional column ":") " "
-;;   ;;             (id (one-or-more (any alpha)) (one-or-more digit)) " "
-;;   ;;             (message (one-or-more not-newline))
-;;   ;;             line-end))
-;;   ;;          :next-checkers ((t . python-pylint))
-;;   ;;          :modes python-mode)
-;;
-;;   ;;         ;; replace flake8 with new chaining one from above
-;;   ;;        (setq flycheck-checkers (cons 'python-flake8-chain (delq 'python-flake8 flycheck-checkers)))
-;;
-;;
-;;   ;; ALL I WANT TO DO IS REDEFINE THE COMMAND for AN EXISTING CHECKER BUT IT SEEMS IMPOSSIBLE.
-;;   ;; ALSO, IT MAY BE IRRELEVANT BECAUSE I AM USING EGLOT AND TURNING OFF FLYCHECK.
-;;
-;;   ;; testing for the function in an attempt to diagnose the weird error.
-;;   (if (functionp 'flycheck-checker-get)
-;;       (setf (flycheck-checker-get 'jsonnet 'command)
-;;             `("jsonnet"
-;;               (option-list "-J"
-;;                            (eval (or jsonnet-library-search-directories flycheck-jsonnet-include-paths)))
-;;               (eval
-;;                (or jsonnet-command-options flycheck-jsonnet-command-args))
-;;               source-inplace)))
-;;   )
-
 (use-package jsonnet-mode
   ;; NB: the requires keyword is the same as :if - it does not load dependencies!
   :init (progn (require 'flycheck) (require 'eglot) (require 'dpc-jsonnet-mode-fixups))
@@ -932,6 +909,7 @@ server program."
               (schema-dir (file-name-concat candidate-dir "schemas" ))
               (_ (file-directory-p schema-dir)))
         (setq apigee-xmlschema-validator-home candidate-dir))
+
     (let* ((apigeecli-path "~/.apigeecli/bin/apigeecli")
            (found-apigeecli (file-exists-p apigeecli-path)))
       (if (not found-apigeecli)
@@ -941,18 +919,40 @@ server program."
           (message "cannot find apigeecli")
         (setf (alist-get 'apigeecli apigee-programs-alist)
               apigeecli-path)))
+
     (let* ((gcloud-cmd "gcloud")
            (found-gcloud (executable-find gcloud-cmd)))
       (if (not found-gcloud)
           (error "cannot find gcloud")
         (setf (alist-get 'gcloud apigee-programs-alist)
               found-gcloud)))
-    (let* ((apigeelint-cli-path "~/apigeelint/cli.js")
-           (found-apigeelint (file-exists-p apigeelint-cli-path)))
-      (if (not found-apigeelint)
-          (message "cannot find apigeelint")
-        (setf (alist-get 'apigeelint apigee-programs-alist)
-              (format "node %s" apigeelint-cli-path))))
+
+    ;; (let* ((apigeelint-cli-path "~/apigeelint/cli.js")
+    ;;        (found-apigeelint (file-exists-p apigeelint-cli-path)))
+    ;;   (if (not found-apigeelint)
+    ;;       (message "cannot find apigeelint")
+    ;;     (setf (alist-get 'apigeelint apigee-programs-alist)
+    ;;           (format "node %s" apigeelint-cli-path))))
+
+    (let* ((apigeelint-candidate-paths
+            '("~/apigeelint/cli.js"
+              "~/dev/apigeelint/cli.js"
+              "~/a/dev/apigeelint/cli.js"))
+           (found-apigeelint-path nil)
+           (paths-to-check  apigeelint-candidate-paths))
+      (while (and (not found-apigeelint-path) paths-to-check)
+        (let* ((current-path (car paths-to-check))
+               (expanded-path (expand-file-name current-path)))
+          (when (file-exists-p expanded-path)
+            (setq found-apigeelint-path expanded-path)))
+        (setq paths-to-check (cdr paths-to-check))) ;; Move to the next path
+
+      (if found-apigeelint-path
+          (setf (alist-get 'apigeelint apigee-programs-alist)
+                (format "node %s" found-apigeelint-path))
+        (message "cannot find apigeelint-cli.js in any of the candidate paths: %s"
+                 (mapcar #'expand-file-name apigeelint-candidate-paths))))
+
     (if (and (getenv "ENV")(getenv "ORG"))
         (setq apigee-environment (getenv "ENV")
               apigee-organization (getenv "ORG")))
@@ -1975,6 +1975,7 @@ more information."
   (setq gptel-backend (gptel-make-gemini "Gemini"
                         :key (dpc-gemini/get-config-property "apikey")
                         :stream t))
+  (setq gptel-model 'gemini-flash-latest)
   ;; for transient menu different view?
   ;;  (setq gptel-expert-commands t)
 
@@ -2009,7 +2010,7 @@ more information."
 (use-package gptel
   :bind (("C-c C-g s" . #'gptel-send))
   :ensure t
-  :commands (gptel-send)
+  :commands (gptel-send gptel-rewrite)
   :config (dpc-gptel-setup) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2215,7 +2216,7 @@ more information."
 ;; Dired mode
 
 (defun dino-dired-mode-hook-fn ()
-  (hl-line-mode 1)
+  ;;(hl-line-mode 1)
   (define-key dired-mode-map (kbd "C-c C-g") #'dino-dired-kill-new-file-contents)
   (define-key dired-mode-map (kbd "C-c C-c") #'dino-dired-copy-file-to-dir-in-other-window)
   (define-key dired-mode-map (kbd "C-c C-m") #'dino-dired-move-file-to-dir-in-other-window)
@@ -2334,7 +2335,7 @@ just auto-corrects on common mis-spellings by me."
     ;; which overwrites my preference
     (keymap-local-set "C-c C-w"  #'compare-windows)
 
-    (hl-line-mode 1)
+    ;;(hl-line-mode 1)
     (dtrt-indent-mode t)
     ;; ;; allow fill-paragraph to work on xml code doc
     ;; (make-local-variable 'paragraph-separate)
@@ -2938,7 +2939,7 @@ colon."
 
          (yas-minor-mode)
          (show-paren-mode 1)
-         (hl-line-mode 1)
+         ;;(hl-line-mode 1)
 
          (require 'flycheck)
          (flycheck-mode)
@@ -2983,7 +2984,7 @@ colon."
 (eval-after-load "csharp-mode"
   '(progn
      (require 'compile)
-     (add-hook  'csharp-mode-hook 'dino-csharp-mode-fn t)
+     (add-hook 'csharp-mode-hook 'dino-csharp-mode-fn 0 t)
 
      ;; 20250126-1013 - adjustments for indentation.
      ;; Discover these with treesit-explore-mode .
@@ -3057,7 +3058,7 @@ colon."
   (require 'yasnippet)
   (yas-minor-mode)
   (show-paren-mode 1)
-  (hl-line-mode 1)
+  ;;(hl-line-mode 1)
   (company-mode)
 
   ;; 20241228-0619
@@ -3084,13 +3085,13 @@ colon."
 
   (message "dino-csharp-ts-mode-fn: done.")
 
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil t)
   )
 
 (eval-after-load "csharp-mode"
   '(progn
      (require 'compile)
-     (add-hook 'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn t)
+     (add-hook 'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn 0 t)
      ;; 20250223-1328 - this may not be necessary in emacs 30.1; bears further testing.
      ;; (if (fboundp 'apheleia-mode)
      ;;     (add-hook 'apheleia-post-format-hook #'dino-maybe-eglot-reconnect))
@@ -3254,7 +3255,7 @@ Does not consider word syntax tables.
         comment-style 'indent
         comment-use-syntax t)
   )
-(add-hook 'php-mode-hook 'dino-php-mode-fn t)
+(add-hook 'php-mode-hook 'dino-php-mode-fn 0 t)
 
 (eval-after-load "php-mode"
   '(progn
@@ -3412,7 +3413,7 @@ Does not consider word syntax tables.
       (modify-syntax-entry ?\' "\"" sgml-mode-syntax-table)
     (modify-syntax-entry ?\' ".")) ;; . = punctuation
 
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil t)
   )
 
 (add-hook 'sgml-mode-hook 'dino-xml-mode-fn)
@@ -3497,13 +3498,13 @@ Does not consider word syntax tables.
   ;; never convert leading spaces to tabs:
   ;;(make-local-variable 'indent-tabs-mode)
   (setq indent-tabs-mode nil)
-  (hl-line-mode 1)
+  ;;(hl-line-mode 1)
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
   (company-mode)
   (apheleia-mode)
-  (flycheck-mode)
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
+  ;;(flycheck-mode)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t)
   (require 'elisp-fix-indent)
   (advice-add #'calculate-lisp-indent :override #'efi/calculate-lisp-indent)
   ;;(advice-remove 'calculate-lisp-indent #'efi~calculate-lisp-indent)
@@ -3550,7 +3551,7 @@ Does not consider word syntax tables.
   ;; This will reset it.
   (setq python-check-command "ruff")
 
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local) )
+  (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t) )
 
 (add-hook 'python-ts-mode-hook 'dino-python-mode-fn)
 (add-hook 'python-mode-hook 'dino-python-mode-fn)
@@ -3696,7 +3697,7 @@ counteracts that. "
   ;; modes should NOT get the `delete-trailing-whitespace' treatment?
   ;; I dunno.
   (when (memq major-mode '(js-mode javascript-mode json-mode))
-    (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local))
+    (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
 
   ;;
   ;; eglot by default uses typescript-language-server as the server.
@@ -3847,7 +3848,7 @@ counteracts that. "
 
   ;; remove trailing whitespace in C files
   ;; http://stackoverflow.com/questions/1931784
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local))
+  (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
 
 
 
@@ -4427,7 +4428,7 @@ Enable `recentf-mode' if it isn't already."
 (define-key global-map (kbd "C-c q")       #'query-replace)
 (define-key global-map (kbd "C-c c")       #'goto-char)
 (define-key global-map (kbd "C-c r")       #'replace-regexp)
-(define-key global-map (kbd "C-x t")       #'dino/insert-timeofday)
+(define-key global-map (kbd "C-x t")       #'dts/insert-timeofday)
 (define-key global-map (kbd "C-x C-d")     #'delete-window)
 (define-key global-map (kbd "C-x x")       #'copy-to-register)
 (define-key global-map (kbd "C-x g")       #'insert-register)
