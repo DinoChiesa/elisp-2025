@@ -84,8 +84,8 @@
 (setq auto-save-interval 500)
 (setq case-fold-search nil)
 (setq comment-empty-lines t)
+(setq python-shell-interpreter "python") ;; not python3
 (setq-default show-trailing-whitespace t)
-
 (setq-default fill-column 80)
 
 (add-to-list 'load-path "~/elisp")
