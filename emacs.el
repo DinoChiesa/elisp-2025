@@ -490,7 +490,7 @@
          completion-category-overrides
          'command
          `((styles . (substring))
-           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first))))
+           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-or-starts-with-first))))
 
   ;; For describe-function or describe-variable, use `symbol-help'
   (setq completion-category-overrides
@@ -498,7 +498,7 @@
          completion-category-overrides
          'symbol-help
          `((styles . (substring))
-           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first))))
+           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-or-starts-with-first))))
 
   ;; not sure _when_ this is used, or even if it is needed rather than `symbol-help'
   (setq completion-category-overrides
@@ -905,20 +905,19 @@ server program."
 
   :config
   (progn
-    (if-let* ((candidate-dir "~/newdev/apigee-schema-inference/dist")
+    (if-let* ((candidate-dir (expand-file-name "~/newdev/apigee-schema-inference/dist"))
               (schema-dir (file-name-concat candidate-dir "schemas" ))
               (_ (file-directory-p schema-dir)))
         (setq apigee-xmlschema-validator-home candidate-dir))
 
-    (let* ((apigeecli-path "~/.apigeecli/bin/apigeecli")
-           (found-apigeecli (file-exists-p apigeecli-path)))
-      (if (not found-apigeecli)
-          (setq apigeecli-path (executable-find "apigeecli")
-                found-apigeecli (and apigeecli-path (file-exists-p apigeecli-path))))
-      (if (not found-apigeecli)
-          (message "cannot find apigeecli")
-        (setf (alist-get 'apigeecli apigee-programs-alist)
-              apigeecli-path)))
+    (let ((apigeecli-path
+           (or
+            (when (file-exists-p (expand-file-name "~/.apigeecli/bin/apigeecli"))
+              (expand-file-name "~/.apigeecli/bin/apigeecli"))
+            (executable-find "apigeecli"))))
+      (if apigeecli-path
+          (setf (alist-get 'apigeecli apigee-programs-alist) apigeecli-path)
+        (message "Cannot find apigeecli")))
 
     (let* ((gcloud-cmd "gcloud")
            (found-gcloud (executable-find gcloud-cmd)))
@@ -926,13 +925,6 @@ server program."
           (error "cannot find gcloud")
         (setf (alist-get 'gcloud apigee-programs-alist)
               found-gcloud)))
-
-    ;; (let* ((apigeelint-cli-path "~/apigeelint/cli.js")
-    ;;        (found-apigeelint (file-exists-p apigeelint-cli-path)))
-    ;;   (if (not found-apigeelint)
-    ;;       (message "cannot find apigeelint")
-    ;;     (setf (alist-get 'apigeelint apigee-programs-alist)
-    ;;           (format "node %s" apigeelint-cli-path))))
 
     (let* ((apigeelint-candidate-paths
             '("~/apigeelint/cli.js"
