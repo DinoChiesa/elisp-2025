@@ -157,7 +157,8 @@
              dino/snake-to-camelcase-word-at-point
              dino/indent-buffer
              dino/indent-line-to-current-column
-             dino/shfmt-buffer)
+             dino/shfmt-buffer
+             dino/json-format-region )
   :autoload (dino/insert-or-modify-alist-entry
              dino/maybe-add-to-exec-path
              dino/find-latest-nvm-version-bin-dir
@@ -192,6 +193,15 @@
        (grep-apply-setting 'grep-command "grep -H -i -n " )
        ;; (setq-default grep-command "grep -H -i -n ")
        ))))
+
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; To make sure we transmit kill to clipboard, and yank from clipboard.
+;; ;; This does not work unless I have an X-server enabled!
+;; (use-package xclip
+;;   :if (not (display-graphic-p))
+;;   :ensure t
+;;   :config (xclip-mode 1))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -4456,6 +4466,7 @@ Enable `recentf-mode' if it isn't already."
 (define-key global-map (kbd "C-c C-x C-c") #'calendar)
 (define-key global-map (kbd "ESC C-\\")    #'help-for-help)
 (define-key global-map (kbd "C-c C-d")     #'delete-trailing-whitespace)
+(define-key global-map (kbd "C-c j f")     #'dino/json-format-region)
 
 
 (define-key prog-mode-map (kbd "C-c d")   #'chatgpt-shell-describe-code)

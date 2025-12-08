@@ -360,12 +360,19 @@ The buffer contains the raw HTTP response sent by the server."
         (let ((name (buffer-substring-no-properties (match-beginning 1) (match-end 1)))
               (should-eval (> (length (match-string 2)) 0))
               (value (buffer-substring-no-properties (match-beginning 3) (match-end 3))))
-          (setq vars (cons (cons name (if should-eval (restclient-eval-var value) value)) vars))))
+          (condition-case err
+              (setq vars (cons
+                          (cons name (if should-eval
+                                         (restclient-eval-var value)
+                                       (restclient-replace-all-in-string vars value)))
+                          vars))
+            (error
+             (message "Variable setting failed: %s" (cadr err))))))
       (restclient--unique-vars vars))))
 
 (defun restclient-var (name)
   "return the value of a var with NAME in the restclient context.
-Often used to set other vars.
+Often used to set other vars. This will not work with lexical-binding.
 
 Usage example:
    :basicauth := (base64-encode-string
