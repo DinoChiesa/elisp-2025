@@ -6,11 +6,11 @@
 ;; Version: 20250608
 ;;
 
-;;; Logic to help make icomplete-vertical-mode sort sanely in minibuffer.
-;;
-
 ;;; Commentary:
 
+;; Logic to help make icomplete-vertical-mode sort sanely in minibuffer.
+;;
+;;
 ;; The default behavior of `icomplete-vertical-mode' when used with `find-file',
 ;; `execute-extended-command', `recentf-open' and others, is to show the list of
 ;; candidates sorted first by length of the filename and then
@@ -97,6 +97,9 @@ the `command' category in `completion-category-overrides', like so:
             (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first)
             (cycle . 10))
         completion-category-overrides))
+
+See also `dpc-ss-sort-alpha-exact-or-starts-with-first' which
+is probably better.
 "
   (let ((cur-input (minibuffer-contents-no-properties)))
     (let ((exact-match (car (member cur-input candidates))))
@@ -106,6 +109,50 @@ the `command' category in `completion-category-overrides', like so:
                        (lambda (c) (equal c exact-match)) candidates)
                       #'string-lessp))
         (sort candidates #'string-lessp)))))
+
+(defun dpc-ss-sort-alpha-exact-or-starts-with-first (candidates)
+  "Sort CANDIDATES placing:
+  1. An exact match for the minibuffer content first.
+  2. Candidates that start with the input, sorted alphabetically.
+  3. The remaining candidates, sorted alphabetically.
+
+  This function is suitable for use as a `cycle-sort-function' for
+  the `command' category in `completion-category-overrides', like so:
+
+  (setq completion-category-overrides
+    (cons `(command
+            (styles . (basic substring))
+            (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-or-starts-with-first)
+            (cycle . 10))
+        completion-category-overrides))
+"
+  (let ((cur-input (minibuffer-contents-no-properties))
+        (exact-matches nil)
+        (starts-with-matches nil)
+        (remaining-candidates nil))
+
+    ;; There is a more memory-efficient way to do this sort in a single pass,
+    ;; with a more complex predictae, but it's a little more complicated to
+    ;; read. I prefer the readability of this approach, creating multiple
+    ;; independent temporary lists.
+
+    ;; 1. Identify and categorize candidates
+    (dolist (candidate candidates)
+      (cond
+       ((string= candidate cur-input)
+        (push candidate exact-matches))
+       ((string-prefix-p cur-input candidate)
+        (push candidate starts-with-matches))
+       (t
+        (push candidate remaining-candidates))))
+
+    ;; 2. Sort within the relevant groups alphabetically
+    (setq starts-with-matches (sort starts-with-matches #'string-lessp))
+    (setq remaining-candidates (sort remaining-candidates #'string-lessp))
+
+    ;; 3. Combine and return the results in the specified order
+    (nconc exact-matches starts-with-matches remaining-candidates)))
+
 
 (defun dpc-ss-sort-files (candidates)
   "Sort a list of CANDIDATES alphabetically, except that  \"./\"

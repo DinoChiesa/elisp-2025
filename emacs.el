@@ -15,6 +15,7 @@
 (setq inhibit-splash-screen t)
 (setq initial-scratch-message ";;;  -*- lexical-binding: t; -*-\n;; scratch buffer\n")
 
+
 ;; 20251011-1123
 ;; On Windows
 ;; when using `install-package'
@@ -84,8 +85,8 @@
 (setq auto-save-interval 500)
 (setq case-fold-search nil)
 (setq comment-empty-lines t)
+(setq python-shell-interpreter "python") ;; not python3
 (setq-default show-trailing-whitespace t)
-
 (setq-default fill-column 80)
 
 (add-to-list 'load-path "~/elisp")
@@ -148,7 +149,7 @@
   :ensure t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; dino's utility functions
+;; my own various unorganized utility functions
 ;;
 (use-package dino-utility
   :load-path "~/elisp"
@@ -166,6 +167,16 @@
              dino/find-executable-in-paths)
   :config
   (add-hook 'before-save-hook 'dino/untabify-maybe))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; timestamp insertion functions
+;;
+(use-package dino-timestamp
+  :load-path "~/elisp"
+  :defer t
+  :pin manual
+  :commands (dts/insert-currentTimeMillis dts/insert-timeofday))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Some configuration specific for system-types.
@@ -328,7 +339,7 @@
 (use-package indent-bars
   ;; helpful for yaml and json and etc.
   :defer 19
-  :ensure t)
+  :ensure t )
 
 (use-package x509-mode
   ;; View certs, CRLs, & related, in emacs. Relies on the
@@ -472,7 +483,7 @@
          completion-category-overrides
          'command
          `((styles . (substring))
-           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first))))
+           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-or-starts-with-first))))
 
   ;; For describe-function or describe-variable, use `symbol-help'
   (setq completion-category-overrides
@@ -480,7 +491,7 @@
          completion-category-overrides
          'symbol-help
          `((styles . (substring))
-           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first))))
+           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-or-starts-with-first))))
 
   ;; not sure _when_ this is used, or even if it is needed rather than `symbol-help'
   (setq completion-category-overrides
@@ -516,7 +527,6 @@
 
   ;; ;; 3. Add the advice to the specific command
   ;; (advice-add 'magit-branch-checkout :around #'dino-magit-branch-checkout-advice)
-
 
   :bind (:map  icomplete-vertical-mode-minibuffer-map
          ;; icomplete-minibuffer-map <== use this for the non-vertical version.
@@ -623,7 +633,6 @@
             (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
             ))
 
-
 ;; ;; for diagnosing flycheck checks (any mode)
 ;; (defun dpc/flycheck-command-logger (lst)
 ;;   "logs the LST, then returns the LST"
@@ -635,6 +644,7 @@
 ;; (setq flycheck-command-wrapper-function #'identity)
 
 (defun dino-start-eglot-unless-remote ()
+  "Start eglot unless file is remote."
   (unless (file-remote-p default-directory)
     (eglot-ensure)))
 
@@ -817,57 +827,6 @@ server program."
   )
 
 
-;; (defun dino-fixup-jsonnet-command ()
-;;   "For some reason, When I put this in the =dino-jsonnet-package-config= fn
-;; I get an error:
-;; Error (use-package): jsonnet-mode/:config: Symbol’s function definition
-;;    is void: \(setf\ flycheck-checker-get\)
-;;
-;; Putting it in this fn is an attempt to isolate and avoid the problem.
-;; Jeez.
-;; "
-;;   (interactive)
-;;
-;;
-;;   ;; (flycheck-define-checker jsonnet-for-dino
-;;   ;;   "A Python syntax and style checker using flake8"
-;;   ;;          :command ("flake8"
-;;   ;;                     "--format=default"
-;;   ;;                     (config-file "--config" flycheck-flake8rc)
-;;   ;;                     (option "--max-complexity" flycheck-flake8-maximum-complexity nil
-;;   ;;                       flycheck-option-int)
-;;   ;;                     (option "--max-line-length" flycheck-flake8-maximum-line-length nil
-;;   ;;                       flycheck-option-int)
-;;   ;;                     "-")
-;;   ;;          :standard-input t
-;;   ;;          :error-filter fix-flake8
-;;   ;;          :error-patterns
-;;   ;;          ((warning line-start
-;;   ;;             "stdin:" line ":" (optional column ":") " "
-;;   ;;             (id (one-or-more (any alpha)) (one-or-more digit)) " "
-;;   ;;             (message (one-or-more not-newline))
-;;   ;;             line-end))
-;;   ;;          :next-checkers ((t . python-pylint))
-;;   ;;          :modes python-mode)
-;;
-;;   ;;         ;; replace flake8 with new chaining one from above
-;;   ;;        (setq flycheck-checkers (cons 'python-flake8-chain (delq 'python-flake8 flycheck-checkers)))
-;;
-;;
-;;   ;; ALL I WANT TO DO IS REDEFINE THE COMMAND for AN EXISTING CHECKER BUT IT SEEMS IMPOSSIBLE.
-;;   ;; ALSO, IT MAY BE IRRELEVANT BECAUSE I AM USING EGLOT AND TURNING OFF FLYCHECK.
-;;
-;;   ;; testing for the function in an attempt to diagnose the weird error.
-;;   (if (functionp 'flycheck-checker-get)
-;;       (setf (flycheck-checker-get 'jsonnet 'command)
-;;             `("jsonnet"
-;;               (option-list "-J"
-;;                            (eval (or jsonnet-library-search-directories flycheck-jsonnet-include-paths)))
-;;               (eval
-;;                (or jsonnet-command-options flycheck-jsonnet-command-args))
-;;               source-inplace)))
-;;   )
-
 (use-package jsonnet-mode
   ;; NB: the requires keyword is the same as :if - it does not load dependencies!
   :init (progn (require 'flycheck) (require 'eglot) (require 'dpc-jsonnet-mode-fixups))
@@ -938,31 +897,46 @@ server program."
 
   :config
   (progn
-    (if-let* ((candidate-dir "~/newdev/apigee-schema-inference/dist")
+    (if-let* ((candidate-dir (expand-file-name "~/newdev/apigee-schema-inference/dist"))
               (schema-dir (file-name-concat candidate-dir "schemas" ))
               (_ (file-directory-p schema-dir)))
         (setq apigee-xmlschema-validator-home candidate-dir))
-    (let* ((apigeecli-path "~/.apigeecli/bin/apigeecli")
-           (found-apigeecli (file-exists-p apigeecli-path)))
-      (if (not found-apigeecli)
-          (setq apigeecli-path (executable-find "apigeecli")
-                found-apigeecli (and apigeecli-path (file-exists-p apigeecli-path))))
-      (if (not found-apigeecli)
-          (message "cannot find apigeecli")
-        (setf (alist-get 'apigeecli apigee-programs-alist)
-              apigeecli-path)))
+
+    (let ((apigeecli-path
+           (or
+            (when (file-exists-p (expand-file-name "~/.apigeecli/bin/apigeecli"))
+              (expand-file-name "~/.apigeecli/bin/apigeecli"))
+            (executable-find "apigeecli"))))
+      (if apigeecli-path
+          (setf (alist-get 'apigeecli apigee-programs-alist) apigeecli-path)
+        (message "Cannot find apigeecli")))
+
     (let* ((gcloud-cmd "gcloud")
            (found-gcloud (executable-find gcloud-cmd)))
       (if (not found-gcloud)
           (error "cannot find gcloud")
         (setf (alist-get 'gcloud apigee-programs-alist)
               found-gcloud)))
-    (let* ((apigeelint-cli-path "~/apigeelint/cli.js")
-           (found-apigeelint (file-exists-p apigeelint-cli-path)))
-      (if (not found-apigeelint)
-          (message "cannot find apigeelint")
-        (setf (alist-get 'apigeelint apigee-programs-alist)
-              (format "node %s" apigeelint-cli-path))))
+
+    (let* ((apigeelint-candidate-paths
+            '("~/apigeelint/cli.js"
+              "~/dev/apigeelint/cli.js"
+              "~/a/dev/apigeelint/cli.js"))
+           (found-apigeelint-path nil)
+           (paths-to-check  apigeelint-candidate-paths))
+      (while (and (not found-apigeelint-path) paths-to-check)
+        (let* ((current-path (car paths-to-check))
+               (expanded-path (expand-file-name current-path)))
+          (when (file-exists-p expanded-path)
+            (setq found-apigeelint-path expanded-path)))
+        (setq paths-to-check (cdr paths-to-check))) ;; Move to the next path
+
+      (if found-apigeelint-path
+          (setf (alist-get 'apigeelint apigee-programs-alist)
+                (format "node %s" found-apigeelint-path))
+        (message "cannot find apigeelint-cli.js in any of the candidate paths: %s"
+                 (mapcar #'expand-file-name apigeelint-candidate-paths))))
+
     (if (and (getenv "ENV")(getenv "ORG"))
         (setq apigee-environment (getenv "ENV")
               apigee-organization (getenv "ORG")))
@@ -982,8 +956,9 @@ server program."
   (apheleia-mode)
   (hs-minor-mode) ;; show: C-c @ C-s  hide: C-c @ C-h
   (dino/setup-shmode-for-apheleia)
-  (define-key sh-mode-map (kbd "C-c C-g")  #'dino/shfmt-buffer)
-  (define-key sh-mode-map (kbd "C-c C-c")  #'comment-region))
+  ;; probably the keymap is sh-mode-map, but there might be a ts in there.
+  (define-key (current-local-map) (kbd "C-c C-g")  #'dino/shfmt-buffer)
+  (define-key (current-local-map) (kbd "C-c C-c")  #'comment-region))
 
 (add-hook 'sh-mode-hook 'dino-sh-mode-fn)
 
@@ -1005,10 +980,16 @@ server program."
         standard-indent 2
         indent-tabs-mode t) ;; golang prefers tabs, wow, ugh
 
-  (define-key go-mode-map (kbd "ESC C-R") #'indent-region)
-  (define-key go-mode-map (kbd "ESC #")   #'dino/indent-buffer)
-  (define-key go-mode-map (kbd "C-c C-w") #'compare-windows)
-  (define-key go-mode-map (kbd "C-c C-c") #'comment-region)
+  (let ((local-map (current-local-map))) ;; go-mode-map or go-ts-mode-map
+    (when local-map
+      (mapc (lambda (binding)
+              (define-key local-map (kbd (car binding)) (cdr binding)))
+            '(("ESC C-R" . indent-region)
+              ("ESC #"   . dino/indent-buffer)
+              ("C-c C-w" . compare-windows)
+              ("C-c C-c" . comment-region)
+              ("C-c C-d" . delete-trailing-whitespace)
+              ))))
 
   (eval-after-load "smarter-compile"
     '(progn
@@ -1506,8 +1487,8 @@ then switch to the markdown output buffer."
   (turn-on-font-lock)
   (apheleia-mode)
   (setq typescript-indent-level 2)
-  (define-key typescript-mode-map (kbd "ESC C-R") #'indent-region)
-  (define-key typescript-mode-map (kbd "C-c C-c")  #'comment-region)
+  (define-key (current-local-map) (kbd "ESC C-R") #'indent-region)
+  (define-key (current-local-map) (kbd "C-c C-c")  #'comment-region)
   (display-line-numbers-mode)
   (auto-fill-mode -1))
 
@@ -1531,13 +1512,19 @@ then switch to the markdown output buffer."
           (hs-minor-mode t)
           (display-line-numbers-mode) ;; powershell-mode is not derived from prog-mode
           (add-hook 'before-save-hook #'delete-trailing-whitespace nil t)
-          (define-key powershell-mode-map (kbd "ESC #")   #'dino/indent-buffer)
-          (define-key powershell-mode-map (kbd "ESC .")   #'company-complete)
-          (define-key powershell-mode-map (kbd "ESC C-i") #'company-capf)
-          (define-key powershell-mode-map (kbd "ESC C-R") #'indent-region)
-          (define-key powershell-mode-map (kbd "C-c C-c") #'comment-region)
-          (define-key powershell-mode-map (kbd "C-c C-g") #'powershell-format-buffer)
-          (define-key powershell-mode-map (kbd "C-c C-w") #'compare-windows)
+          (let ((local-map (current-local-map))) ;; powershell-mode-map / powershell-ts-mode-map
+            (when local-map
+              (mapc (lambda (binding)
+                      (define-key local-map (kbd (car binding)) (cdr binding)))
+                    '(("ESC C-R" . indent-region)
+                      ("ESC #"   . dino/indent-buffer)
+                      ("ESC ."   . company-complete)
+                      ("C-c C-c" . comment-region)
+                      ("C-c C-d" . delete-trailing-whitespace)
+                      ("C-c C-w" . compare-windows)
+                      ("ESC C-i" . company-capf)
+                      ("C-c C-g" . powershell-format-buffer)
+                      ))))
           )
   :commands (powershell-mode)
   :hook (powershell-mode . dino-powershell-mode-fn)
@@ -1747,19 +1734,20 @@ more information."
   :init (defun dino-css-mode-fn ()
           "My hook for CSS mode"
           (interactive)
-          ;; (turn-on-font-lock) ;; need this?
           (setq css-indent-offset 2
-                completion-auto-help 'always
-                )
-          ;; 20251003-1927
-          ;; I should convert all of these "keymap-local-set" calls everywhere.
-          ;; but I want to test a few first.
-          (define-key css-mode-map (kbd "ESC C-R") #'indent-region)
-          (define-key css-mode-map (kbd "ESC #")   #'dino/indent-buffer)
-          (define-key css-mode-map (kbd "C-c C-w") #'compare-windows)
-          (define-key css-mode-map (kbd "C-c C-c") #'comment-region)
-          (define-key css-mode-map (kbd "ESC .") #'company-complete)
-          (define-key css-mode-map (kbd "ESC C-i") #'company-capf)
+                completion-auto-help 'always)
+          (let ((local-map (current-local-map))) ;; css-mode-map probably
+            (when local-map
+              (mapc (lambda (binding)
+                      (define-key local-map (kbd (car binding)) (cdr binding)))
+                    '(("ESC C-R" . indent-region)
+                      ("ESC #"   . dino/indent-buffer)
+                      ("C-c C-c" . comment-region)
+                      ("C-c C-d" . delete-trailing-whitespace)
+                      ("C-c C-w" . compare-windows)
+                      ("ESC ."   . company-complete)
+                      ("ESC C-i" . company-capf)
+                      ))))
 
           (turn-on-auto-revert-mode)
           (electric-pair-mode)
@@ -1772,8 +1760,8 @@ more information."
                    (fboundp 'treesit-fold-mode))
               (progn
                 (treesit-fold-mode)
-                (define-key css-mode-map (kbd "C-c >")  #'treesit-fold-close)
-                (define-key css-mode-map (kbd "C-c <")  #'treesit-fold-open)))
+                (define-key (current-local-map) (kbd "C-c >")  #'treesit-fold-close)
+                (define-key (current-local-map) (kbd "C-c <")  #'treesit-fold-open)))
 
           ;;(eglot-ensure) ;; maybe I will want this?
 
@@ -1900,8 +1888,8 @@ more information."
                    (fboundp 'treesit-fold-mode))
               (progn
                 (treesit-fold-mode)
-                (define-key json-mode-map (kbd "C-c >")  #'treesit-fold-close)
-                (define-key json-mode-map (kbd "C-c <")  #'treesit-fold-open)))
+                (define-key (current-local-map) (kbd "C-c >")  #'treesit-fold-close)
+                (define-key (current-local-map) (kbd "C-c <")  #'treesit-fold-open)))
           )
 
   :hook ((json-mode json-ts-mode) . dino-json-mode-fn)
@@ -1939,6 +1927,7 @@ more information."
 (use-package dictionary
   :defer t
   :commands (dictionary-lookup-definition dictionary-search)
+  ;; the following conflicts with somea few local maps.
   :config (define-key global-map (kbd "C-c C-d")  #'dictionary-lookup-definition)
   (setq dictionary-use-single-buffer t)
   (setq dictionary-server "dict.org")
@@ -1985,6 +1974,7 @@ more information."
   (setq gptel-backend (gptel-make-gemini "Gemini"
                         :key (dpc-gemini/get-config-property "apikey")
                         :stream t))
+  (setq gptel-model 'gemini-flash-latest)
   ;; for transient menu different view?
   ;;  (setq gptel-expert-commands t)
 
@@ -2019,7 +2009,7 @@ more information."
 (use-package gptel
   :bind (("C-c C-g s" . #'gptel-send))
   :ensure t
-  :commands (gptel-send)
+  :commands (gptel-send gptel-rewrite)
   :config (dpc-gptel-setup) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2225,7 +2215,7 @@ more information."
 ;; Dired mode
 
 (defun dino-dired-mode-hook-fn ()
-  (hl-line-mode 1)
+  ;;(hl-line-mode 1)
   (define-key dired-mode-map (kbd "C-c C-g") #'dino-dired-kill-new-file-contents)
   (define-key dired-mode-map (kbd "C-c C-c") #'dino-dired-copy-file-to-dir-in-other-window)
   (define-key dired-mode-map (kbd "C-c C-m") #'dino-dired-move-file-to-dir-in-other-window)
@@ -2344,7 +2334,7 @@ just auto-corrects on common mis-spellings by me."
     ;; which overwrites my preference
     (keymap-local-set "C-c C-w"  #'compare-windows)
 
-    (hl-line-mode 1)
+    ;;(hl-line-mode 1)
     (dtrt-indent-mode t)
     ;; ;; allow fill-paragraph to work on xml code doc
     ;; (make-local-variable 'paragraph-separate)
@@ -2948,7 +2938,7 @@ colon."
 
          (yas-minor-mode)
          (show-paren-mode 1)
-         (hl-line-mode 1)
+         ;;(hl-line-mode 1)
 
          (require 'flycheck)
          (flycheck-mode)
@@ -2993,7 +2983,7 @@ colon."
 (eval-after-load "csharp-mode"
   '(progn
      (require 'compile)
-     (add-hook  'csharp-mode-hook 'dino-csharp-mode-fn t)
+     (add-hook 'csharp-mode-hook 'dino-csharp-mode-fn 0 t)
 
      ;; 20250126-1013 - adjustments for indentation.
      ;; Discover these with treesit-explore-mode .
@@ -3067,7 +3057,7 @@ colon."
   (require 'yasnippet)
   (yas-minor-mode)
   (show-paren-mode 1)
-  (hl-line-mode 1)
+  ;;(hl-line-mode 1)
   (company-mode)
 
   ;; 20241228-0619
@@ -3094,13 +3084,13 @@ colon."
 
   (message "dino-csharp-ts-mode-fn: done.")
 
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil t)
   )
 
 (eval-after-load "csharp-mode"
   '(progn
      (require 'compile)
-     (add-hook 'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn t)
+     (add-hook 'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn 0 t)
      ;; 20250223-1328 - this may not be necessary in emacs 30.1; bears further testing.
      ;; (if (fboundp 'apheleia-mode)
      ;;     (add-hook 'apheleia-post-format-hook #'dino-maybe-eglot-reconnect))
@@ -3264,7 +3254,7 @@ Does not consider word syntax tables.
         comment-style 'indent
         comment-use-syntax t)
   )
-(add-hook 'php-mode-hook 'dino-php-mode-fn t)
+(add-hook 'php-mode-hook 'dino-php-mode-fn 0 t)
 
 (eval-after-load "php-mode"
   '(progn
@@ -3422,7 +3412,7 @@ Does not consider word syntax tables.
       (modify-syntax-entry ?\' "\"" sgml-mode-syntax-table)
     (modify-syntax-entry ?\' ".")) ;; . = punctuation
 
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace nil t)
   )
 
 (add-hook 'sgml-mode-hook 'dino-xml-mode-fn)
@@ -3507,13 +3497,13 @@ Does not consider word syntax tables.
   ;; never convert leading spaces to tabs:
   ;;(make-local-variable 'indent-tabs-mode)
   (setq indent-tabs-mode nil)
-  (hl-line-mode 1)
+  ;;(hl-line-mode 1)
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
   (company-mode)
   (apheleia-mode)
   (flycheck-mode)
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local)
+  (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t)
   (require 'elisp-fix-indent)
   (advice-add #'calculate-lisp-indent :override #'efi/calculate-lisp-indent)
   ;;(advice-remove 'calculate-lisp-indent #'efi~calculate-lisp-indent)
@@ -3523,7 +3513,7 @@ Does not consider word syntax tables.
 ;; add (emacs-lisp-mode . lisp-indent) to apheleia-mode-alist
 (add-hook 'emacs-lisp-mode-hook 'dino-elisp-mode-fn)
 
-;; This is for scratch buffer
+;; for the scratch buffer
 (add-hook 'lisp-interaction-mode-hook 'dino-elisp-mode-fn)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3540,12 +3530,18 @@ Does not consider word syntax tables.
   ;; python-mode is not a prog-mode
   ;;(eglot) ;; not sure about this
 
-  (define-key python-mode-map (kbd "ESC C-R") #'indent-region)
-  (define-key python-mode-map (kbd "ESC #")   #'dino/indent-buffer)
-  (define-key python-mode-map (kbd "C-c C-c") #'comment-region)
-  (define-key python-mode-map (kbd "C-c C-d") #'delete-trailing-whitespace)
-  ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
-  (define-key python-mode-map (kbd "C-c C-w")  #'compare-windows)
+  (let ((local-map (current-local-map))) ;; python-mode-map or python-ts-mode-map
+    (when local-map
+      (mapc (lambda (binding)
+              (define-key local-map (kbd (car binding)) (cdr binding)))
+            '(("ESC C-R" . indent-region)
+              ("ESC #"   . dino/indent-buffer)
+              ("C-c C-c" . comment-region)
+              ("C-c C-d" . delete-trailing-whitespace)
+              ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
+              ("C-c C-w" . compare-windows)
+              ))))
+
   (set (make-local-variable 'indent-tabs-mode) nil)
   (apheleia-mode)
   (display-line-numbers-mode)
@@ -3555,12 +3551,10 @@ Does not consider word syntax tables.
   ;; 20251025-1311
   (flymake-mode)
   (flymake-ruff-load)
-  ;; Using (debug-on-variable-change 'python-check-command), I found that
-  ;; python-mode sets python-check-command to be pyflakes.
+  ;; python-mode forcibly sets python-check-command to be pyflakes.
   ;; This will reset it.
   (setq python-check-command "ruff")
-
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local) )
+  (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t) )
 
 (add-hook 'python-ts-mode-hook 'dino-python-mode-fn)
 (add-hook 'python-mode-hook 'dino-python-mode-fn)
@@ -3676,15 +3670,22 @@ counteracts that. "
 
   (modify-syntax-entry ?_ "w")
 
-  (keymap-local-set "ESC C-R"    #'indent-region)
-  (keymap-local-set "ESC #"      #'dino/indent-buffer)
-  (keymap-local-set "C-c C-c"    #'comment-region)
   (keymap-local-unset "C-c C-k")
-  (keymap-local-set "C-c C-k s"  #'dino/camel-to-snakecase-word-at-point)
-  (keymap-local-set "C-c C-k c"  #'dino/snake-to-camelcase-word-at-point)
-  (keymap-local-set "<TAB>"      #'js-indent-line)
-  (keymap-local-set "C-<TAB>"    #'yas-expand)
-  (keymap-local-set "SPC"  #'dino--maybe-space)
+  (let ((local-map (current-local-map))) ;; js-mode-map or js-ts-mode-map
+    (when local-map
+      (mapc (lambda (binding)
+              (define-key local-map (kbd (car binding)) (cdr binding)))
+            '(("ESC C-R" . indent-region)
+              ("ESC #"   . dino/indent-buffer)
+              ("C-c C-c" . comment-region)
+              ("C-c C-d" . delete-trailing-whitespace)
+              ("C-c C-w" . compare-windows)
+              ("C-c C-k s" . dino/camel-to-snakecase-word-at-point)
+              ("C-c C-k c" . dino/snake-to-camelcase-word-at-point)
+              ("<TAB>" . js-indent-line)
+              ("C-<TAB>" . yas-expand)
+              ("SPC" . dino--maybe-space)
+              ))))
 
   ;; Dino 20210127-1259 - trying to diagnose flycheck checker errors
   ;;
@@ -3706,7 +3707,7 @@ counteracts that. "
   ;; modes should NOT get the `delete-trailing-whitespace' treatment?
   ;; I dunno.
   (when (memq major-mode '(js-mode javascript-mode json-mode))
-    (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local))
+    (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
 
   ;;
   ;; eglot by default uses typescript-language-server as the server.
@@ -3827,8 +3828,8 @@ counteracts that. "
            (fboundp 'treesit-fold-mode))
       (progn
         (treesit-fold-mode)
-        (keymap-local-set "C-c >"  #'treesit-fold-close)
-        (keymap-local-set "C-c <"  #'treesit-fold-open)))
+        (define-key (current-local-map) (kbd "C-c >")  #'treesit-fold-close)
+        (define-key (current-local-map) (kbd "C-c <")  #'treesit-fold-open)))
 
   ;; 20250215-1848 - I think this should work now on Windows? haven't tried it.
   (if (not (eq system-type 'windows-nt))
@@ -3842,23 +3843,29 @@ counteracts that. "
 
   ;; some of my own java-mode helpers
   (require 'dcjava)
-  (keymap-local-set "C-c i"    #'dcjava-auto-add-import)
-  (keymap-local-set "C-c C-i"  #'dcjava-auto-add-import)
-  (keymap-local-set "C-c p"    #'dcjava-insert-inferred-package-name)
-  (keymap-local-set "C-c C-l"  #'dcjava-learn-new-import)
-  (keymap-local-set "C-c C-f"  #'dcjava-find-wacapps-java-source-for-class-at-point)
-  (keymap-local-set "C-c C-r"  #'dcjava-reload-classlist)
-  (keymap-local-set "C-c C-s"  #'dcjava-sort-import-statements)
+
+  (let ((local-map (current-local-map))) ;; python-mode-map or python-ts-mode-map
+    (when local-map
+      (mapc (lambda (binding)
+              (define-key local-map (kbd (car binding)) (cdr binding)))
+            '(("C-c i" . dcjava-auto-add-import)
+              ("C-c C-i" . dcjava-auto-add-import)
+              ("C-c p" . dcjava-insert-inferred-package-name)
+              ("C-c C-l" . dcjava-learn-new-import)
+              ("C-c C-f" . dcjava-find-wacapps-java-source-for-class-at-point)
+              ("C-c C-r" . dcjava-reload-classlist)
+              ("C-c C-s" . dcjava-sort-import-statements) ;; obsolete with gformat
+              ("C-c C-g f" . dcjava-gformat-buffer)
+              ))))
+
 
   ;; 20241230 With apheleia-mode, the manual google-java-format is unnecessary. Apheleia does
   ;; the work every time the file is saved.  But it may be that Apheleia is turned off, so having
   ;; the ability to manually invoke google-java-format is still a good idea.
-  (keymap-local-set "C-c C-g f"  #'dcjava-gformat-buffer)
 
   ;; remove trailing whitespace in C files
   ;; http://stackoverflow.com/questions/1931784
-  (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local))
-
+  (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
 
 
 (add-hook 'java-mode-hook 'dino-java-mode-fn)
@@ -4402,7 +4409,9 @@ Enable `recentf-mode' if it isn't already."
   :if (and (file-exists-p "~/elisp/ibuffer-preview.el")
            (boundp 'ibuffer-mode-hook) )
   :load-path "~/elisp"
-  :config (keymap-set ibuffer-mode-map "v" #'ibuffer-preview-mode))
+  :config (defun ibpm-set-map()
+            (keymap-set ibuffer-mode-map "v" #'ibuffer-preview-mode))
+  (add-hook 'ibuffer-mode-hook #'ibpm-set-map))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -4437,7 +4446,7 @@ Enable `recentf-mode' if it isn't already."
 (define-key global-map (kbd "C-c q")       #'query-replace)
 (define-key global-map (kbd "C-c c")       #'goto-char)
 (define-key global-map (kbd "C-c r")       #'replace-regexp)
-(define-key global-map (kbd "C-x t")       #'dino/insert-timeofday)
+(define-key global-map (kbd "C-x t")       #'dts/insert-timeofday)
 (define-key global-map (kbd "C-x C-d")     #'delete-window)
 (define-key global-map (kbd "C-x x")       #'copy-to-register)
 (define-key global-map (kbd "C-x g")       #'insert-register)

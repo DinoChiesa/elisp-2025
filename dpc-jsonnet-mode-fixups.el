@@ -88,6 +88,58 @@ This variable can be set in any way, including via .dir-locals.el.
       (list cmd))))
 
 
+
+;; (defun dino-fixup-jsonnet-command ()
+;;   "For some reason, When I put this in the =dino-jsonnet-package-config= fn
+;; I get an error:
+;; Error (use-package): jsonnet-mode/:config: Symbol’s function definition
+;;    is void: \(setf\ flycheck-checker-get\)
+;;
+;; Putting it in this fn is an attempt to isolate and avoid the problem.
+;; Jeez.
+;; "
+;;   (interactive)
+;;
+;;
+;;   ;; (flycheck-define-checker jsonnet-for-dino
+;;   ;;   "A Python syntax and style checker using flake8"
+;;   ;;          :command ("flake8"
+;;   ;;                     "--format=default"
+;;   ;;                     (config-file "--config" flycheck-flake8rc)
+;;   ;;                     (option "--max-complexity" flycheck-flake8-maximum-complexity nil
+;;   ;;                       flycheck-option-int)
+;;   ;;                     (option "--max-line-length" flycheck-flake8-maximum-line-length nil
+;;   ;;                       flycheck-option-int)
+;;   ;;                     "-")
+;;   ;;          :standard-input t
+;;   ;;          :error-filter fix-flake8
+;;   ;;          :error-patterns
+;;   ;;          ((warning line-start
+;;   ;;             "stdin:" line ":" (optional column ":") " "
+;;   ;;             (id (one-or-more (any alpha)) (one-or-more digit)) " "
+;;   ;;             (message (one-or-more not-newline))
+;;   ;;             line-end))
+;;   ;;          :next-checkers ((t . python-pylint))
+;;   ;;          :modes python-mode)
+;;
+;;   ;;         ;; replace flake8 with new chaining one from above
+;;   ;;        (setq flycheck-checkers (cons 'python-flake8-chain (delq 'python-flake8 flycheck-checkers)))
+;;
+;;
+;;   ;; ALL I WANT TO DO IS REDEFINE THE COMMAND for AN EXISTING CHECKER BUT IT SEEMS IMPOSSIBLE.
+;;   ;; ALSO, IT MAY BE IRRELEVANT BECAUSE I AM USING EGLOT AND TURNING OFF FLYCHECK.
+;;
+;;   ;; testing for the function in an attempt to diagnose the weird error.
+;;   (if (functionp 'flycheck-checker-get)
+;;       (setf (flycheck-checker-get 'jsonnet 'command)
+;;             `("jsonnet"
+;;               (option-list "-J"
+;;                            (eval (or jsonnet-library-search-directories flycheck-jsonnet-include-paths)))
+;;               (eval
+;;                (or jsonnet-command-options flycheck-jsonnet-command-args))
+;;               source-inplace)))
+;;   )
+
 (provide 'dpc-jsonnet-mode-fixups)
 
 ;;; dpc-jsonnet-mode-fixups.el ends here
