@@ -158,8 +158,7 @@
              dino/snake-to-camelcase-word-at-point
              dino/indent-buffer
              dino/indent-line-to-current-column
-             dino/shfmt-buffer
-             dino/json-format-region )
+             dino/shfmt-buffer)
   :autoload (dino/insert-or-modify-alist-entry
              dino/maybe-add-to-exec-path
              dino/find-latest-nvm-version-bin-dir
@@ -1895,6 +1894,16 @@ more information."
   :hook ((json-mode json-ts-mode) . dino-json-mode-fn)
   :config (require 'json-reformat) )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; json-reformat
+;;
+;; Brilliant for reformatting JSON when embedded within another document (eg markdown.)
+;;
+(use-package json-reformat
+  :defer t
+  :load-path "~/elisp"
+  :pin manual
+  :commands (json-reformat-region) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; thesaurus
