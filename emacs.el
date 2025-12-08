@@ -518,7 +518,6 @@
   ;; ;; 3. Add the advice to the specific command
   ;; (advice-add 'magit-branch-checkout :around #'dino-magit-branch-checkout-advice)
 
-
   :bind (:map  icomplete-vertical-mode-minibuffer-map
          ;; icomplete-minibuffer-map <== use this for the non-vertical version.
          ;; The following 4 bindings are defaults, unnecessary to set here:
@@ -4400,7 +4399,9 @@ Enable `recentf-mode' if it isn't already."
   :if (and (file-exists-p "~/elisp/ibuffer-preview.el")
            (boundp 'ibuffer-mode-hook) )
   :load-path "~/elisp"
-  :config (keymap-set ibuffer-mode-map "v" #'ibuffer-preview-mode))
+  :config (defun ibpm-set-map()
+            (keymap-set ibuffer-mode-map "v" #'ibuffer-preview-mode))
+  (add-hook 'ibuffer-mode-hook #'ibpm-set-map))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

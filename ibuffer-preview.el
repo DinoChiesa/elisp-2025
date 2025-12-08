@@ -3,7 +3,7 @@
 
 ;; Public domain.
 
-;; Author:  Dino Chiesa <dchiesa002@gmail.com>
+;; Author:  Dino Chiesa <dchiesa001@gmail.com>
 ;; version: 20250713-1920
 
 ;;; Commentary:
