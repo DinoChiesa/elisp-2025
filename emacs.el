@@ -16,23 +16,6 @@
 (setq initial-scratch-message ";;;  -*- lexical-binding: t; -*-\n;; scratch buffer\n")
 
 
-;; ;; 20251207-1356
-;; ;; How is the t symbol getting placed into post-command-hook?
-;; ;; https://www.reddit.com/r/emacs/comments/1pgv23b/postcommandhook_contains_t/
-;; ;;
-;; ;; I don't think I care anymore. It happens even with "emacs -Q".  Sure seems like
-;; ;; it is intended behavior, despite what Google search and gemini tells me.
-;;
-;; (setq post-command-hook nil)
-;; (add-variable-watcher 'post-command-hook
-;;                       (lambda (symbol newval operation _where)
-;;                         (when (memq t newval)
-;;                           (message "⚠️ post-command-hook set to value containing t by: %s" operation)
-;;                           (message "Old value: %S" (symbol-value symbol)) ; The old value before the change
-;;                           (message "New value: %S" newval)
-;;                           ;; Force Emacs to enter the debugger to get a backtrace
-;;                           (debug))))
-
 ;; 20251011-1123
 ;; On Windows
 ;; when using `install-package'
@@ -964,8 +947,9 @@ server program."
   (apheleia-mode)
   (hs-minor-mode) ;; show: C-c @ C-s  hide: C-c @ C-h
   (dino/setup-shmode-for-apheleia)
-  (define-key sh-mode-map (kbd "C-c C-g")  #'dino/shfmt-buffer)
-  (define-key sh-mode-map (kbd "C-c C-c")  #'comment-region))
+  ;; probably the keymap is sh-mode-map, but there might be a ts in there.
+  (define-key (current-local-map) (kbd "C-c C-g")  #'dino/shfmt-buffer)
+  (define-key (current-local-map) (kbd "C-c C-c")  #'comment-region))
 
 (add-hook 'sh-mode-hook 'dino-sh-mode-fn)
 
@@ -987,10 +971,16 @@ server program."
         standard-indent 2
         indent-tabs-mode t) ;; golang prefers tabs, wow, ugh
 
-  (define-key go-mode-map (kbd "ESC C-R") #'indent-region)
-  (define-key go-mode-map (kbd "ESC #")   #'dino/indent-buffer)
-  (define-key go-mode-map (kbd "C-c C-w") #'compare-windows)
-  (define-key go-mode-map (kbd "C-c C-c") #'comment-region)
+  (let ((local-map (current-local-map))) ;; go-mode-map or go-ts-mode-map
+    (when local-map
+      (mapc (lambda (binding)
+              (define-key local-map (kbd (car binding)) (cdr binding)))
+            '(("ESC C-R" . indent-region)
+              ("ESC #"   . dino/indent-buffer)
+              ("C-c C-w" . compare-windows)
+              ("C-c C-c" . comment-region)
+              ("C-c C-d" . delete-trailing-whitespace)
+              ))))
 
   (eval-after-load "smarter-compile"
     '(progn
@@ -1488,8 +1478,8 @@ then switch to the markdown output buffer."
   (turn-on-font-lock)
   (apheleia-mode)
   (setq typescript-indent-level 2)
-  (define-key typescript-mode-map (kbd "ESC C-R") #'indent-region)
-  (define-key typescript-mode-map (kbd "C-c C-c")  #'comment-region)
+  (define-key (current-local-map) (kbd "ESC C-R") #'indent-region)
+  (define-key (current-local-map) (kbd "C-c C-c")  #'comment-region)
   (display-line-numbers-mode)
   (auto-fill-mode -1))
 
@@ -1513,13 +1503,19 @@ then switch to the markdown output buffer."
           (hs-minor-mode t)
           (display-line-numbers-mode) ;; powershell-mode is not derived from prog-mode
           (add-hook 'before-save-hook #'delete-trailing-whitespace nil t)
-          (define-key powershell-mode-map (kbd "ESC #")   #'dino/indent-buffer)
-          (define-key powershell-mode-map (kbd "ESC .")   #'company-complete)
-          (define-key powershell-mode-map (kbd "ESC C-i") #'company-capf)
-          (define-key powershell-mode-map (kbd "ESC C-R") #'indent-region)
-          (define-key powershell-mode-map (kbd "C-c C-c") #'comment-region)
-          (define-key powershell-mode-map (kbd "C-c C-g") #'powershell-format-buffer)
-          (define-key powershell-mode-map (kbd "C-c C-w") #'compare-windows)
+          (let ((local-map (current-local-map))) ;; powershell-mode-map / powershell-ts-mode-map
+            (when local-map
+              (mapc (lambda (binding)
+                      (define-key local-map (kbd (car binding)) (cdr binding)))
+                    '(("ESC C-R" . indent-region)
+                      ("ESC #"   . dino/indent-buffer)
+                      ("ESC ."   . company-complete)
+                      ("C-c C-c" . comment-region)
+                      ("C-c C-d" . delete-trailing-whitespace)
+                      ("C-c C-w" . compare-windows)
+                      ("ESC C-i" . company-capf)
+                      ("C-c C-g" . powershell-format-buffer)
+                      ))))
           )
   :commands (powershell-mode)
   :hook (powershell-mode . dino-powershell-mode-fn)
@@ -1729,19 +1725,20 @@ more information."
   :init (defun dino-css-mode-fn ()
           "My hook for CSS mode"
           (interactive)
-          ;; (turn-on-font-lock) ;; need this?
           (setq css-indent-offset 2
-                completion-auto-help 'always
-                )
-          ;; 20251003-1927
-          ;; I should convert all of these "keymap-local-set" calls everywhere.
-          ;; but I want to test a few first.
-          (define-key css-mode-map (kbd "ESC C-R") #'indent-region)
-          (define-key css-mode-map (kbd "ESC #")   #'dino/indent-buffer)
-          (define-key css-mode-map (kbd "C-c C-w") #'compare-windows)
-          (define-key css-mode-map (kbd "C-c C-c") #'comment-region)
-          (define-key css-mode-map (kbd "ESC .") #'company-complete)
-          (define-key css-mode-map (kbd "ESC C-i") #'company-capf)
+                completion-auto-help 'always)
+          (let ((local-map (current-local-map))) ;; css-mode-map probably
+            (when local-map
+              (mapc (lambda (binding)
+                      (define-key local-map (kbd (car binding)) (cdr binding)))
+                    '(("ESC C-R" . indent-region)
+                      ("ESC #"   . dino/indent-buffer)
+                      ("C-c C-c" . comment-region)
+                      ("C-c C-d" . delete-trailing-whitespace)
+                      ("C-c C-w" . compare-windows)
+                      ("ESC ."   . company-complete)
+                      ("ESC C-i" . company-capf)
+                      ))))
 
           (turn-on-auto-revert-mode)
           (electric-pair-mode)
@@ -1754,8 +1751,8 @@ more information."
                    (fboundp 'treesit-fold-mode))
               (progn
                 (treesit-fold-mode)
-                (define-key css-mode-map (kbd "C-c >")  #'treesit-fold-close)
-                (define-key css-mode-map (kbd "C-c <")  #'treesit-fold-open)))
+                (define-key (current-local-map) (kbd "C-c >")  #'treesit-fold-close)
+                (define-key (current-local-map) (kbd "C-c <")  #'treesit-fold-open)))
 
           ;;(eglot-ensure) ;; maybe I will want this?
 
@@ -1882,8 +1879,8 @@ more information."
                    (fboundp 'treesit-fold-mode))
               (progn
                 (treesit-fold-mode)
-                (define-key json-mode-map (kbd "C-c >")  #'treesit-fold-close)
-                (define-key json-mode-map (kbd "C-c <")  #'treesit-fold-open)))
+                (define-key (current-local-map) (kbd "C-c >")  #'treesit-fold-close)
+                (define-key (current-local-map) (kbd "C-c <")  #'treesit-fold-open)))
           )
 
   :hook ((json-mode json-ts-mode) . dino-json-mode-fn)
@@ -1921,6 +1918,7 @@ more information."
 (use-package dictionary
   :defer t
   :commands (dictionary-lookup-definition dictionary-search)
+  ;; the following conflicts with somea few local maps.
   :config (define-key global-map (kbd "C-c C-d")  #'dictionary-lookup-definition)
   (setq dictionary-use-single-buffer t)
   (setq dictionary-server "dict.org")
@@ -3495,7 +3493,7 @@ Does not consider word syntax tables.
       (indent-bars-mode))
   (company-mode)
   (apheleia-mode)
-  ;;(flycheck-mode)
+  (flycheck-mode)
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t)
   (require 'elisp-fix-indent)
   (advice-add #'calculate-lisp-indent :override #'efi/calculate-lisp-indent)
@@ -3506,7 +3504,7 @@ Does not consider word syntax tables.
 ;; add (emacs-lisp-mode . lisp-indent) to apheleia-mode-alist
 (add-hook 'emacs-lisp-mode-hook 'dino-elisp-mode-fn)
 
-;; This is for scratch buffer
+;; for the scratch buffer
 (add-hook 'lisp-interaction-mode-hook 'dino-elisp-mode-fn)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3523,12 +3521,18 @@ Does not consider word syntax tables.
   ;; python-mode is not a prog-mode
   ;;(eglot) ;; not sure about this
 
-  (define-key python-mode-map (kbd "ESC C-R") #'indent-region)
-  (define-key python-mode-map (kbd "ESC #")   #'dino/indent-buffer)
-  (define-key python-mode-map (kbd "C-c C-c") #'comment-region)
-  (define-key python-mode-map (kbd "C-c C-d") #'delete-trailing-whitespace)
-  ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
-  (define-key python-mode-map (kbd "C-c C-w")  #'compare-windows)
+  (let ((local-map (current-local-map))) ;; python-mode-map or python-ts-mode-map
+    (when local-map
+      (mapc (lambda (binding)
+              (define-key local-map (kbd (car binding)) (cdr binding)))
+            '(("ESC C-R" . indent-region)
+              ("ESC #"   . dino/indent-buffer)
+              ("C-c C-c" . comment-region)
+              ("C-c C-d" . delete-trailing-whitespace)
+              ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
+              ("C-c C-w" . compare-windows)
+              ))))
+
   (set (make-local-variable 'indent-tabs-mode) nil)
   (apheleia-mode)
   (display-line-numbers-mode)
@@ -3538,11 +3542,9 @@ Does not consider word syntax tables.
   ;; 20251025-1311
   (flymake-mode)
   (flymake-ruff-load)
-  ;; Using (debug-on-variable-change 'python-check-command), I found that
-  ;; python-mode sets python-check-command to be pyflakes.
+  ;; python-mode forcibly sets python-check-command to be pyflakes.
   ;; This will reset it.
   (setq python-check-command "ruff")
-
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t) )
 
 (add-hook 'python-ts-mode-hook 'dino-python-mode-fn)
@@ -3659,15 +3661,22 @@ counteracts that. "
 
   (modify-syntax-entry ?_ "w")
 
-  (keymap-local-set "ESC C-R"    #'indent-region)
-  (keymap-local-set "ESC #"      #'dino/indent-buffer)
-  (keymap-local-set "C-c C-c"    #'comment-region)
   (keymap-local-unset "C-c C-k")
-  (keymap-local-set "C-c C-k s"  #'dino/camel-to-snakecase-word-at-point)
-  (keymap-local-set "C-c C-k c"  #'dino/snake-to-camelcase-word-at-point)
-  (keymap-local-set "<TAB>"      #'js-indent-line)
-  (keymap-local-set "C-<TAB>"    #'yas-expand)
-  (keymap-local-set "SPC"  #'dino--maybe-space)
+  (let ((local-map (current-local-map))) ;; js-mode-map or js-ts-mode-map
+    (when local-map
+      (mapc (lambda (binding)
+              (define-key local-map (kbd (car binding)) (cdr binding)))
+            '(("ESC C-R" . indent-region)
+              ("ESC #"   . dino/indent-buffer)
+              ("C-c C-c" . comment-region)
+              ("C-c C-d" . delete-trailing-whitespace)
+              ("C-c C-w" . compare-windows)
+              ("C-c C-k s" . dino/camel-to-snakecase-word-at-point)
+              ("C-c C-k c" . dino/snake-to-camelcase-word-at-point)
+              ("<TAB>" . js-indent-line)
+              ("C-<TAB>" . yas-expand)
+              ("SPC" . dino--maybe-space)
+              ))))
 
   ;; Dino 20210127-1259 - trying to diagnose flycheck checker errors
   ;;
@@ -3810,8 +3819,8 @@ counteracts that. "
            (fboundp 'treesit-fold-mode))
       (progn
         (treesit-fold-mode)
-        (keymap-local-set "C-c >"  #'treesit-fold-close)
-        (keymap-local-set "C-c <"  #'treesit-fold-open)))
+        (define-key (current-local-map) (kbd "C-c >")  #'treesit-fold-close)
+        (define-key (current-local-map) (kbd "C-c <")  #'treesit-fold-open)))
 
   ;; 20250215-1848 - I think this should work now on Windows? haven't tried it.
   (if (not (eq system-type 'windows-nt))
@@ -3825,23 +3834,29 @@ counteracts that. "
 
   ;; some of my own java-mode helpers
   (require 'dcjava)
-  (keymap-local-set "C-c i"    #'dcjava-auto-add-import)
-  (keymap-local-set "C-c C-i"  #'dcjava-auto-add-import)
-  (keymap-local-set "C-c p"    #'dcjava-insert-inferred-package-name)
-  (keymap-local-set "C-c C-l"  #'dcjava-learn-new-import)
-  (keymap-local-set "C-c C-f"  #'dcjava-find-wacapps-java-source-for-class-at-point)
-  (keymap-local-set "C-c C-r"  #'dcjava-reload-classlist)
-  (keymap-local-set "C-c C-s"  #'dcjava-sort-import-statements)
+
+  (let ((local-map (current-local-map))) ;; python-mode-map or python-ts-mode-map
+    (when local-map
+      (mapc (lambda (binding)
+              (define-key local-map (kbd (car binding)) (cdr binding)))
+            '(("C-c i" . dcjava-auto-add-import)
+              ("C-c C-i" . dcjava-auto-add-import)
+              ("C-c p" . dcjava-insert-inferred-package-name)
+              ("C-c C-l" . dcjava-learn-new-import)
+              ("C-c C-f" . dcjava-find-wacapps-java-source-for-class-at-point)
+              ("C-c C-r" . dcjava-reload-classlist)
+              ("C-c C-s" . dcjava-sort-import-statements) ;; obsolete with gformat
+              ("C-c C-g f" . dcjava-gformat-buffer)
+              ))))
+
 
   ;; 20241230 With apheleia-mode, the manual google-java-format is unnecessary. Apheleia does
   ;; the work every time the file is saved.  But it may be that Apheleia is turned off, so having
   ;; the ability to manually invoke google-java-format is still a good idea.
-  (keymap-local-set "C-c C-g f"  #'dcjava-gformat-buffer)
 
   ;; remove trailing whitespace in C files
   ;; http://stackoverflow.com/questions/1931784
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
-
 
 
 (add-hook 'java-mode-hook 'dino-java-mode-fn)
