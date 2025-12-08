@@ -5,7 +5,7 @@
 ;; Package-Requires: (package)
 ;; URL:
 ;; X-URL:
-;; Version: 2025.05.18
+;; Version: 2025.12.08
 ;; Keywords: utility
 ;; License: New BSD
 
@@ -199,7 +199,6 @@ like XML mode or csharp mode."
 This is important when editing markdown files which use trailing whitespace
 to indicate a newline."
   (interactive)
-  ;; see http://stackoverflow.com/questions/1931784
   (remove-hook 'write-contents-functions 'delete-trailing-whitespace)
   (remove-hook 'before-save-hook-functions 'delete-trailing-whitespace)
   )
@@ -322,7 +321,7 @@ filename."
   ;; There is some problem with emacs and TLS v1.3
   ;; So we try turning it off.
   ;; TODO 20250424-1831
-  ;; investigate whether this is still a problem in emacs v30
+  ;; investigate whether this is still a problem in emacs v30+
   (setq gnutls-algorithm-priority "NORMAL:-VERS-TLS1.3")
   (let ((project-id (dino-googleapis-project-id json-keyfile)))
     (and
@@ -1603,6 +1602,42 @@ the Typescript extension is ... not quite the same as an LSP, not sure.")
           (add-to-list 'eglot-server-programs
                        `(,mode-or-modelist
                          . ,(list "node" vscode-server-program-fqpath "--stdio"))))))
+
+
+(defun dino/json-format-region (beg end)
+  "Extracts the text in the region (between BEG and END),
+formats it as JSON using `json-mode-beautify', and replaces
+the original region content with the formatted text.
+
+Beautification assumes the region contains valid JSON.
+This function is interactive and operates on the active region."
+  (interactive "r")
+  (let ((original-text (buffer-substring-no-properties beg end))
+        (reformed-text nil))
+    (with-temp-buffer
+      (insert original-text)
+      (json-mode)
+      (condition-case err
+          (json-mode-beautify (point-min) (point-max))
+        (error
+         (message "JSON Formatting failed: %s\nRegion content was: %s"
+                  (cadr err)
+                  original-text)))
+      (setq reformed-text
+            (buffer-substring-no-properties (point-min) (point-max)))
+
+      (buffer-string))
+    (if reformed-text
+        (progn
+          (delete-region beg end)
+          (insert reformed-text)
+          (set-mark (point))
+          (goto-char (- (point) (length reformed-text)))
+          (message "Region formatted as JSON.")))))
+
+;; Add a keybinding (optional, but useful)
+;; (global-set-key (kbd "C-c j f") 'my-json-format-region)
+
 
 (provide 'dino-utility)
 

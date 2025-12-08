@@ -2,6 +2,7 @@
 ;; from https://gist.github.com/1789605
 
 (require 'json)
+(require 'json-mode)
 (require 'cl)
 
 (defun json-reformat:indent (level)
@@ -19,10 +20,10 @@
             (mapconcat
              'identity
              (cl-loop for v across val
-                   collect (concat
-                            (json-reformat:indent (1+ level))
-                            (json-reformat:print-value v (1+ level))
-                            ))
+                      collect (concat
+                               (json-reformat:indent (1+ level))
+                               (json-reformat:print-value v (1+ level))
+                               ))
              (concat ",\n"))
             "\n" (json-reformat:indent level) "]"
             )))
@@ -70,5 +71,7 @@
         (setq after (json-reformat:print-value json-tree 0))
         (delete-region (point-min) (point-max))
         (insert after)))))
+
+
 
 (provide 'json-reformat)
