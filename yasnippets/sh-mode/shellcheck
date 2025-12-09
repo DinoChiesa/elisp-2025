@@ -1,0 +1,5 @@
+# key : shellcheck
+# name : shellcheck
+# --
+# shellcheck disable=SC2128
+

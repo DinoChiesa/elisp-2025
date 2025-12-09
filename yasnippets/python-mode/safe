@@ -1,0 +1,37 @@
+# key : safe
+# name: def safe_inspect_object
+# --
+def safe_inspect_object(obj: Any) -> Dict[str, Any]:
+    """
+    Safely inspects an object and returns a dictionary of its accessible
+    attributes and values, skipping methods and properties that cause errors.
+    """
+    info = {}
+
+    # 1. Get all attributes (including methods)
+    attributes = dir(obj)
+
+    # 2. Filter out internal dunder methods and focus on data attributes
+    # We only check attributes that don't start with an underscore
+    for attr_name in [a for a in attributes if not a.startswith("_")]:
+        try:
+            # Safely get the value of the attribute
+            value = getattr(obj, attr_name)
+
+            # Skip if it's a callable (a method)
+            if callable(value):
+                continue
+
+            # Store the data attribute and its value
+            # We truncate long string/reprs for clean output
+            repr_value = repr(value)
+            info[attr_name] = repr_value[:100] + (
+                "..." if len(repr_value) > 100 else ""
+            )
+
+        except Exception:
+            # Catches exceptions when accessing dynamic properties
+            info[attr_name] = "<UNABLE TO ACCESS>"
+
+    return info
+
