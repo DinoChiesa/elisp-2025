@@ -72,6 +72,22 @@
         (delete-region (point-min) (point-max))
         (insert after)))))
 
+(defun json-minify-region  (begin end)
+  "Parses the region as a JSON string and returns a minified JSON string
+with no indentation and no unnecessary newlines.
 
+This function uses the built-in 'json' library in Emacs.
+"  (interactive "r")
+  (save-excursion
+    (save-restriction
+      (narrow-to-region begin end)
+      (goto-char (point-min))
+      (let* ((json-key-type 'string)
+             (json-object-type 'plist)
+             (before (buffer-substring (point-min) (point-max)))
+             (json-tree (json-read-from-string before))
+             (after (json-encode json-tree)))
+        (delete-region (point-min) (point-max))
+        (insert after)))))
 
 (provide 'json-reformat)

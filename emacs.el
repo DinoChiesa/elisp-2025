@@ -1,15 +1,14 @@
 ;;; emacs.el -- Dino's .emacs setup file.   -*- coding: utf-8; lexical-binding: t;  -*-
 
-;;
+;;; Commentary:
 ;;
 ;; Works with v30.1+ of emacs.
 ;;
 
-;;; Commentary:
-
 ;;; Code:
 (message "Running emacs.el...")
 (require 'cl-seq)
+(require 'json)
 (if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 
 (setq inhibit-splash-screen t)
@@ -1849,11 +1848,16 @@ more information."
   "prettifies a json buffer."
   (interactive)
   (save-excursion
-    (json-prettify-region (point-min) (point-max))))
+    (json-pretty-print (point-min) (point-max))))
 
 ;; function alias
-(defalias 'json-prettify-region 'json-reformat-region)
+(defalias 'json-prettify-region 'json-pretty-print)
 
+(defun json-minify-region (begin end)
+  "minify a json region."
+  (interactive "r")
+  (save-excursion
+    (json-pretty-print begin end t)))
 
 (use-package json-mode
   :defer t
@@ -1891,19 +1895,18 @@ more information."
                 (define-key (current-local-map) (kbd "C-c <")  #'treesit-fold-open)))
           )
 
-  :hook ((json-mode json-ts-mode) . dino-json-mode-fn)
-  :config (require 'json-reformat) )
+  :hook ((json-mode json-ts-mode) . dino-json-mode-fn))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; json-reformat
-;;
-;; Brilliant for reformatting JSON when embedded within another document (eg markdown.)
-;;
-(use-package json-reformat
-  :defer t
-  :load-path "~/elisp"
-  :pin manual
-  :commands (json-reformat-region) )
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; json-reformat
+;; ;;
+;; ;; Brilliant for reformatting JSON when embedded within another document (eg markdown.)
+;; ;;
+;; (use-package json-reformat
+;;   :defer t
+;;   :load-path "~/elisp"
+;;   :pin manual
+;;   :commands (json-reformat-region) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; thesaurus
@@ -4484,7 +4487,8 @@ Enable `recentf-mode' if it isn't already."
 (define-key global-map (kbd "C-c C-x C-c") #'calendar)
 (define-key global-map (kbd "ESC C-\\")    #'help-for-help)
 (define-key global-map (kbd "C-c C-d")     #'delete-trailing-whitespace)
-(define-key global-map (kbd "C-c j f")     #'dino/json-format-region)
+(define-key global-map (kbd "C-c j f")     #'json-pretty-print)
+(define-key global-map (kbd "C-c j m")     #'json-minify-region)
 
 
 (define-key prog-mode-map (kbd "C-c d")   #'chatgpt-shell-describe-code)

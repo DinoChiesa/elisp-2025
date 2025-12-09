@@ -1604,39 +1604,39 @@ the Typescript extension is ... not quite the same as an LSP, not sure.")
                          . ,(list "node" vscode-server-program-fqpath "--stdio"))))))
 
 
-(defun dino/json-format-region (beg end)
-  "Extracts the text in the region (between BEG and END),
-formats it as JSON using `json-mode-beautify', and replaces
-the original region content with the formatted text.
-
-Beautification assumes the region contains valid JSON.
-This function is interactive and operates on the active region."
-  (interactive "r")
-  (let ((original-text (buffer-substring-no-properties beg end))
-        (reformed-text nil))
-    (with-temp-buffer
-      (insert original-text)
-      (json-mode)
-      (condition-case err
-          (json-mode-beautify (point-min) (point-max))
-        (error
-         (message "JSON Formatting failed: %s\nRegion content was: %s"
-                  (cadr err)
-                  original-text)))
-      (setq reformed-text
-            (buffer-substring-no-properties (point-min) (point-max)))
-
-      (buffer-string))
-    (if reformed-text
-        (progn
-          (delete-region beg end)
-          (insert reformed-text)
-          (set-mark (point))
-          (goto-char (- (point) (length reformed-text)))
-          (message "Region formatted as JSON.")))))
-
-;; Add a keybinding (optional, but useful)
-;; (global-set-key (kbd "C-c j f") 'my-json-format-region)
+;; (defun dino/json-format-region (beg end)
+;;   "Extracts the text in the region (between BEG and END),
+;; formats it as JSON using `json-mode-beautify', and replaces
+;; the original region content with the formatted text.
+;;
+;; Beautification assumes the region contains valid JSON.
+;; This function is interactive and operates on the active region."
+;;   (interactive "r")
+;;   (let ((original-text (buffer-substring-no-properties beg end))
+;;         (reformed-text nil))
+;;     (with-temp-buffer
+;;       (insert original-text)
+;;       (json-mode)
+;;       (condition-case err
+;;           (json-mode-beautify (point-min) (point-max))
+;;         (error
+;;          (message "JSON Formatting failed: %s\nRegion content was: %s"
+;;                   (cadr err)
+;;                   original-text)))
+;;       (setq reformed-text
+;;             (buffer-substring-no-properties (point-min) (point-max)))
+;;
+;;       (buffer-string))
+;;     (if reformed-text
+;;         (progn
+;;           (delete-region beg end)
+;;           (insert reformed-text)
+;;           (set-mark (point))
+;;           (goto-char (- (point) (length reformed-text)))
+;;           (message "Region formatted as JSON.")))))
+;;
+;; ;; Add a keybinding (optional, but useful)
+;; ;; (global-set-key (kbd "C-c j f") 'my-json-format-region)
 
 
 (provide 'dino-utility)
