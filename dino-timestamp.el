@@ -8,7 +8,8 @@
 
 
 (defvar dts--just-deleted-string nil
-  "holder of the string most recently deleted by `dts--maybe-delete-time-string-looking-forward'. Used
+  "holder of the string most recently deleted by
+`dts--maybe-delete-time-string-looking-forward'. Used
 to determine if we need to rotate through various formats.")
 
 (defconst dts--punctuation-regex "[\\!\?\"\.'#$%&*+/;<=>@^`|~]"
@@ -31,7 +32,8 @@ to determine if we need to rotate through various formats.")
                               ("%H:%M:%S"            . dts--parse-HMS-time)
                               ("%Y-%m-%dT%H:%M:%S"   . dts--parse-YmdHMS-time)
                               )
-  "A list of time formats with corresponding parse functions to use in `dino/insert-timeofday' and `dts--maybe-delete-time-string-looking-forward' ")
+  "A list of time formats with corresponding parse functions to use in
+`dino/insert-timeofday' and `dts--maybe-delete-time-string-looking-forward' ")
 
 ;; (setq dino-time-formats '(
 ;;                              ("%Y%m%d-%H%M" . dino-parse-YYYYMMDDHHMM-time)
@@ -42,9 +44,9 @@ to determine if we need to rotate through various formats.")
 
 (defun dts--parse-YYYYMMDDHHMM-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
-in format YYYYMMDD-HHMM. Example: \"20130820-0848\".
-Otherwise, ARG is a string, and this function will parse it with that regex, and
-returns the time in emacs internal time format, eg (sec-high sec-low).
+in format YYYYMMDD-HHMM. Example: \"20130820-0848\". Otherwise, ARG is a
+string; parse it with that regex, and return the time in emacs internal
+time format, eg (sec-high sec-low).
 "
   (let ((regex "\\(\\(19\\|20\\)[0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)")
         (dt (decode-time (current-time))))
@@ -68,9 +70,9 @@ For invalid monthnames, returns nil."
 
 (defun dts--parse-rfc822-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
-formatted like: \"Tuesday, 21 November 2017, 12:42\".
-Otherwise, ARG is a string, and this function will parse it with that regex, and
-returns the time in emacs internal time format, eg (sec-high sec-low).
+formatted like: \"Tuesday, 21 November 2017, 12:42\". Otherwise,
+ARG is a string; parse it with that regex, and return the time in
+emacs internal time format, eg (sec-high sec-low).
 "
   (let ((regex
          "\\(Sunday\\|Monday\\|Tuesday\\|Wednesday\\|Thursday\\|Friday\\|Saturday\\), +\\([0-9]\\{1,2\\}\\) \\([A-Za-z]\\{3,14\\}\\) \\(\\(19\\|20\\)[0-9]\\{2\\}\\), \\([0-9]\\{2\\}\\):\\([0-9]\\{2\\}\\)")
@@ -91,9 +93,9 @@ returns the time in emacs internal time format, eg (sec-high sec-low).
 
 (defun dts--parse-YBe-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
-formatted like: \"2017 November 21\".
-Otherwise, ARG is a string, and this function will parse it with that regex, and
-returns the time in emacs internal time format, eg (sec-high sec-low).
+formatted like: \"2017 November 21\". Otherwise, ARG is a string;
+parse it with that regex, and return the time in emacs internal time
+format, eg (sec-high sec-low).
 "
   (let ((regex "\\(\\(19\\|20\\)[0-9]\\{2\\}\\) \\([A-Za-z]\\{3,14\\}\\) +\\([0-9]\\{1,2\\}\\)")
         (dt (decode-time (current-time))))
@@ -113,9 +115,9 @@ returns the time in emacs internal time format, eg (sec-high sec-low).
 
 (defun dts--parse-HMS-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
-formatted like: \"14:32:33\".
-Otherwise, ARG is a string, and this function will parse it with that regex, and
-returns the time in emacs internal time format, eg (sec-high sec-low).
+formatted like: \"14:32:33\". Otherwise, ARG is a string; parse it
+with that regex, and return the time in emacs internal time format,
+eg (sec-high sec-low).
 "
   (let ((regex "\\([0-9]\\{2\\}\\):\\([0-9]\\{2\\}\\):\\([0-9]\\{2\\}\\)" )
         (dt (decode-time (current-time))))
@@ -136,9 +138,9 @@ returns the time in emacs internal time format, eg (sec-high sec-low).
 
 (defun dts--parse-YmdHMS-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
-formatted like: \"2019-02-12T14:32:33\".
-Otherwise, ARG is a string, and this function will parse it with that regex, and
-returns the time in emacs internal time format, eg (sec-high sec-low).
+formatted like: \"2019-02-12T14:32:33\". Otherwise, ARG is a string;
+parse it with that regex, and return the time in emacs internal time
+format, eg (sec-high sec-low).
 "
   (let ((regex "\\(\\(19\\|20\\)[0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)T\\([0-9]\\{2\\}\\):\\([0-9]\\{2\\}\\):\\([0-9]\\{2\\}\\)" )
         (dt (decode-time (current-time))))
@@ -159,9 +161,12 @@ returns the time in emacs internal time format, eg (sec-high sec-low).
 
 
 (defun dts--maybe-delete-time-string-looking-forward ()
-  "if point is looking forward at a time string, delete it.
-Return a number (index of the time-format string found) if an
-appropriate string has been found and deleted. Else return nil."
+  "If point is looking forward at a time string, according to
+any of the formats in `dts--time-formats', delete it, and return a
+number that represents the index of the time-format string found. Else
+return nil.
+
+See also `dts--maybe-delete-time-string-under-point'."
   (interactive)
   (let ((ix 0)
         found)
@@ -178,9 +183,12 @@ appropriate string has been found and deleted. Else return nil."
     found))
 
 (defun dts--maybe-delete-time-string-under-point ()
-  "if point is on a time string, delete it.
-Return a number (index of the time-format string found) if an
-appropriate string has been found and deleted. Else return nil."
+  "if point is on a time string, according to
+any of the formats in `dts--time-formats', delete it, and return a
+number representing the index of the time-format string found.  Else
+return nil.
+
+See also `dts--maybe-delete-time-string-looking-forward'"
   (interactive)
   (save-excursion
     (save-match-data
@@ -215,14 +223,16 @@ Otherwise, the format used is like this:
 If you invoke the command while point is on a timestamp string, it
 will insert an updated stamp using the same format.
 
-If you invoke this command repeatedly, it cycles through additional formats:
+If you invoke this command repeatedly, it cycles through additional
+formats, eg:
 
    Tuesday, 20 August 2013, 08:48
    2013 August 20
    08:48:03
    2019-02-12T08:48:03Z
 
-Point is placed at the beginning of the newly inserted timestamp.
+It will continue to cycle. Point is placed at the beginning of the newly
+inserted timestamp.
 "
   (interactive "P")
   (cond
@@ -250,15 +260,15 @@ Point is placed at the beginning of the newly inserted timestamp.
         (goto-char orig-point))))))
 
 (defun dts/insert-currentTimeMillis ()
-  "function to insert the value like java's currentTimeMillis.
+  "Insert the value like java's currentTimeMillis.
 
 On Sunday, 7 December 2025, for some reason, I observed that calling
 this interactively was resulting in a 10-13 second delay.  Calling it
 non-interactively does not cause this delay. It was a real
 puzzle. Defining a new function with the same logic, but a different
 name, allowed it to run without delay.  Restarting emacs allowed it to
-run without (much) delay. I never solved this but the delay is mostly
-gone; now it takes just 1 second or so now. Still that seems long,but
+run without (much) delay. I never solved this but the delay seems to be
+gone; now it takes just 1 second or so now. Still that seems long, but
 not worth further investigating. This was one of those debugging and
 diagnostic efforts where I spent several hours and learned nothing."
   (interactive)
