@@ -36,7 +36,7 @@
 ;;     (setq completion-category-overrides
 ;;       (cons `(file
 ;;               (styles . (basic substring))
-;;               (cycle-sort-function . ,#'dpc-ss-sort-files)
+;;               (cycle-sort-function . ,#'dpc-ss-files)
 ;;               (cycle . 10))
 ;;           completion-category-overrides))
 ;;
@@ -78,11 +78,11 @@
 (require 'cl-seq) ;; cl-remove-if
 
 ;; ==== sorters
-(defun dpc-ss-sort-alpha (candidates)
+(defun dpc-ss-alpha (candidates)
   "Sorts the model CANDIDATE by name"
   (sort candidates :lessp #'string<))
 
-(defun dpc-ss-sort-alpha-exact-first (candidates)
+(defun dpc-ss-alpha-exactfirst (candidates)
   "Sort CANDIDATES to place an exact match for the minibuffer
 content first. The rest of the candidates are sorted alphabetically.
 This corrects the problem in which I type «M-x grep» and the top
@@ -94,11 +94,11 @@ the `command' category in `completion-category-overrides', like so:
   (setq completion-category-overrides
     (cons `(command
             (styles . (basic substring))
-            (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first)
+            (cycle-sort-function . ,#'dpc-ss-alpha-exactfirst)
             (cycle . 10))
         completion-category-overrides))
 
-See also `dpc-ss-sort-alpha-exact-or-starts-with-first' which
+See also `dpc-ss-alphaexact-startswith-first' which
 is probably better.
 "
   (let ((cur-input (minibuffer-contents-no-properties)))
@@ -110,7 +110,7 @@ is probably better.
                       #'string-lessp))
         (sort candidates #'string-lessp)))))
 
-(defun dpc-ss-sort-alpha-exact-or-starts-with-first (candidates)
+(defun dpc-ss-alphaexact-startswith-first (candidates)
   "Sort CANDIDATES placing:
   1. An exact match for the minibuffer content first.
   2. Candidates that start with the input, sorted alphabetically.
@@ -122,7 +122,7 @@ is probably better.
   (setq completion-category-overrides
     (cons `(command
             (styles . (basic substring))
-            (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-or-starts-with-first)
+            (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)
             (cycle . 10))
         completion-category-overrides))
 "
@@ -154,7 +154,7 @@ is probably better.
     (nconc exact-matches starts-with-matches remaining-candidates)))
 
 
-(defun dpc-ss-sort-files (candidates)
+(defun dpc-ss-files (candidates)
   "Sort a list of CANDIDATES alphabetically, except that  \"./\"
 always appears at the end, and an exact match of what the user
 typed is presented at the top of the list.
@@ -165,7 +165,7 @@ the `file' category in `completion-category-overrides', like so:
   (setq completion-category-overrides
     (cons `(file
             (styles . (basic substring))
-            (cycle-sort-function . ,#'dpc-ss-sort-files)
+            (cycle-sort-function . ,#'dpc-ss-files)
             (cycle . 10))
         completion-category-overrides))
 "
@@ -250,34 +250,36 @@ An example use of this function:
           `(metadata (category . ,category-symbol))
         (complete-with-action action candidates string pred)))))
 
-;; This category, `sorted-sanely', is for sorting of anything... LLM models in the swap-model
-;; chooser, commands, etc. Anything that needs a sane sort order.  Without an overrides,
-;; minibuffer sorts first by length, then alphabetically, which seems insane. With an override,
-;; the user (me) can pre-empt that default sorting.  Providing a cycle-sort-function in the
-;; metadata works for initial display, but does not work when filtering happens.  Sorting with
-;; an active filter (like we've typed a few characters) happens correctly only with a category
-;; override which specifies a cycle-sort-function, which means to make this work, the existing
-;; call of `completing-read' must specify a category. As an example, `find-file' uses a
-;; category, so I can use this `completion-category-overrides' trick to modify sorting for it.
-;; Conversely, the completing-read in magit does not specify a category when reading a branch
-;; name, so I cannot use the overrides trick to modify sorting for magit purposes.  As an
-;; example of using a category, see above `dpc-ss-completion-fn'.  To specify the sorting for a
-;; category, add the category, in this case `sorted-sanely', to `completion-category-overrides',
-;; and the right sorting will happen.
-(setq completion-category-overrides
-      (dino/insert-or-modify-alist-entry completion-category-overrides
-                                         'sorted-sanely
-                                         `((styles . (substring))
-                                           (cycle-sort-function . ,#'dpc-ss-sort-alpha))))
+;; Define two new categories.
+;;
+;; The first category, `sorted-sanely', is for sorting of anything... LLM models in the
+;; swap-model chooser, candidates in a yasnippet expansion, etc. Anything that needs a sane
+;; sort order.  Without an overrides, minibuffer sorts first by length, then alphabetically,
+;; which seems insane. With an override, the user (me) can pre-empt that default sorting.
+;; Providing a cycle-sort-function in the metadata works for initial display, but does not work
+;; when filtering happens.  Sorting with an active filter (like we've typed a few characters)
+;; happens correctly only with a category override which specifies a cycle-sort-function, which
+;; means to make this work, the existing call of `completing-read' must specify a category. As
+;; an example, `find-file' uses a category, so I can use this `completion-category-overrides'
+;; trick to modify sorting for it.  Conversely, the completing-read in magit does not specify a
+;; category when reading a branch name, so I cannot use the overrides trick to modify sorting
+;; for magit purposes.  As an example of using a category, see above `dpc-ss-completion-fn'.
+;; To specify the sorting for a category, add the category, in this case `sorted-sanely', to
+;; `completion-category-overrides', and the right sorting will happen.
+;;
+;; In some cases we want no sorting; particularly with recentf.  Even here, without an
+;; overrides, minibuffer will apply its weird sort. So we override to say "no sort" with the
+;; `unsorted' category. This also requires a change in `recentf-open' to use
+;; `dpc-ss-completion-fn' or a similar completions fn that provides a category.
+;;
 
-;; In some cases we want no sorting; particularly recentf.  Even here,
-;; without an overrides, minibuffer will apply its weird sort. So
-;; we override to say "no sort" with the `unsorted' category.
-(setq completion-category-overrides
-      (dino/insert-or-modify-alist-entry completion-category-overrides
-                                         'unsorted
-                                         `((styles . (substring))
-                                           (cycle-sort-function . ,#'identity))))
+(dolist (entry
+         '((sorted-sanely . `((styles . (substring))
+                              (cycle-sort-function . ,#'dpc-ss-alpha)))
+           (unsorted      . `((styles . (substring))
+                              (cycle-sort-function . ,#'identity)))))
+  (setf (alist-get (car entry) completion-category-overrides) (cdr entry)))
+
 
 (provide 'dpc-sane-sorting)
 

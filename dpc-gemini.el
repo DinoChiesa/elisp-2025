@@ -206,7 +206,7 @@ do not filter by supportedGenerationMethods."
             (json-pretty-print-buffer))
 
         (let* ((modelnames
-                (dpc-ss-sort-alpha
+                (dpc-ss-alpha
                  (mapcar (lambda (model)
                            (let ((name (gethash "name" model)))
                              (if (and (stringp name) (s-starts-with-p "models/" name))

@@ -225,12 +225,14 @@
   (path-helper-setenv "PATH"))
 
 ;; 20241122-1947 - various tools and packages - apheleia, csslint, magit,
-;; csharpier, shfmt, aider and more - need exec-path AND/or environment PATH to be set.
-;; Any nodejs tool installed via "npm i -g" (eg ) should be on the path already.
+;; csharpier, shfmt, aider, basedpyright and more - need exec-path AND/or
+;; environment PATH to be set.  Any nodejs tool installed via "npm i -g" (eg )
+;; should be on the path already.
 (dino/maybe-add-to-exec-path
  (let ((home-dir (replace-regexp-in-string "\\\\" "/" (getenv "HOME"))))
    (list
     "c:/Program Files/Git/usr/bin"     ;; lots of unix utilities here for various purposes
+    "c:/Users/dpchi/AppData/Roaming/npm"
     (dino/find-latest-nvm-version-bin-dir)
     (concat home-dir "/.dotnet/tools") ;; csharpier
     (concat home-dir "/bin")
@@ -261,6 +263,35 @@
 ;; apheleia to work. This is done just above. Separately, we need the
 ;; appropriate apheleia formatter to be configured and available.
 ;;
+
+
+;; (defun dpc/apheleia-set-or-push-formatter (mode formatter alist-var)
+;;   "Set the formatter for a given MODE in ALIST-VAR,
+;; or push a new pair if MODE is not found.
+;;
+;; MODE is the major mode symbol (e.g., 'csharp-mode).
+;; FORMATTER is the formatter name (e.g., 'csharpier).
+;; ALIST-VAR is the symbol of the association list variable
+;; (e.g., 'apheleia-mode-alist)."
+;;   (interactive)
+;;   (let ((pair (assq mode (symbol-value alist-var))))
+;;     (if pair
+;;         ;; If the pair exists, update the cdr (the formatter)
+;;         (setcdr pair formatter)
+;;       ;; If the pair does not exist, push a new one
+;;       (push (cons mode formatter) (symbol-value alist-var)))))
+;;
+;; (defun dpc/apheleia-set-mode-formatter (mode formatter)
+;;   "Set FORMATTER for MODE in `apheleia-mode-alist`."
+;;   ;; To retrieve a formatter by name:
+;;   ;; (alist-get 'csharpier apheleia-formatters)
+;;   ;;
+;;   ;; To remove a formatter incorrectly added:
+;;   ;;(setq apheleia-formatters (delq (assoc 'csharpier apheleia-formatters) apheleia-formatters))
+;;   ;;
+;;   ;; To check a mode from the mode-alist:
+;;   ;;(alist-get 'csharp-mode apheleia-mode-alist)
+;;   (dpc/apheleia-set-or-push-formatter mode formatter 'apheleia-mode-alist))
 
 (use-package apheleia
   :ensure t
@@ -304,16 +335,10 @@
                      '("csharpier" "format")
                      )))
               (push (cons 'csharpier cmd-list) apheleia-formatters))
-            ;; To retrieve a formatter by name:
-            ;; (alist-get 'csharpier apheleia-formatters)
-            ;; To remove a formatter incorrectly added:
-            ;;(setq apheleia-formatters (delq (assoc 'csharpier apheleia-formatters) apheleia-formatters))
-            (push '(csharp-mode . csharpier) apheleia-mode-alist)
-            (push '(csharp-ts-mode . csharpier) apheleia-mode-alist)
-            )
-  ;; To check a mode from the mode-alist:
-  ;;(alist-get 'csharp-mode apheleia-mode-alist)
-  )
+
+            (setf (alist-get 'csharp-mode apheleia-mode-alist) 'csharpier)
+            (setf (alist-get 'csharp-ts-mode apheleia-mode-alist) 'csharpier)
+            ))
 
 (use-package company
   ;; COMPlete-ANYthing.
@@ -409,9 +434,8 @@
     (when (not (alist-get 'opa-fmt apheleia-formatters))
       (push '(opa-fmt . ("opa" "fmt"))
             apheleia-formatters))
-    (when (not (alist-get 'rego-mode apheleia-mode-alist))
-      (push '(rego-mode . opa-fmt) apheleia-mode-alist))))
-
+    (setf (alist-get 'rego-mode apheleia-mode-alist) 'opa-fmt)
+    ))
 
 (use-package treesit
   :defer t
@@ -461,51 +485,27 @@
   ;; order, filtering, cycle size, and more.
   ;;
   ;; The way it works: The caller of completing-read designates the category by
-  ;; dynamically binding the special variable `completion-category' before calling
-  ;; completing-read.
-  ;;
-  ;; I tried modifying the variable in a dolist, but it was not satisfactory.
+  ;; using a completions fn that returns metadata including category. This set
+  ;; of overrides governs how each category is handled.
   ;;
   ;; NB: magit does use `completing-read' but does not use `completion-category'.
   ;; So there is no way to affect the sort order of various selections. For example
-  ;; when selecting a branch, the candidates are sorted by length. (headslap)
-  (setq completion-category-overrides
-        (dino/insert-or-modify-alist-entry
-         completion-category-overrides
-         'buffer
-         `((styles  . (initials flex)) (cycle . 10))))
+  ;; when selecting a branch, the candidates are sorted by length of the name. (headslap)
 
-  ;; For M-x command
-  (setq completion-category-overrides
-        (dino/insert-or-modify-alist-entry
-         completion-category-overrides
-         'command
-         `((styles . (substring))
-           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-or-starts-with-first))))
+  (dolist (entry
+           `((buffer           . ((styles  . (initials flex)) (cycle . 10)))
+             (command          . ((styles . (substring))
+                                  (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
+             (consult-location . ((styles . (substring))))
+             (symbol-help      . ((styles . (substring))
+                                  (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
+             (symbol           . ((styles . (basic shorthand substring))))
+             (file             . ((styles . (basic substring))
+                                  (cycle-sort-function . ,#'dpc-ss-files)
+                                  (cycle . 10)))))
+    (setf (alist-get (car entry) completion-category-overrides) (cdr entry)))
 
-  ;; For describe-function or describe-variable, use `symbol-help'
-  (setq completion-category-overrides
-        (dino/insert-or-modify-alist-entry
-         completion-category-overrides
-         'symbol-help
-         `((styles . (substring))
-           (cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-or-starts-with-first))))
 
-  ;; not sure _when_ this is used, or even if it is needed rather than `symbol-help'
-  (setq completion-category-overrides
-        (dino/insert-or-modify-alist-entry
-         completion-category-overrides
-         'symbol
-         `((styles . (basic shorthand substring))) ))
-
-  ;; For M-x find-file
-  (setq completion-category-overrides
-        (dino/insert-or-modify-alist-entry
-         completion-category-overrides
-         'file
-         `((styles . (basic substring))
-           (cycle-sort-function . ,#'dpc-ss-sort-files)
-           (cycle . 10))))
   (add-to-list 'completion-ignored-extensions "#")
   (add-to-list 'completion-ignored-extensions "~")
 
@@ -515,7 +515,7 @@
   ;;       (dino/insert-or-modify-alist-entry
   ;;        completion-category-overrides
   ;;        'magit-branch
-  ;;        `((cycle-sort-function . ,#'dpc-ss-sort-alpha-exact-first))))
+  ;;        `((cycle-sort-function . ,#'dpc-ss-alpha-exactfirst))))
 
   ;; ;; 2. Define the advice function
   ;; (defun dino-magit-branch-checkout-advice (orig-fun &rest args)
@@ -545,6 +545,19 @@
          ;; ("C-c ;"     . embark-collect)
          )
   )
+
+(use-package consult
+  ;; a nifty sort of "rg for my current buffer", ux alternative to isearch
+  :commands (consult-line)
+  :ensure t
+  ;;:defer t
+  :bind (:map global-map
+         ("C-c ?" . consult-line))
+  :config
+  ;; 20251214-1130 - I am not quite sure what this does.
+  (setq completion-in-region-function #'consult-completion-in-region)
+  )
+
 
 (use-package marginalia
   ;; A complement to icomplete-vertical-mode. Displays annotations adjacent to
@@ -594,21 +607,19 @@
   ;; some functions from magit-base.el !
   ;; See https://github.com/magit/magit/discussions/5390
   (require 'dpc-sane-sorting)
-  (setq completion-category-overrides
-        (dino/insert-or-modify-alist-entry
-         completion-category-overrides
-         'magit
-         `((styles . (substring))
-           (cycle-sort-function . ,#'dpc-ss-sort-alpha))))
+  (setf (alist-get 'magit completion-category-overrides)
+        `((styles . (substring))
+          (cycle-sort-function . ,#'dpc-ss-alpha)))
 
-  ;; from magit-base.el
+
+  ;; REDEFINE from magit-base.el
   (defun magit--completion-table (collection)
     (lambda (string pred action)
       (if (eq action 'metadata)
           '(metadata (category . 'magit))
         (complete-with-action action collection string pred))))
 
-  ;; from magit-base.el
+  ;; REDEFINE from magit-base.el
   (defun magit-builtin-completing-read
       (prompt choices &optional predicate require-match initial-input hist def)
     "Magit wrapper for standard `completing-read' function."
@@ -789,8 +800,8 @@ server program."
       (if (alist-get 'jsonnetfmt apheleia-formatters)
           (setf (alist-get 'jsonnetfmt apheleia-formatters) jsonnetfmt-cmd)
         (push `(jsonnetfmt . ,jsonnetfmt-cmd) apheleia-formatters)))
-    (when (not (alist-get 'jsonnet-mode apheleia-mode-alist))
-      (push '(jsonnet-mode . jsonnetfmt) apheleia-mode-alist)))
+
+    (setf (alist-get 'jsonnet-mode apheleia-mode-alist) 'jsonnetfmt))
 
   (when (boundp 'eglot-server-programs)
     (if (alist-get 'jsonnet-mode eglot-server-programs)
@@ -2051,12 +2062,14 @@ more information."
   :commands (chatgpt-shell)
   :ensure t ;; restore this later if loading from (M)ELPA
   :hook dino-chatgpt-shell-mode-fn
-  :bind (("C-c t" . chatgpt-shell-google-toggle-grounding-with-google-search)
-         ("C-c l" . chatgpt-shell-google-load-models)
-         ("C-c p" . chatgpt-shell-prompt-compose)
-         ("C-c r" . chatgpt-shell-refactor-code)
-         ("C-c d" . chatgpt-shell-describe-code)
-         ("C-c f" . chatgpt-shell-proofread-region))
+  ;; C-c C-v chatgpt-shell-swap-model
+  :bind (:map  global-map
+         ("C-c g !" . chatgpt-shell)
+         ("C-c g l" . chatgpt-shell-google-load-models)
+         ("C-c g p" . chatgpt-shell-prompt-compose)
+         ("C-c g r" . chatgpt-shell-refactor-code)
+         ("C-c g d" . chatgpt-shell-describe-code)
+         ("C-c g f" . chatgpt-shell-proofread-region))
 
   :init
   ;; avoid flycheck warning about the following functions? This seems dumb.
@@ -3368,15 +3381,7 @@ Does not consider word syntax tables.
   ;;        '("/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"
   ;;           "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
   ;;          "--stdin-filepath" "foo.xml"))
-
-  ;; to specify an apheleia plugin for a mode that is not currently in the list:
-  ;;(push '(nxml-mode . dino-xmlpretty) apheleia-mode-alist)
-  (push '(nxml-mode . xml-prettier) apheleia-mode-alist)
-
-  ;; ;; to switch between previously set plugin for a mode:
-  ;; (setf (alist-get 'nxml-mode apheleia-mode-alist) 'xml-prettier)
-  ;; ;;(setf (alist-get 'nxml-mode apheleia-mode-alist) 'dino-xmlpretty)
-  )
+  (setf (alist-get 'nxml-mode apheleia-mode-alist) 'xml-prettier))
 
 (defun dino-xml-mode-fn ()
   ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
@@ -3528,6 +3533,11 @@ Does not consider word syntax tables.
 ;; for the scratch buffer
 (add-hook 'lisp-interaction-mode-hook 'dino-elisp-mode-fn)
 
+;; instantly display results of `eval-last-sexp' in an overlay.
+(use-package eros
+  :defer t
+  :config (eros-mode 1))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -3555,29 +3565,59 @@ Does not consider word syntax tables.
               ))))
 
   (set (make-local-variable 'indent-tabs-mode) nil)
-  (apheleia-mode)
   (display-line-numbers-mode)
+  (apheleia-mode)
+  (company-mode)
   (electric-pair-mode)
+  (eglot-ensure)
   (yas-minor-mode)
   (show-paren-mode 1)
-  ;; 20251025-1311
   (flymake-mode)
-  (flymake-ruff-load)
+  (flymake-ruff-load) ;; i dunno why I need this
   ;; python-mode forcibly sets python-check-command to be pyflakes.
   ;; This will reset it.
   (setq python-check-command "ruff")
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t) )
 
-(add-hook 'python-ts-mode-hook 'dino-python-mode-fn)
-(add-hook 'python-mode-hook 'dino-python-mode-fn)
+;; rass is an LSP Multiplexer.
+
+;; The reason to use it: each particular LSP does not
+;; give the complete set of desired features.
+;; see https://www.reddit.com/r/emacs/comments/1pkan2e/comment/ntwju3t/?context=1
+;;
+;; So with rassumfrassum, you can get the superset of features from multiple
+;; LSPs.  Unfortunately it does not work on windows, I think because of
+;; https://github.com/python/cpython/issues/71019 , which is a longstanding
+;; cpython bug.
+;;
+;; (with-eval-after-load 'eglot
+;;   (add-to-list 'eglot-server-programs
+;;                ;; https://www.reddit.com/r/emacs/comments/1pkan2e/comment/ntwju3t/?context=1
+;;                ;; https://github.com/joaotavora/rassumfrassum
+;;                ;; see also ~/.config/rassumfrassum/PRESET.py
+;;                ;; I thnk this will not work on windows.
+;;                ;; https://github.com/joaotavora/rassumfrassum/issues/5
+;;                ;;
+;;                ;; due to https://github.com/python/cpython/issues/71019
+;;                '(python-base-mode . ("rass" "python") )))
+
+;; 20251213-1844
+;; not sure if I also need this:
+;; (setq eglot-server-programs
+;;       (delq (assoc '(python-mode python-ts-mode) eglot-server-programs)
+;;             eglot-server-programs))
+
+
+(add-hook 'python-base-mode-hook 'dino-python-mode-fn)
 
 (with-eval-after-load 'apheleia
-  (setf (alist-get 'python-ts-mode apheleia-mode-alist)
-        ;; 20251025-1309
-        ;; ruff is a replacement for longtime formatter black
-        ;; On Windows: powershell -c "irm https://astral.sh/ruff/install.ps1 | iex" .
-        ;; It gets installed to ~\.local\bin\ruff.exe
-        '(ruff-isort ruff)))
+  ;; 20251025-1309
+  ;; ruff is a replacement for longtime formatter black
+  ;; On Windows: powershell -c "irm https://astral.sh/ruff/install.ps1 | iex" .
+  ;; It gets installed to ~\.local\bin\ruff.exe
+  (setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-isort ruff))
+  (setf (alist-get 'python-ts-mode apheleia-mode-alist) '(ruff-isort ruff)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -3650,11 +3690,11 @@ i.e M-x kmacro-set-counter."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; JavaScript - js-mode (everything old is new again)
+;; JavaScript - js-mode (as of 2020, no need for js2, etc)
 
 (when (boundp 'apheleia-mode-alist)
-  (push '(js-mode . prettier-javascript) apheleia-mode-alist)
-  (push '(js-ts-mode . prettier-javascript) apheleia-mode-alist))
+  (setf (alist-get 'js-mode apheleia-mode-alist) 'prettier-javascript)
+  (setf (alist-get 'js-ts-mode apheleia-mode-alist) 'prettier-javascript))
 
 (defun dino--maybe-space (&optional arg)
   "Conditionally insert a space based on the preceding text.
@@ -3662,8 +3702,8 @@ If the cursor is immediately following '// ', this function will
 do nothing. However, if the previous command was also this one
 (i.e., you press SPACE a second time), it will insert a space.
 In all other contexts, it behaves like a normal space.
-Maybe electric-operator-mode is postfixing a space when i
-type // , not sure. But anyway i'd rather it didn't  So this
+Maybe electric-operator-mode is postfixing a space when I
+type // , not sure. But anyway I'd rather it didn't  So this
 counteracts that. "
   (interactive "P")
   (if (and (looking-back "// " (- (point) 3))
@@ -4316,7 +4356,7 @@ counteracts that. "
 
   ;; Redefine `recentf-open' to use a completion function which means I can
   ;; disable sorting the recent files list, while using sorting for other
-  ;; categories.
+  ;; categories. See dpc-sane-sorting.el for the `unsorted' category.
   (defun recentf-open (file)
     "Prompt for FILE in `recentf-list' and visit it.
 Enable `recentf-mode' if it isn't already."
@@ -4490,9 +4530,11 @@ Enable `recentf-mode' if it isn't already."
 (define-key global-map (kbd "C-c j f")     #'json-pretty-print)
 (define-key global-map (kbd "C-c j m")     #'json-minify-region)
 
-
-(define-key prog-mode-map (kbd "C-c d")   #'chatgpt-shell-describe-code)
+(define-key prog-mode-map (kbd "C-c g d")   #'chatgpt-shell-describe-code)
 (define-key prog-mode-map (kbd "C-c C-c") #'comment-region)
+
+;; To see what key bindings exist, across all keymaps, for a prefix:
+;; (describe-bindings (kbd  "C-c"))
 
 
 ;; unicode helpers

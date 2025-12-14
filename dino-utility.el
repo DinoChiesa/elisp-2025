@@ -455,30 +455,42 @@ are the string substitutions (see `format')."
   (let* ((msg (apply 'format text args)))
     (message "%s %s %s" label (format-time-string "%H:%M:%S") msg)))
 
-(defun dino/insert-or-modify-alist-entry (alist key desired-value)
-  "Update a key in ALIST with DESIRED-VALUE.
-If KEY does not exist, add the new pair (KEY . DESIRED-VALUE) to the front of ALIST.
-This function is non-destructive when adding a new key (it returns a new list
-with the added pair at the front) but destructive (via `setcdr') when updating
-an existing one (it modifies the existing alist in place).
-It always returns the resulting alist.
-
-It is recommended to always use this function with `setq` to ensure the
-variable holding the alist is correctly updated, especially when a new key
-is added:
-
-Usage:
-
-   (setq my-alist
-         (dino/insert-or-modify-alist-entry my-alist
-                                            key desired-value))"
-
-  (let ((target-entry (assoc key alist)))
-    (if target-entry
-        (progn
-          (setcdr target-entry desired-value)
-          alist)
-      (cons (cons key desired-value) alist))))
+;; 20251214-1215
+;;
+;; Replace
+;;
+;;    (setq my-alist
+;;          (dino/insert-or-modify-alist-entry MY-ALIST
+;;                                             KEY VALUE))"
+;;
+;; with
+;;
+;;      (setf (alist-get KEY MY-ALIST) VALUE)
+;;
+;; (defun dino/insert-or-modify-alist-entry (alist key desired-value)
+;;   "Update a key in ALIST with DESIRED-VALUE.
+;; If KEY does not exist, add the new pair (KEY . DESIRED-VALUE) to the front of ALIST.
+;; This function is non-destructive when adding a new key (it returns a new list
+;; with the added pair at the front) but destructive (via `setcdr') when updating
+;; an existing one (it modifies the existing alist in place).
+;; It always returns the resulting alist.
+;;
+;; It is recommended to always use this function with `setq` to ensure the
+;; variable holding the alist is correctly updated, especially when a new key
+;; is added:
+;;
+;; Usage:
+;;
+;;    (setq my-alist
+;;          (dino/insert-or-modify-alist-entry my-alist
+;;                                             key desired-value))"
+;;
+;;   (let ((target-entry (assoc key alist)))
+;;     (if target-entry
+;;         (progn
+;;           (setcdr target-entry desired-value)
+;;           alist)
+;;       (cons (cons key desired-value) alist))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pretty print xml in region
