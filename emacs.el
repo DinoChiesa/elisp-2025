@@ -4547,6 +4547,8 @@ Enable `recentf-mode' if it isn't already."
 (define-key key-translation-map (kbd "\C-x 8 m") (kbd "µ")) ;; mu / micro - 00B5 / 03BC
 (define-key key-translation-map (kbd "\C-x 8 e") (kbd "ε")) ;; epsilon - 03B5
 (define-key key-translation-map (kbd "\C-x 8 p") (kbd "π")) ;; pi - 03C0
+(define-key key-translation-map (kbd "\C-x 8 >") (kbd "»")) ;; right double arrow - 0BB
+(define-key key-translation-map (kbd "\C-x 8 <") (kbd "«")) ;; left double arrow - 0AB
 
 
 
