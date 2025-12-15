@@ -234,7 +234,22 @@ influences sorting behavior. It must be a member of
 
 This allows you to control sort order for that call to `completing-read'.
 
-An example use of this function:
+Without this function:
+
+   (completing-read \"Choose: \" candidates nil t)
+
+The list is shown with the shortest candidate first, the longest
+candidate last?  With this function:
+
+   (completing-read
+      \"Choose: \"
+      (dpc-ss-completion-fn candidates \\'sorted-sanely) nil t)
+
+The list is shown with the items sorted alphabetically.
+
+And here is a concrete example to set the model selector for ChatGPT to
+be sorted:
+
   (setq chatgpt-shell-swap-model-selector
         (lambda (candidates)
           (completing-read
@@ -274,10 +289,10 @@ An example use of this function:
 ;;
 
 (dolist (entry
-         '((sorted-sanely . `((styles . (substring))
-                              (cycle-sort-function . ,#'dpc-ss-alpha)))
-           (unsorted      . `((styles . (substring))
-                              (cycle-sort-function . ,#'identity)))))
+         `((sorted-sanely . ((styles . (substring))
+                             (cycle-sort-function . ,#'dpc-ss-alpha)))
+           (unsorted      . ((styles . (substring))
+                             (cycle-sort-function . ,#'identity)))))
   (setf (alist-get (car entry) completion-category-overrides) (cdr entry)))
 
 
