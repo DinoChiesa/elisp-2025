@@ -17,7 +17,7 @@
 ;; alphabetically. The implementation for that is in
 ;; `completion-all-sorted-completions' which is defined in minibuffer.el; it
 ;; uses a function called `minibuffer--sort-by-length-alpha' which applies when
-;; there is no completion function used with `completiing-read' (eg, no
+;; there is no completion function used with `completing-read' (eg, no
 ;; metadata, just a list of candidates), or when there is a completion function
 ;; but there is no `cycle-sort-function' defined.  I am not sure when this
 ;; behavior originally became available, but it exists in emacs v29-31, in my
@@ -40,7 +40,7 @@
 ;;               (cycle . 10))
 ;;           completion-category-overrides))
 ;;
-;; - Several new categories (`unsorted', `sorted-sanely') that you can use
+;; - Several new categories (`unsorted', `sorted-sanely', `startswith') that you can use
 ;;   in metadata with completion functions with `completing-read'
 ;;
 ;;   For example:
@@ -132,7 +132,7 @@ is probably better.
         (remaining-candidates nil))
 
     ;; There is a more memory-efficient way to do this sort in a single pass,
-    ;; with a more complex predictae, but it's a little more complicated to
+    ;; with a more complex predicate, but it's a little more complicated to
     ;; read. I prefer the readability of this approach, creating multiple
     ;; independent temporary lists.
 
@@ -220,8 +220,10 @@ the `file' category in `completion-category-overrides', like so:
           ;; No exact match: just sort with "./" last
           (sort candidates sort-sensibly-with-dot-slash-last))))))
 
-(defvar dpc-ss-supported-categories '(sorted-sanely unsorted)
-  "List of supported completion categories for `dpc-ss-completion-fn'.")
+(defvar dpc-ss-supported-categories '(sorted-sanely unsorted startswith)
+  "List of supported completion categories added to `completion-category-overrides'
+by this package. They can be used within `dpc-ss-completion-fn'. You
+can add your own categories to `completion-category-overrides' of course.")
 
 (defun dpc-ss-completion-fn (candidates category-symbol)
   "Returns a function to be used as the COMPLETIONS parameter in
@@ -289,7 +291,9 @@ be sorted:
 ;;
 
 (dolist (entry
-         `((sorted-sanely . ((styles . (substring))
+         `((startswith    . ((styles . (substring))
+                             (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
+           (sorted-sanely . ((styles . (substring))
                              (cycle-sort-function . ,#'dpc-ss-alpha)))
            (unsorted      . ((styles . (substring))
                              (cycle-sort-function . ,#'identity)))))

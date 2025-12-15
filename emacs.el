@@ -440,7 +440,6 @@
 (use-package treesit
   :defer t
   :config
-  ;;(tree-sitter-require 'c-sharp) ;; this is the old (pre v29, not integrated) tree-sitter package
   ;; 20241229 - There is a grammar for c# at https://github.com/tree-sitter/tree-sitter-c-sharp
   ;; but the Makefile there says that "Windows is not supported."  Wow!
   (message (concat "csharp TS lang available ?: "
@@ -456,7 +455,13 @@
 (use-package dpc-sane-sorting
   ;; helpers that make icomplete-vertical sort sanely
   :load-path "~/elisp"
-  :pin manual )
+  :pin manual
+  :config
+  ;; `completion-extra-properties' is a global var in minibuffer.el. Setting it
+  ;; tells minibuffer to use this category to any completion for which there is
+  ;; no completion function that returns metadata.  It's like a catch-all.
+  ;; This works for `set-variable', lots of other cases.
+  (setq completion-extra-properties '(:category startswith)))
 
 (use-package icomplete
   ;; as of emacs 28, icomplete-vertical is a feature of the builtin icomplete-mode.
