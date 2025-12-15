@@ -2253,6 +2253,7 @@ more information."
   (define-key dired-mode-map (kbd "C-x m")   #'magit-status)
   ;; converse of i (dired-maybe-insert-subdir)
   (define-key dired-mode-map (kbd "K")  #'dired-kill-subdir)
+  (define-key dired-mode-map (kbd "L")  #'ffap-literally) ;; no coding conversion (see "enriched mode")
   (define-key dired-mode-map (kbd "F")  #'dino-dired-do-find)
   (define-key dired-mode-map (kbd "s")  #'dino-dired-sort-cycle)
   (dino-dired-sort-cycle "t") ;; by default, sort by time
@@ -2267,6 +2268,21 @@ more information."
   ;; eliminate the gid in dired when using ls-lisp (eg, on windows)
   (setq ls-lisp-verbosity '(links uid)))
 
+(defun dino-toggle-enriched-view ()
+  "Toggle between rendered enriched text and raw markup in the current buffer."
+  (interactive)
+  (cond
+   ;; If enriched-mode is ON, we want to show raw markup
+   (enriched-mode
+    (format-encode-buffer 'text/enriched)
+    (enriched-mode -1)
+    (set-buffer-modified-p nil) ; Optional: prevent immediate save prompt
+    (message "Showing raw markup"))
+   ;; If enriched-mode is OFF, we want to render the markup
+   (t
+    (format-decode-buffer 'text/enriched)
+    (enriched-mode 1)
+    (message "Showing rendered view"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Prog mode - general
