@@ -233,6 +233,7 @@
    (list
     "c:/Program Files/Git/usr/bin"     ;; lots of unix utilities here for various purposes
     "c:/Users/dpchi/AppData/Roaming/npm"
+    "c:/Python314"
     (dino/find-latest-nvm-version-bin-dir)
     (concat home-dir "/.dotnet/tools") ;; csharpier
     (concat home-dir "/bin")
