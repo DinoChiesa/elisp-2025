@@ -58,6 +58,8 @@
 (require 'cl-lib) ;; For assoc-if
 (require 'json)
 (require 'memoize)
+(require 'ansi-color)
+
 
 (defconst dino--short-filename-regex "[A-Za-z]\\S+\\.[-A-Za-z0-9_]+"
   "regexp for a filename")
@@ -1650,6 +1652,56 @@ the Typescript extension is ... not quite the same as an LSP, not sure.")
 ;; ;; Add a keybinding (optional, but useful)
 ;; ;; (global-set-key (kbd "C-c j f") 'my-json-format-region)
 
+
+(defun dino/display-full-year-calendar ()
+  "Run a python script that generates a calendar and display it with colors."
+  (interactive)
+  (defvar view-mode-map)
+  (let* ((buf-name "*Yearly Calendar*")
+         (script-path "~/bin/cal")
+         (calendar-output (shell-command-to-string (concat "python3 " script-path " -6" ))))
+    (with-current-buffer (get-buffer-create buf-name)
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert "\n\n")
+        (insert (replace-regexp-in-string "^" " " calendar-output))
+        ;; Translate ANSI color codes to Emacs text properties.
+        ;; with color-fixups
+        (let ((ansi-color-apply-face-function
+               (lambda (beg end face)
+                 (letrec ((fix-face
+                           (lambda (f)
+                             (cond
+                              ;; If it's the specific dark string, swap it
+                              ((equal f "blue1") "light sky blue")
+                              ;; If it's a list (like (:foreground "blue1")), recurse into it
+                              ((listp f) (mapcar fix-face f))
+                              ;; Otherwise leave it alone
+                              (t f)))))
+                   (put-text-property beg end 'face (funcall fix-face face))))))
+          (ansi-color-apply-on-region (point-min) (point-max)))
+
+        (setq-local show-trailing-whitespace nil)
+        (setq buffer-read-only t)
+        (view-mode 1) ; Allow 'q' to quit the buffer easily
+        (local-set-key (kbd "g") #'my-display-full-year-calendar)
+        ;; If view-mode still captures "g", force it into the minor-mode-overriding-map
+        (setq-local minor-mode-overriding-map-alist
+                    `((view-mode . ,(let ((map (make-sparse-keymap)))
+                                     (set-keymap-parent map view-mode-map)
+                                     (define-key map (kbd "g") #'dino/display-full-year-calendar)
+                                     map))))
+
+        (display-line-numbers-mode -1) ; Hide line numbers
+        (setq-local cursor-type nil)    ; Hide the cursor for a "clean" look
+        ;; Center the text horizontally in the window
+        (setq-local left-margin-width 2)
+        (setq-local right-margin-width 2)
+        (set-window-margins (selected-window) 4 4)))
+    (unless (get-buffer-window buf-name)
+      (switch-to-buffer buf-name))))
+
+(advice-add 'calendar :override #'dino/display-full-year-calendar)
 
 (provide 'dino-utility)
 
