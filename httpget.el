@@ -6,7 +6,7 @@
 ;; Version    : 0.2
 ;; Keywords   : http url get
 ;; X-URL      : http://cheeso.members.winisp.net/srcview.aspx?dir=emacs&file=httpget.el
-;; Last-saved : <2022-April-26 19:52:23>
+;; Last-saved : <2025-December-18 19:34:32>
 
 ;;
 ;; This module defines one interactive function, `httpget', along with
@@ -94,7 +94,6 @@ Returns nil if not found.
       (setq i (- i 1)))
     ix))
 
-
 (defun httpget (url buffername)
   "Perform an HTTP GET on the given URL, place the result into a
 buffer with BUFFERNAME, and pop to that buffer when complete.
@@ -114,9 +113,7 @@ quick and easy when called interactively.
 In fact, most of the \"value add\" of this function is just the
 interactive part.
 
-See also `browse-url-emacs', which is not related, but it similar.
-
-"
+See also `browse-url-emacs', which is not related, but is similar."
   ;;(interactive "surl ? \nBbuffer? ")
 
   (interactive
@@ -158,11 +155,11 @@ See also `browse-url-emacs', which is not related, but it similar.
     (switch-to-buffer buf)
     (if (not httpget--wget-prog) (setq httpget--wget-prog "curl"))
     (cond
-     ((not (null (string-match-p "curl" httpget--wget-prog)))
+     ((string-match-p "curl" httpget--wget-prog)
       (call-process httpget--wget-prog nil t t
-                  "-s" url))
+                    "-s" url))
      (t
       (call-process httpget--wget-prog nil t t
-                  "-q" url "-")))))
+                    "-q" url "-")))))
 
 (provide 'httpget)
