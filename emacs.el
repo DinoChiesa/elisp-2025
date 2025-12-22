@@ -2246,17 +2246,18 @@ more information."
 ;; Dired mode
 
 (defun dino-dired-mode-hook-fn ()
-  ;;(hl-line-mode 1)
-  (define-key dired-mode-map (kbd "C-c C-g") #'dino-dired-kill-new-file-contents)
-  (define-key dired-mode-map (kbd "C-c C-c") #'dino-dired-copy-file-to-dir-in-other-window)
-  (define-key dired-mode-map (kbd "C-c C-m") #'dino-dired-move-file-to-dir-in-other-window)
-  (define-key dired-mode-map (kbd "C-c m")   #'magit-status)
-  (define-key dired-mode-map (kbd "C-x m")   #'magit-status)
-  ;; converse of i (dired-maybe-insert-subdir)
-  (define-key dired-mode-map (kbd "K")  #'dired-kill-subdir)
-  (define-key dired-mode-map (kbd "L")  #'ffap-literally) ;; no coding conversion (see "enriched mode")
-  (define-key dired-mode-map (kbd "F")  #'dino-dired-do-find)
-  (define-key dired-mode-map (kbd "s")  #'dino-dired-sort-cycle)
+  (mapc (lambda (binding)
+          (define-key dired-mode-map (kbd (car binding)) (cdr binding)))
+        '(( "C-c C-g" . dino-dired-kill-new-file-contents)
+          ( "C-c C-c" . dino-dired-copy-file-to-dir-in-other-window)
+          ( "C-c C-m" . dino-dired-move-file-to-dir-in-other-window)
+          ( "C-c m" . magit-status)
+          ( "C-x m" . magit-status)
+          ;; converse of i (dired-maybe-insert-subdir)
+          ( "K" . dired-kill-subdir)
+          ( "L" . ffap-literally) ;; no coding conversion (see "enriched mode")
+          ( "F" . dino-dired-do-find)
+          ( "s" . dino-dired-sort-cycle)))
   (dino-dired-sort-cycle "t") ;; by default, sort by time
   ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
   )
@@ -2267,7 +2268,10 @@ more information."
   :config
   (require 'dino-dired-fixups)
   ;; eliminate the gid in dired when using ls-lisp (eg, on windows)
-  (setq ls-lisp-verbosity '(links uid)))
+  (setq ls-lisp-verbosity '(links uid))
+
+  (when (require 'w32-browser nil 'noerror) ;; Windows only
+    (define-key dired-mode-map (kbd "W")  #'dired-w32-browser)))
 
 (defun dino-toggle-enriched-view ()
   "Toggle between rendered enriched text and raw markup in the current buffer."
