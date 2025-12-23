@@ -178,15 +178,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Some configuration specific for system-types.
-;; Loads system-type config; e.g. "darwin.el" on Mac
-;; TODO: for replace slashes in "gnu/linux"  and add in
-;; customizations there.
+;; Loads system-type config; e.g. "dpc-sys-darwin.el" on Mac,
+;; dpc-sys-windows-nt.el on Windows.
+;;
+;; TODO: if in the future I have any customizations pertinent to
+;; "gnu/linux" I will need to replace slashes in that system-type and and
+;; add a new file.
+
 (let ((system-specific-elisp (concat "~/elisp/dpc-sys-" (symbol-name system-type) ".el")))
   (if (file-exists-p system-specific-elisp)
       (load system-specific-elisp)))
 
 (custom-set-variables
- ;; custom-set-variables was added by Custom.
  '(ls-lisp-format-time-list (quote ("%Y-%m-%d %H:%M" "%Y-%m-%d %H:%M")))
  '(ls-lisp-use-localized-time-format t)
  '(temporary-file-directory "/tmp"))
@@ -232,13 +235,13 @@
  (let ((home-dir (replace-regexp-in-string "\\\\" "/" (getenv "HOME"))))
    (list
     "c:/Program Files/Git/usr/bin"     ;; lots of unix utilities here for various purposes
-    "c:/Users/dpchi/AppData/Roaming/npm"
+    "c:/Users/dpchi/AppData/Roaming/npm";; prettier, etc. (on Windows obvs)
     "c:/Python314"
     (dino/find-latest-nvm-version-bin-dir)
     (concat home-dir "/.dotnet/tools") ;; csharpier
     (concat home-dir "/bin")
     (concat home-dir "/.local/bin")    ;; aider
-    (concat home-dir "/.fzf/bin")      ;; fzf, though I have never gotten this to work with shell-command
+    (concat home-dir "/.fzf/bin")      ;; fzf obvs
     (concat home-dir "/go/bin")        ;; shfmt, jsonnetfmt
     "/usr/local/bin"
     "/usr/bin"
@@ -515,23 +518,6 @@
   (add-to-list 'completion-ignored-extensions "#")
   (add-to-list 'completion-ignored-extensions "~")
 
-  ;; ;; 20251020-1243 magit stuff - this needs to be sorted out.
-  ;; ;; 1. Define a category just for branches
-  ;; (setq completion-category-overrides
-  ;;       (dino/insert-or-modify-alist-entry
-  ;;        completion-category-overrides
-  ;;        'magit-branch
-  ;;        `((cycle-sort-function . ,#'dpc-ss-alpha-exactfirst))))
-
-  ;; ;; 2. Define the advice function
-  ;; (defun dino-magit-branch-checkout-advice (orig-fun &rest args)
-  ;;   "Wrap `magit-branch-checkout' to set a custom category for its completer."
-  ;;   (let ((completion-category 'magit-branch))
-  ;;     (apply orig-fun args)))
-
-  ;; ;; 3. Add the advice to the specific command
-  ;; (advice-add 'magit-branch-checkout :around #'dino-magit-branch-checkout-advice)
-
   :bind (:map  icomplete-vertical-mode-minibuffer-map
          ;; icomplete-minibuffer-map <== use this for the non-vertical version.
          ;; The following 4 bindings are defaults, unnecessary to set here:
@@ -613,32 +599,90 @@
   ;; some functions from magit-base.el !
   ;; See https://github.com/magit/magit/discussions/5390
   (require 'dpc-sane-sorting)
-  (setf (alist-get 'magit completion-category-overrides)
-        `((styles . (substring))
-          (cycle-sort-function . ,#'dpc-ss-alpha)))
-
-
-  ;; REDEFINE from magit-base.el
-  (defun magit--completion-table (collection)
-    (lambda (string pred action)
-      (if (eq action 'metadata)
-          '(metadata (category . 'magit))
-        (complete-with-action action collection string pred))))
-
-  ;; REDEFINE from magit-base.el
-  (defun magit-builtin-completing-read
+  (defun dino/magit-completing-read
       (prompt choices &optional predicate require-match initial-input hist def)
-    "Magit wrapper for standard `completing-read' function."
-    (unless (or (bound-and-true-p helm-mode)
-                (bound-and-true-p ivy-mode))
-      (setq choices (magit--completion-table choices)))
+    "Override for magit wrapper for the `completing-read' function.
+
+Specifically, it modifies the behavior when selecting a remote branch to
+push to, as indicated by the PROMPT string.
+
+In this case, the choices passed to `magit-completing-read-function' are
+pre-sorted; the origin and potentially other remotes appear at the top
+of the list. Without proper sort metadata, when using icomplete, the
+options get sorted later by minibuffer, by length, which ... is super
+dumb. This cstuom completing-read fn keeps the previous sort order.
+
+To use it:
+
+  (setq magit-completing-read-function
+        #'dino/magit-completing-read)
+
+20251219-1514 - In magit-20251215.2222, baaed on code inspection of
+`magit-builtin-completing-read', it looks like the
+`magit--completion-table' uses 'identity for sort, which would make this
+workaround unnecessary. I haven't tested it.
+
+
+However, this function could be extended to use different sort order
+based on the prompt, should the need arise in the future."
+    (setq choices
+          (let* ((case-fold-search nil)
+                 (category (if (string-match "Push [^[:space:]]+ to" prompt)
+                               'unsorted
+                             'sorted-sanely)))
+            (dpc-ss-completion-fn choices category)))
+
     (let ((ivy-sort-functions-alist nil))
       (completing-read prompt
                        choices
                        predicate require-match
                        initial-input hist def)))
 
+  (setq magit-completing-read-function #'dino/magit-completing-read)
   )
+
+;; (defun dino/create-github-repo ()
+;;   "Create a GitHub repository for the current project."
+;;   (interactive)
+;;   (let* ((repo-name (file-name-nondirectory (directory-file-name (magit-toplevel))))
+;;          (user (ghub-get-user-name "api.github.com")))
+;;     (ghub-post "/user/repos" `((name . ,repo-name)))
+;;     (magit-remote-add "origin" (format "git@github.com:%s/%s.git" user repo-name))
+;;     (message "Created GitHub repo: %s" repo-name)))
+
+(defun dino/create-github-repo (&optional dir)
+  "Create a GitHub repository for the current project.
+If DIR is nil (or when called interactively with a prefix arg),
+prompt for the directory. Otherwise, use the current `magit-toplevel`."
+  (interactive
+   (list (if current-prefix-arg
+             (read-directory-name "Local repo directory: " (or (magit-toplevel default-directory) default-directory))
+           nil)))
+
+  (let* ((default-directory (or dir (magit-toplevel default-directory)))
+         (repo-name (file-name-nondirectory (directory-file-name default-directory)))
+         (gh-user (magit-get "github.user"))
+         (git-user (magit-get "user.name"))
+         (user (ghub-get-user-name "api.github.com")))
+
+    (unless (magit-git-repo-p default-directory)
+      (user-error "Directory '%s' is not a Git repository. Run 'magit-init' first" default-directory))
+    (unless gh-user
+      (user-error "Your GitHub username is not set.  Run: git config --global github.user <your-handle>"))
+    (unless git-user
+      (user-error "Git name not set! Run: git config --global user.name \"Your Name\""))
+    (unless user
+      (user-error "Could not determine GitHub username. Check your git config or auth-source (~/.authinfo?)"))
+
+    (if (member "origin" (magit-list-remote-names))
+        (user-error "Remote 'origin' already exists in this repository")
+      (condition-case err
+          (progn
+            (ghub-post "/user/repos" `((name . ,repo-name)))
+            (magit-remote-add "origin" (format "git@github.com:%s/%s.git" user repo-name))
+            (message "Successfully created and linked GitHub repo: %s/%s" user repo-name))
+        (error (message "GitHub API Error: %s" (error-message-string err)))))))
+
 
 (use-package flycheck
   :ensure t
@@ -720,6 +764,7 @@
   )
 
 (use-package eglot-booster
+  ;; not sure I still need this in emacs 30.1+?
   :defer t
   :after eglot
   :config (eglot-booster-mode))
@@ -870,9 +915,8 @@ server program."
   :config (define-key global-map (kbd "C-=") 'er/expand-region))
 
 (use-package multiple-cursors
-  ;; For visually editing similar things with one key sequence.
+  ;; For visually editing similar things with one key sequence. Very helpful in wgrep mode!
   ;; I use this rarely and my fingers don't remember the bindings. But it's neat.
-  ;; Helpful in wgrep mode!
   :ensure t
   :demand t
   :defer t
@@ -884,7 +928,8 @@ server program."
               (remove-hook 'multiple-cursors-mode-hook
                            #'dpc/work-around-multiple-cursors-issue)))
   (defun dpc/multiple-cursors-set-key-bindings ()
-    ;; TODO: am I ever going to remember this
+    ;; TODO: am I ever going to remember this?
+    ;; also, why is this not a :bind decl.?
     (keymap-local-set "ESC C->"     #'mc/mark-next-like-this)
     (keymap-local-set "ESC C-<"     #'mc/mark-previous-like-this)
     (keymap-local-set "ESC C-c C-<" #'mc/mark-all-like-this))
@@ -1436,6 +1481,7 @@ then switch to the markdown output buffer."
 ;; image-mode
 (use-package image-mode
   :defer t
+  :if (display-graphic-p)
   :autoload (image-transform-fit-to-window)
   :config
   ;;
@@ -1515,7 +1561,6 @@ then switch to the markdown output buffer."
 ;; There is a powershell package on MELPA, but there's nothing new
 ;; there, I think. One day I will convert.
 ;;
-
 
 (use-package powershell-mode
   :defer t
@@ -4551,9 +4596,10 @@ Enable `recentf-mode' if it isn't already."
 (define-key global-map (kbd "C-c C-d")     #'delete-trailing-whitespace)
 (define-key global-map (kbd "C-c j f")     #'json-pretty-print)
 (define-key global-map (kbd "C-c j m")     #'json-minify-region)
+(define-key global-map (kbd "C-x c")     #'multiple-cursors-mode)
 
-(define-key prog-mode-map (kbd "C-c g d")   #'chatgpt-shell-describe-code)
-(define-key prog-mode-map (kbd "C-c C-c") #'comment-region)
+(define-key prog-mode-map (kbd "C-c g d")  #'chatgpt-shell-describe-code)
+(define-key prog-mode-map (kbd "C-c C-c")  #'comment-region)
 
 ;; To see what key bindings exist, across all keymaps, for a prefix:
 ;; (describe-bindings (kbd  "C-c"))
