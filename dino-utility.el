@@ -1702,6 +1702,26 @@ the Typescript extension is ... not quite the same as an LSP, not sure.")
 
 (advice-add 'calendar :override #'dino/display-full-year-calendar)
 
+
+(defun dino/generate-random-string (len)
+  "return a random string of length LEN."
+  (let* ((chars "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+         (L (length chars))
+         (res ""))
+    (dotimes (_ len res)
+      (setq res (concat res (char-to-string (elt chars (random L))))))))
+
+(defun dino/pkce-s256-code-challenge (verifier)
+  "generate a S256 code challenge from a given VERIFIER: produce
+a base64-url-encoded version of a SHA256 of the given verifier."
+  (let ((hash (secure-hash 'sha256 verifier nil nil t)))
+    (replace-regexp-in-string
+     "=" ""
+     (replace-regexp-in-string
+      "/" "_"
+      (replace-regexp-in-string "+" "-" (base64-encode-string hash t))))))
+
+
 (provide 'dino-utility)
 
 ;;; dino-utility.el ends here
