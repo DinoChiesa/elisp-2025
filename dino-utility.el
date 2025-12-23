@@ -1668,18 +1668,14 @@ the Typescript extension is ... not quite the same as an LSP, not sure.")
         (erase-buffer)
         (insert "\n\n")
         (insert (replace-regexp-in-string "^" " " calendar-output))
-        ;; Translate ANSI color codes to Emacs text properties.
-        ;; with color-fixups
+        ;; Translate ANSI color codes to Emacs text properties, with color-fixups.
         (let ((ansi-color-apply-face-function
                (lambda (beg end face)
                  (letrec ((fix-face
                            (lambda (f)
                              (cond
-                              ;; If it's the specific dark string, swap it
                               ((equal f "blue1") "light sky blue")
-                              ;; If it's a list (like (:foreground "blue1")), recurse into it
                               ((listp f) (mapcar fix-face f))
-                              ;; Otherwise leave it alone
                               (t f)))))
                    (put-text-property beg end 'face (funcall fix-face face))))))
           (ansi-color-apply-on-region (point-min) (point-max)))
@@ -1695,8 +1691,8 @@ the Typescript extension is ... not quite the same as an LSP, not sure.")
                                      (define-key map (kbd "g") #'dino/display-full-year-calendar)
                                      map))))
 
-        (display-line-numbers-mode -1) ; Hide line numbers
-        (setq-local cursor-type nil)    ; Hide the cursor for a "clean" look
+        (display-line-numbers-mode -1)
+        (setq-local cursor-type nil)
         ;; Center the text horizontally in the window
         (setq-local left-margin-width 2)
         (setq-local right-margin-width 2)
