@@ -1623,6 +1623,8 @@ then switch to the markdown output buffer."
         (push dpc-hs-settings-for-powershell-mode hs-special-modes-alist)))))
 
 
+(add-hook 'shell-mode-hook #'company-mode)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Lua
 ;; 20250224-0130 - it's rare that I use lua-mode.
