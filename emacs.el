@@ -2244,6 +2244,8 @@ more information."
   (setq auto-insert-query nil) ;; no prompt before auto-insertion
   (setq auto-insert-directory "~/elisp/auto-insert-content")
 
+  ;; my extensions, to make it more like the old "defaultcontent" with
+  ;; expansion macro support.
   (use-package auto-insert-plus
     :load-path "~/elisp"
     :ensure nil)
@@ -2254,6 +2256,7 @@ more information."
          ;; TODO: generate this alist dynamically from the files found in the directory.
          '(
            ("\\.cs$"                      .  "Template.cs" )
+           ("\\.sh$"                      .  "Template.sh" )
            ("\\.css$"                     .  "Template.css" )
            ("\\.asp$"                     .  "Template.asp" )
            ("\\.aspx$"                    .  "Template.aspx" )
