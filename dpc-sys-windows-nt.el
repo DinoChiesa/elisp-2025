@@ -84,4 +84,6 @@ there (and xargs, etc)."
   (set-selection-coding-system 'utf-16-le)
   (set-clipboard-coding-system 'utf-16-le))
 
+(setq explicit-shell-file-name "pwsh.exe") ;; for M-x shell. Do not use `shell-file-name'.
+
 (provide 'dpc-sys-windows-nt)
