@@ -346,8 +346,16 @@
 
 (use-package company
   ;; COMPlete-ANYthing.
-  :defer 31
+  :defer 11
   :config
+  ;; company by default sets up a bunch of "legacy" backends... bbdb, oddmuse,
+  ;; etc.  which I do not want. This sets a clean, fast global default. I can
+  ;; adjust within Individual modes as appropriate.
+
+  (setq company-backends '(company-files
+                           (company-capf :with company-yasnippet)
+                           company-dabbrev-code company-dabbrev))
+
   (setq company-idle-delay 0.4)
   ;; Not sure why, or if, we need both "TAB" and "<tab>".
   (define-key company-active-map (kbd "TAB") #'company-complete-common-or-cycle)
@@ -358,7 +366,6 @@
   ;; front-end for company, for presentation. Adds features like icons for
   ;; different completion candidates, better color highlighting, and the ability
   ;; to display documentation for functions and variables.
-
   :defer t
   :after (company)
   :hook (company-mode . company-box-mode))
@@ -719,7 +726,7 @@ prompt for the directory. Otherwise, use the current `magit-toplevel`."
          ("C-c e s" . eglot-shutdown)
          ("C-c e C-s" . eglot-shutdown-all)
          ("C-c e r" . eglot-reconnect)
-         ("C-c e c" . company-capf)
+         ("C-c e c" . company-complete)
          )
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
   :config  (setq flymake-show-diagnostics-at-end-of-line t)
@@ -762,6 +769,7 @@ prompt for the directory. Otherwise, use the current `magit-toplevel`."
 
   (advice-add 'eglot--apply-text-edits :after #'dpc/strip-cr)
   )
+
 
 (use-package eglot-booster
   ;; not sure I still need this in emacs 30.1+?
@@ -1582,7 +1590,7 @@ then switch to the markdown output buffer."
                       ("C-c C-c" . comment-region)
                       ("C-c C-d" . delete-trailing-whitespace)
                       ("C-c C-w" . compare-windows)
-                      ("ESC C-i" . company-capf)
+                      ("ESC C-i" . company-complete)
                       ("C-c C-g" . powershell-format-buffer)
                       ))))
           )
@@ -1806,7 +1814,7 @@ more information."
                       ("C-c C-d" . delete-trailing-whitespace)
                       ("C-c C-w" . compare-windows)
                       ("ESC ."   . company-complete)
-                      ("ESC C-i" . company-capf)
+                      ("ESC C-i" . company-complete)
                       ))))
 
           (turn-on-auto-revert-mode)
@@ -3210,12 +3218,6 @@ colon."
     (eglot-reconnect (eglot--current-server-or-lose))
     ))
 
-;; 20250702-1535 ? unsure if I need this. I think this is for completing on snippets.
-(add-hook 'eglot-managed-mode-hook
-          (lambda ()
-            (add-to-list 'company-backends
-                         '(company-capf :with company-yasnippet))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Compile
 ;;
@@ -3479,7 +3481,7 @@ Does not consider word syntax tables.
   (keymap-local-set "C-c n"   #'sgml-name-char) ;; inserts entity ref of pressed char
   (keymap-local-set "M-#"     #'dino-xml-pretty-print-buffer)
   (keymap-local-set "C-c f"   #'dino-replace-filename-no-extension)
-  (keymap-local-set "ESC C-i" #'company-capf)
+  (keymap-local-set "ESC C-i" #'company-complete)
   (keymap-local-set "C-<"     #'nxml-backward-element)
   (keymap-local-set "C->"     #'nxml-forward-element)
   (keymap-local-set "C-c C-c" #'dino-xml-comment-region)
@@ -3608,11 +3610,10 @@ Does not consider word syntax tables.
 
 ;; instantly display results of `eval-last-sexp' in an overlay.
 (use-package eros
-  :defer t
+  ;;:defer t
   :config (eros-mode 1))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3622,10 +3623,9 @@ Does not consider word syntax tables.
   :ensure t)
 
 (defun dino-python-mode-fn ()
-  ;; python-mode is not a prog-mode
-  ;;(eglot) ;; not sure about this
+  ;; python-mode is not a prog-mode!
 
-  (let ((local-map (current-local-map))) ;; python-mode-map or python-ts-mode-map
+  (let ((local-map (current-local-map))) ;; one of {python-mode-map, python-ts-mode-map}
     (when local-map
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
@@ -3634,6 +3634,7 @@ Does not consider word syntax tables.
               ("C-c C-c" . comment-region)
               ("C-c C-d" . delete-trailing-whitespace)
               ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
+              ("C-<tab>" . company-complete)
               ("C-c C-w" . compare-windows)
               ))))
 
@@ -3642,15 +3643,61 @@ Does not consider word syntax tables.
   (apheleia-mode)
   (company-mode)
   (electric-pair-mode)
+
+  ;; `python-flymake' is the default flymake checker. It checks for
+  ;; `python-flymake-command', which by default is `("pyflakes")' . I don't use pyflakes, so
+  ;; it fails on my machine, which can lead to an eglot crash-loop!  Yay! To avoid this,
+  ;; remove `python-flymake' as a checker, and later add in a checker from `flymake-ruff',
+  ;; which is a nice wrapper. Setting `python-flymake-command' is a failsafe here. It should
+  ;; never run anyway.
+  ;;
+  ;; Ordering is important. Set the  `flymake-diagnostic-functions', then enable flymake.
+  (setq-local python-flymake-command '("ruff" "check")) ;; failsafe
+  (remove-hook 'flymake-diagnostic-functions #'python-flymake t)
+  (require 'flymake-ruff)
+  ;;(flymake-ruff-load) ;; this is equivalent to the following add-hook
+  (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t)
+  ;; But! the above gets wiped out by eglot. So I re-add it later, see
+  ;; `dino-repair-eglot-python-flymake-setup'.
+  (flymake-mode)
   (eglot-ensure)
   (yas-minor-mode)
   (show-paren-mode 1)
-  (flymake-mode)
-  (flymake-ruff-load) ;; i dunno why I need this
-  ;; python-mode forcibly sets python-check-command to be pyflakes.
-  ;; This will reset it.
-  (setq python-check-command "ruff")
+
+  ;; FYI: `flymake-show-buffer-diagnostics' will show which program is generating
+  ;; warning messages. Eg basedpyright etc.  Add notations like # pyright:
+  ;; reportUnknownParameterType=false either on the specific line or at the top
+  ;; of file, to suppress these lint warnings.
+
+  ;; `python-check-command' is a legacy variable used by the built-in `python-check'
+  ;; (usually bound to C-c C-v). It is a synchronous process: you run it, it opens a new
+  ;; buffer with compile-style output, and you look at the errors. Flymake, with ruff or
+  ;; pyright, obviates the need for this.  Even so, I might run it
+  ;; inadvertently. python-mode forcibly sets python-check-command to be pyflakes.  The
+  ;; following will reset it. This remains here for legacy purposes only.
+  (setq python-check-command "ruff check")
+  (setq-local compile-command "ruff check .")  ;; for M-x compile, checks the entire project
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t) )
+
+
+(defun dino-repair-eglot-python-flymake-setup ()
+  "Add ruff to flymake when eglot is managing a python buffer.
+
+Upon startup, eglot overwrites the `flymake-diagnostic-functions' and
+removes `flymake-ruff', and anything else. The final value becomes
+`(eglot-flymake-backend)'.  The purpose of this function is to add ruff back.
+
+pyright (the LSP) is great at Type checking but ruff is much faster and
+better at linting.  By using eglot(pyright) and ruff, I get both checks
+in flymake."
+  (when (derived-mode-p 'python-base-mode)
+    (require 'flymake-ruff)
+    (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t)))
+
+(add-hook 'eglot-managed-mode-hook #'dino-repair-eglot-python-flymake-setup)
+
+
+
 
 ;; rass is an LSP Multiplexer.
 
