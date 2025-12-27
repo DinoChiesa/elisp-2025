@@ -442,11 +442,8 @@
   :config
   (add-hook 'rego-mode-hook #'dino-rego-mode-fn)
   (when (boundp 'apheleia-formatters)
-    (when (not (alist-get 'opa-fmt apheleia-formatters))
-      (push '(opa-fmt . ("opa" "fmt"))
-            apheleia-formatters))
-    (setf (alist-get 'rego-mode apheleia-mode-alist) 'opa-fmt)
-    ))
+    (setf (alist-get 'opa-fmt apheleia-formatters) '("opa" "fmt"))
+    (setf (alist-get 'rego-mode apheleia-mode-alist) 'opa-fmt)) )
 
 (use-package treesit
   :defer t
@@ -3632,7 +3629,7 @@ Does not consider word syntax tables.
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("ESC C-R" . indent-region)
-              ("ESC #"   . dino/indent-buffer)
+              ("ESC #"   . flymake-show-buffer-diagnostics)
               ("C-c C-c" . comment-region)
               ("C-c C-d" . delete-trailing-whitespace)
               ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
@@ -3681,6 +3678,13 @@ Does not consider word syntax tables.
   (setq-local compile-command "ruff check .")  ;; for M-x compile, checks the entire project
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t) )
 
+                                        ;(add-to-list 'display-buffer-alist
+(add-to-list 'display-buffer-alist
+             '("\\*Flymake diagnostics.*"
+               (display-buffer-reuse-window display-buffer-at-bottom)
+               (window-height . (lambda (window)
+                                  (fit-window-to-buffer window 9))) ;; max 9 lines
+               (preserve-size . (nil . t)))) ;; Try to keep it that size
 
 (defun dino-repair-eglot-python-flymake-setup ()
   "Add ruff to flymake when eglot is managing a python buffer.
@@ -3734,11 +3738,28 @@ in flymake."
 
 (with-eval-after-load 'apheleia
   ;; 20251025-1309
-  ;; ruff is a replacement for longtime formatter black
+  ;; ruff is a fast replacement for longtime formatter black.
   ;; On Windows: powershell -c "irm https://astral.sh/ruff/install.ps1 | iex" .
   ;; It gets installed to ~\.local\bin\ruff.exe
-  (setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-isort ruff))
-  (setf (alist-get 'python-ts-mode apheleia-mode-alist) '(ruff-isort ruff)))
+
+  ;; (setf (alist-get 'ruff-docstring apheleia-formatters)
+  ;;       '("ruff" "check" "--fix" "--unsafe-fixes"
+  ;;         "--exit-zero"
+  ;;         "--select" "D205,D213"
+  ;;         "--stdin-filename" filepath "-"))
+
+  ;; Sort imports and perform other fixes (docstrings for now) in one pass.
+  ;; `ruff-isort' does sorting of imports only.
+  ;; and if I want docstring fixes too, then that's another process.
+  ;; This formatter consolidates those steps.
+  (setf (alist-get 'ruff-custom apheleia-formatters)
+        '("ruff" "check" "--fix" "--unsafe-fixes" "--exit-zero"
+          "--select" "I,D200,D207,D208,D209,D210,D213,D403,D415"
+          "--stdin-filename" filepath "-"))
+
+  ;;(setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-isort ruff))
+  (setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-custom ruff))
+  (setf (alist-get 'python-ts-mode apheleia-mode-alist) '(ruff-custom ruff)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
