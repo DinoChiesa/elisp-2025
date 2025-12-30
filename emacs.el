@@ -233,6 +233,12 @@
 ;; should be on the path already.
 (dino/maybe-add-to-exec-path
  (let ((home-dir (replace-regexp-in-string "\\\\" "/" (getenv "HOME"))))
+
+   ;; These get added in "reverse order", which is surprising and probably wrong.
+   ;; I should change `dino/maybe-add-to-exec-path' to correct that.
+   ;; Also, it does not normalized slashes in paths, so I get duplicated paths.
+   ;; I should fix that too.
+   ;;
    (list
     "c:/Program Files/Git/usr/bin"     ;; lots of unix utilities here for various purposes
     "c:/Users/dpchi/AppData/Roaming/npm";; prettier, etc. (on Windows obvs)
@@ -645,48 +651,17 @@ based on the prompt, should the need arise in the future."
   (setq magit-completing-read-function #'dino/magit-completing-read)
   )
 
-;; (defun dino/create-github-repo ()
-;;   "Create a GitHub repository for the current project."
-;;   (interactive)
-;;   (let* ((repo-name (file-name-nondirectory (directory-file-name (magit-toplevel))))
-;;          (user (ghub-get-user-name "api.github.com")))
-;;     (ghub-post "/user/repos" `((name . ,repo-name)))
-;;     (magit-remote-add "origin" (format "git@github.com:%s/%s.git" user repo-name))
-;;     (message "Created GitHub repo: %s" repo-name)))
 
-(defun dino/create-github-repo (&optional dir)
-  "Create a GitHub repository for the current project.
-If DIR is nil (or when called interactively with a prefix arg),
-prompt for the directory. Otherwise, use the current `magit-toplevel`."
-  (interactive
-   (list (if current-prefix-arg
-             (read-directory-name "Local repo directory: " (or (magit-toplevel default-directory) default-directory))
-           nil)))
-
-  (let* ((default-directory (or dir (magit-toplevel default-directory)))
-         (repo-name (file-name-nondirectory (directory-file-name default-directory)))
-         (gh-user (magit-get "github.user"))
-         (git-user (magit-get "user.name"))
-         (user (ghub-get-user-name "api.github.com")))
-
-    (unless (magit-git-repo-p default-directory)
-      (user-error "Directory '%s' is not a Git repository. Run 'magit-init' first" default-directory))
-    (unless gh-user
-      (user-error "Your GitHub username is not set.  Run: git config --global github.user <your-handle>"))
-    (unless git-user
-      (user-error "Git name not set! Run: git config --global user.name \"Your Name\""))
-    (unless user
-      (user-error "Could not determine GitHub username. Check your git config or auth-source (~/.authinfo?)"))
-
-    (if (member "origin" (magit-list-remote-names))
-        (user-error "Remote 'origin' already exists in this repository")
-      (condition-case err
-          (progn
-            (ghub-post "/user/repos" `((name . ,repo-name)))
-            (magit-remote-add "origin" (format "git@github.com:%s/%s.git" user repo-name))
-            (message "Successfully created and linked GitHub repo: %s/%s" user repo-name))
-        (error (message "GitHub API Error: %s" (error-message-string err)))))))
-
+(use-package flymake
+  :ensure t)
+(defun dino/toggle-flymake-diagnostics ()
+  "Toggle the flymake diagnostics buffer window."
+  (interactive)
+  (let* ((buf-name (format "*Flymake diagnostics for `%s'*" (buffer-name)))
+         (window (get-buffer-window buf-name)))
+    (if window
+        (delete-window window)
+      (flymake-show-buffer-diagnostics))))
 
 (use-package flycheck
   :ensure t
@@ -726,9 +701,11 @@ prompt for the directory. Otherwise, use the current `magit-toplevel`."
          ("C-c e c" . company-complete)
          )
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
-  :config  (setq flymake-show-diagnostics-at-end-of-line t)
+  :config
+  (require 'eglot-python-pep723-extensions)
+  (setq flymake-show-diagnostics-at-end-of-line t)
 
-  ;; disable eglot, specifically for json-mode
+  ;; disable eglot for json-mode
   (setq eglot-server-programs
         (cl-remove-if
          (lambda (association)
@@ -3629,7 +3606,7 @@ Does not consider word syntax tables.
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("ESC C-R" . indent-region)
-              ("ESC #"   . flymake-show-buffer-diagnostics)
+              ("ESC #"   . dino/toggle-flymake-diagnostics)
               ("C-c C-c" . comment-region)
               ("C-c C-d" . delete-trailing-whitespace)
               ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
@@ -3659,7 +3636,9 @@ Does not consider word syntax tables.
   ;; But! the above gets wiped out by eglot. So I re-add it later, see
   ;; `dino-repair-eglot-python-flymake-setup'.
   (flymake-mode)
-  (eglot-ensure)
+  (epep723/setup-basedpyright-lsp-workspace-handling)
+  (eglot-ensure) ;; eglot will use "pyright". Installing basedpyright satisfies this.
+
   (yas-minor-mode)
   (show-paren-mode 1)
 
@@ -3678,7 +3657,8 @@ Does not consider word syntax tables.
   (setq-local compile-command "ruff check .")  ;; for M-x compile, checks the entire project
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t) )
 
-                                        ;(add-to-list 'display-buffer-alist
+
+;; try to keep placement of flymake diags ... at the bottom, and smallish.
 (add-to-list 'display-buffer-alist
              '("\\*Flymake diagnostics.*"
                (display-buffer-reuse-window display-buffer-at-bottom)

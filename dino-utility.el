@@ -1722,6 +1722,41 @@ a base64-url-encoded version of a SHA256 of the given verifier."
       (replace-regexp-in-string "+" "-" (base64-encode-string hash t))))))
 
 
+
+(defun dino/create-github-repo (&optional dir)
+  "Create a GitHub repository for the current project.
+If DIR is nil (or when called interactively with a prefix arg),
+prompt for the directory. Otherwise, use the current `magit-toplevel`."
+  (interactive
+   (list (if current-prefix-arg
+             (read-directory-name "Local repo directory: " (or (magit-toplevel default-directory) default-directory))
+           nil)))
+
+  (let* ((default-directory (or dir (magit-toplevel default-directory)))
+         (repo-name (file-name-nondirectory (directory-file-name default-directory)))
+         (gh-user (magit-get "github.user"))
+         (git-user (magit-get "user.name"))
+         (user (ghub-get-user-name "api.github.com")))
+
+    (unless (magit-git-repo-p default-directory)
+      (user-error "Directory '%s' is not a Git repository. Run 'magit-init' first" default-directory))
+    (unless gh-user
+      (user-error "Your GitHub username is not set.  Run: git config --global github.user <your-handle>"))
+    (unless git-user
+      (user-error "Git name not set! Run: git config --global user.name \"Your Name\""))
+    (unless user
+      (user-error "Could not determine GitHub username. Check your git config or auth-source (~/.authinfo?)"))
+
+    (if (member "origin" (magit-list-remote-names))
+        (user-error "Remote 'origin' already exists in this repository")
+      (condition-case err
+          (progn
+            (ghub-post "/user/repos" `((name . ,repo-name)))
+            (magit-remote-add "origin" (format "git@github.com:%s/%s.git" user repo-name))
+            (message "Successfully created and linked GitHub repo: %s/%s" user repo-name))
+        (error (message "GitHub API Error: %s" (error-message-string err)))))))
+
+
 (provide 'dino-utility)
 
 ;;; dino-utility.el ends here
