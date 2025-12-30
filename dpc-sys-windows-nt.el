@@ -78,12 +78,18 @@ there (and xargs, etc)."
 ;;
 ;; The Windows API is built entirely on top of UTF-16.
 ;; This will not affect the coding system of the buffer, only of
-;; handling of the clipboard.
+;; handling of the clipboard. The shell is a different matter!
 (when (eq system-type 'windows-nt)
   (set-next-selection-coding-system 'utf-16-le)
   (set-selection-coding-system 'utf-16-le)
   (set-clipboard-coding-system 'utf-16-le))
 
 (setq explicit-shell-file-name "pwsh.exe") ;; for M-x shell. Do not use `shell-file-name'.
+(setq explicit-pwsh.exe-args
+      '("-NoExit" "-Command" "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8"))
+
+;; Set environment in case I use M-x shell, and then run a python terminal program.
+(setenv "PYTHONUTF8" "1")
+(setenv "PYTHONUNBUFFERED" "1") ;; for buffering output in pwsh.exe shells
 
 (provide 'dpc-sys-windows-nt)
