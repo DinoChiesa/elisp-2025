@@ -227,28 +227,25 @@
   :config
   (path-helper-setenv "PATH"))
 
-;; 20241122-1947 - various tools and packages - apheleia, csslint, magit,
-;; csharpier, shfmt, aider, basedpyright and more - need exec-path AND/or
-;; environment PATH to be set.  Any nodejs tool installed via "npm i -g" (eg )
-;; should be on the path already.
+;; 20241122-1947
+;;
+;; Intelligently adds paths to exec-path and PATH without duplication and only
+;; if the path exists.  This to support various tools and packages - apheleia,
+;; csslint, magit, csharpier, shfmt, aider, basedpyright and more - need
+;; exec-path AND/or environment PATH to be set.  Any nodejs tool installed via
+;; "npm i -g" (eg ) should be on the path already.
 (dino/maybe-add-to-exec-path
- (let ((home-dir (replace-regexp-in-string "\\\\" "/" (getenv "HOME"))))
-
-   ;; These get added in "reverse order", which is surprising and probably wrong.
-   ;; I should change `dino/maybe-add-to-exec-path' to correct that.
-   ;; Also, it does not normalized slashes in paths, so I get duplicated paths.
-   ;; I should fix that too.
-   ;;
+ (let ((home-dir (replace-regexp-in-string "\\\\" "/" (file-truename (getenv "HOME")) )))
    (list
-    "c:/Program Files/Git/usr/bin"     ;; lots of unix utilities here for various purposes
-    "c:/Users/dpchi/AppData/Roaming/npm";; prettier, etc. (on Windows obvs)
+    "c:/Program Files/Git/usr/bin"       ;; lots of unix utilities here for various purposes
+    "c:/Users/dpchi/AppData/Roaming/npm" ;; prettier, etc. (on Windows obvs)
     "c:/Python314"
     (dino/find-latest-nvm-version-bin-dir)
-    (concat home-dir "/.dotnet/tools") ;; csharpier
+    (concat home-dir "/.dotnet/tools")   ;; csharpier
     (concat home-dir "/bin")
-    (concat home-dir "/.local/bin")    ;; aider
-    (concat home-dir "/.fzf/bin")      ;; fzf obvs
-    (concat home-dir "/go/bin")        ;; shfmt, jsonnetfmt
+    (concat home-dir "/.local/bin")      ;; aider
+    (concat home-dir "/.fzf/bin")        ;; fzf obvs
+    (concat home-dir "/go/bin")          ;; shfmt, jsonnetfmt
     "/usr/local/bin"
     "/usr/bin"
     "/usr/lib/google-golang/bin"
