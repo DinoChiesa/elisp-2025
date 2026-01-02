@@ -1256,42 +1256,167 @@ The first line is indented with INDENT-STRING."
         (browse-url url)))))
 
 
-;; ====================================================================
-;; For tools like apheleia and flycheck, other tools that might invoke shell
-;; commands (like csslint, csharpier, etc), We need to set the path
-;; properly. The following functions help with that. I had some problems
-;; understanding what this was doing, so it now verbosely logs everything.
+;; ;; ====================================================================
+;; ;; For tools like apheleia and flycheck, other tools that might invoke shell
+;; ;; commands (like csslint, csharpier, etc), We need to set the path
+;; ;; properly. The following functions help with that. I had some problems
+;; ;; understanding what this was doing, so it now verbosely logs everything.
+;;
+;; (defun dino/maybe-add-to-exec-path (paths)
+;;   "Add each item from PATHS to `exec-path' and the PATH environment variable
+;; if the item exists as a directory and is not already present."
+;;   (let (exec-path-was-modified
+;;         path-was-modified
+;;         (env-paths (split-string (getenv "PATH") ":")))
+;;     (dolist (path paths)
+;;       (when (and path (file-directory-p path))
+;;         (let (was-modified
+;;               (normalized-path (file-truename path)))
+;;           ;; I am not sure if I need both `exec-path' and the PATH environment variable.
+;;           (when (not (member normalized-path exec-path))
+;;             (setq was-modified (cons "exec-path" was-modified))
+;;             (add-to-list 'exec-path normalized-path)
+;;             (setq exec-path-was-modified t))
+;;           (when (not (member normalized-path env-paths))
+;;             (setq was-modified (cons "PATH" was-modified))
+;;             (add-to-list 'env-paths normalized-path)
+;;             (setq path-was-modified t))
+;;           (if was-modified
+;;               (message (format "add %s to %s" normalized-path was-modified)))
+;;           )))
+;;     (when path-was-modified
+;;       (setenv "PATH" (mapconcat 'identity env-paths ";"))
+;;       (message (format "updated PATH %s" (getenv "PATH"))))
+;;     (when exec-path-was-modified
+;;       (if (eq system-type 'windows-nt)
+;;           (dino-maybe-reorder-exec-path-entries))
+;;       (message (format "updated exec-path %s" (prin1-to-string exec-path))))
+;;     ))
+
+
+
+
+
+
+(defun dino/normalize-path-for-comparison (path)
+  "Canonicalize a path for comparison, handling Windows specifics.
+  Ensures lowercase drive letter and consistent backslashes on Windows."
+  (let ((canonical-path (file-truename path))) ; Emacs-preferred canonical form (often forward slashes)
+    (if (eq system-type 'windows-nt)
+        (let* ((p (replace-regexp-in-string "/" "\\" canonical-path t t)) ;; forward to backslash
+               (p (replace-regexp-in-string "\\\\+" "\\" p t t)) ;; double backslash to single
+               (drive-match (string-match "^\\([a-zA-Z]\\):" p)))
+          (if drive-match
+              (concat (downcase (substring p (match-beginning 1) (match-end 1)))
+                      (substring p (match-end 1)))
+            p))
+      canonical-path))) ; Non-Windows: file-truename is sufficient for comparison.
+
+(defun dino/convert-to-display-path (path)
+  "Convert a path to the preferred display format (backslashes on Windows),
+  preserving original drive letter casing (as provided by file-truename)."
+  (if (eq system-type 'windows-nt)
+      ;; Convert to backslashes, normalize double slashes.
+      (let* ((p (replace-regexp-in-string "/" "\\" path t t)) ;; forward to backslash
+             (p (replace-regexp-in-string "\\\\+" "\\" p t t))) ;; double backslash to single
+        p)
+    path))
+
+(defun dino/deduplicate-and-normalize-paths (path-list &optional to-display-format)
+  "Deduplicate a list of paths, preserving order (first occurrence wins).
+  Uses `dino/normalize-path-for-comparison' for comparison.
+  If TO-DISPLAY-FORMAT is non-nil, the returned list will contain
+  paths formatted by `dino/convert-to-display-path'.
+  Otherwise, it will contain canonical true names (from `file-truename')."
+  (let ((seen-normalized-paths (make-hash-table :test 'equal))
+        (result-paths '())
+        ;; Process in reverse order so `push` builds the result in correct first-occurrence order
+        (reversed-input (nreverse path-list)))
+
+    (dolist (path reversed-input)
+      (when (stringp path) ; Ensure path is a string before processing
+        (let* ((truename-path (file-truename path))
+               (normalized-for-comp (dino/normalize-path-for-comparison truename-path)))
+          (unless (gethash normalized-for-comp seen-normalized-paths)
+            (puthash normalized-for-comp t seen-normalized-paths)
+            (if to-display-format
+                (push (dino/convert-to-display-path truename-path) result-paths)
+              (push truename-path result-paths))))))
+    result-paths))
+
 
 (defun dino/maybe-add-to-exec-path (paths)
   "Add each item from PATHS to `exec-path' and the PATH environment variable
-if the item exists as a directory and is not already present."
-  (let (exec-path-was-modified
-        path-was-modified
-        (env-paths (split-string (getenv "PATH") ":")))
+  if the item exists as a directory and is not already present,
+  after deduplicating existing paths."
+  (let ((exec-path-was-modified nil)
+        (path-was-modified nil)
+
+        ;; --- Deduplicate and normalize existing paths first ---
+        ;; `exec-path` stores canonical paths (often forward slashes)
+        (initial-exec-path (dino/deduplicate-and-normalize-paths exec-path nil))
+        ;; `PATH` environment variable uses display format (backslashes on Windows)
+        (initial-env-paths-list (dino/deduplicate-and-normalize-paths (split-string (getenv "PATH") ";") t))
+
+        ;; Temporary lists to store new paths to be appended (built in reverse)
+        (new-exec-paths-to-append '())
+        (new-env-paths-to-append '())
+
+        ;; Hash tables for quick checking against all paths (existing + new)
+        (normalized-all-exec-paths (make-hash-table :test 'equal))
+        (normalized-all-env-paths (make-hash-table :test 'equal)))
+
+    ;; Populate hash tables with already existing, deduplicated paths for quick lookups
+    (dolist (p initial-exec-path)
+      (puthash (dino/normalize-path-for-comparison p) t normalized-all-exec-paths))
+    (dolist (p initial-env-paths-list)
+      (puthash (dino/normalize-path-for-comparison p) t normalized-all-env-paths))
+
+    ;; --- Process new paths from the input list ---
     (dolist (path paths)
       (when (and path (file-directory-p path))
-        (let (was-modified
-              (normalized-path (file-truename path)))
-          ;; I am not sure if I need both `exec-path' and the PATH environment variable.
-          (when (not (member normalized-path exec-path))
-            (setq was-modified (cons "exec-path" was-modified))
-            (add-to-list 'exec-path normalized-path)
-            (setq exec-path-was-modified t))
-          (when (not (member normalized-path env-paths))
-            (setq was-modified (cons "PATH" was-modified))
-            (add-to-list 'env-paths normalized-path)
-            (setq path-was-modified t))
-          (if was-modified
-              (message (format "add %s to %s" normalized-path was-modified)))
+        (let* ((truename-path (file-truename path))
+               (normalized-input-path (dino/normalize-path-for-comparison truename-path))
+               (path-for-exec-path truename-path) ; For `exec-path` (canonical form)
+               (path-for-env-var (dino/convert-to-display-path truename-path)) ; For `PATH` env var (display form)
+               (current-item-added nil)) ; Flag to track if this specific path was added
+
+          ;; Check and add to exec-path if not already present
+          (unless (gethash normalized-input-path normalized-all-exec-paths)
+            (puthash normalized-input-path t normalized-all-exec-paths) ; Mark as seen
+            (push path-for-exec-path new-exec-paths-to-append) ; Add to new list
+            (setq exec-path-was-modified t)
+            (setq current-item-added (cons "exec-path" current-item-added)))
+
+          ;; Check and add to PATH environment variable if not already present
+          (unless (gethash normalized-input-path normalized-all-env-paths)
+            (puthash normalized-input-path t normalized-all-env-paths) ; Mark as seen
+            (push path-for-env-var new-env-paths-to-append) ; Add to new list
+            (setq path-was-modified t)
+            (setq current-item-added (cons "PATH" current-item-added)))
+
+          (when current-item-added
+            (message (format "add %s to %s" truename-path current-item-added)))
           )))
-    (when path-was-modified
-      (setenv "PATH"  (mapconcat 'identity env-paths ":"))
-      (message (format "updated PATH %s" (getenv "PATH"))))
-    (when exec-path-was-modified
-      (if (eq system-type 'windows-nt)
-          (dino-maybe-reorder-exec-path-entries))
+
+    ;; --- Final update of exec-path ---
+    (when (or exec-path-was-modified
+              ;; Check if initial deduplication changed it
+              (not (equal exec-path initial-exec-path)))
+      (setq exec-path (append initial-exec-path (nreverse new-exec-paths-to-append)))
+      (when (eq system-type 'windows-nt)
+        (dino-maybe-reorder-exec-path-entries))
       (message (format "updated exec-path %s" (prin1-to-string exec-path))))
+
+    ;; --- Final update of PATH environment variable ---
+    (when (or path-was-modified
+              ;; Check if initial deduplication changed it
+              (not (equal (split-string (getenv "PATH") ";") initial-env-paths-list)))
+      (setenv "PATH" (mapconcat 'identity (append initial-env-paths-list (nreverse new-env-paths-to-append)) ";"))
+      (message (format "updated PATH %s" (getenv "PATH"))))
     ))
+
+
 
 (defun dino-reorder-list (list predicate)
   "Reorders LIST so that elements satisfying PREDICATE come first.
@@ -1720,7 +1845,6 @@ a base64-url-encoded version of a SHA256 of the given verifier."
      (replace-regexp-in-string
       "/" "_"
       (replace-regexp-in-string "+" "-" (base64-encode-string hash t))))))
-
 
 
 (defun dino/create-github-repo (&optional dir)
