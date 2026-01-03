@@ -3602,15 +3602,19 @@ Does not consider word syntax tables.
     (when local-map
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
-            '(("ESC C-R" . indent-region)
+            '(("ESC C-R" . indent-region) ;; not sure if useful in python
+              ("C-<tab>" . company-complete)
               ("ESC #"   . dino/toggle-flymake-diagnostics)
               ("C-c C-c" . comment-region)
               ("C-c C-d" . delete-trailing-whitespace)
               ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
-              ("C-<tab>" . company-complete)
               ("C-c C-w" . compare-windows)
+              ;; making underscore be "word syntax" obviates these next two bindings:
+              ;;("M-f"     . forward-symbol)
+              ;;("M-b"     . (lambda () (interactive) (forward-symbol -1)))
               ))))
 
+  (modify-syntax-entry ?_ "w")
   (set (make-local-variable 'indent-tabs-mode) nil)
   (display-line-numbers-mode)
   (apheleia-mode)
