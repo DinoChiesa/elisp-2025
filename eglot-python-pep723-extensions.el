@@ -48,7 +48,6 @@
           ;; Search first 2048 chars for the script tag
           (re-search-forward "^# /// script" 2048 t))))))
 
-
 (defun epep723/uv-get-pythonexe (file-name)
   "Ensure the uv magic invisible venv is built, then find the python
 interpreter. On Windows, the result will be something like
@@ -57,7 +56,6 @@ C:/Users/me/AppData/Local/uv/cache/env-v2/filename-af3c4e/Scripts/python.exe
   ;; Ensure uv has built the venv at least once
   (with-temp-buffer
     (call-process "uv" nil '(t t) nil "sync" "--script" file-name))
-
   ;; Now that it's built, get the string.
   (with-temp-buffer
     (if (zerop (call-process "uv" nil '(t t) nil "python" "find" "--script" file-name))
@@ -65,19 +63,20 @@ C:/Users/me/AppData/Local/uv/cache/env-v2/filename-af3c4e/Scripts/python.exe
                   (truname (file-truename pythonexe))
                   (_ (file-exists-p truname)))
             truname
-          (error "UV found venv for %s but it does not exist" file-name))
-      (error "UV could not find/build venv for %s" file-name))))
+          (error "uv found venv for %s but it does not exist" file-name))
+      (error "uv could not find/build venv for %s" file-name))))
 
 
 (defun epep723/eglot-python-workspace-config (server)
-  "Provide data to allow emacs to respond to Workspace/configuration
+  "Provide data to allow emacs to respond to workspace/configuration
 inquiries from the LSP Server. With basedpyright, the python.pythonPath
-tells it how to resolve the venv. This may not be the same for other
-LSPs."
+tells it how to resolve the venv. The required workspace/configuration
+may not be the same for other LSP servers, like ty or pylsp."
+  ;; Ideally the base config will be customizable, rather than
+  ;; hardcoded here.
   (let ((config (list :basedpyright.analysis
                       '( :autoImportCompletions :json-false
                          :typeCheckingMode "recommended")))) ;; off/basic/standard
-
     (if-let* ((list (eglot--managed-buffers server))
               (_ (and list (null (cdr list))))
               (buffer (car list)))
@@ -85,9 +84,8 @@ LSPs."
           (if (and buffer-file-name
                    (derived-mode-p 'python-base-mode)
                    (epep723/has-pep723-p))
-              (let* ((python-path (epep723/uv-get-pythonexe buffer-file-name)))
-                (append config
-                        (list :python (list :pythonPath python-path))))
+              (let ((python-path (epep723/uv-get-pythonexe buffer-file-name)))
+                (append config `(:python (:pythonPath ,python-path))))
             config))
       config)))
 
