@@ -1,0 +1,11 @@
+# key : pep723
+# name: pep723
+# --
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#   "humanize",
+#   "matplotlib",
+#   "tzdata",
+# ]
+# ///
