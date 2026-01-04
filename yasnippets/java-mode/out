@@ -1,5 +1,5 @@
 # -*- mode: snippet -*-
-# name: printf
+# name: out
 # key: out
 # --
 System.out.printf($0);
