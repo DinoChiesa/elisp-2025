@@ -1,4 +1,4 @@
-;;; eglot-python-pep723-extensions.el  -*- coding: utf-8; lexical-binding: t;  -*-
+;;; dino-python-extensions.el  -*- coding: utf-8; lexical-binding: t;  -*-
 
 ;; Copyright (c) 2025 Dino Chiesa
 ;;
@@ -8,36 +8,56 @@
 
 ;;; Commentary:
 
-;; Logic to help make eglot/basedpyright find and use the appropriate venv when
-;; PEP723 markup is present in a python script. This is an early attempt. Not
-;; fully verified as yet.
+;; Logic to help make python editing more pleasant.
+;;
+;; - LSP workspace configuraiton for eglot + basedpyright-langserver to allow
+;;   the LSP to use the appropriate venv when PEP723 markup is present in a
+;;   python script. This is an early attempt. Not fully verified as yet.
+;;   basedpyright seems a bit over-zealous and may ingest more than just one
+;;   file despite the PEP723 markup.  Expect more changes in the various
+;;   language servers to support PEP723.
+;;
+;;   It looks for PEP723 markup in the python file, and when present, it tells
+;;   basedpyright-langserver to treat that file as contained within its own
+;;   "project", with a particular venv. This is precisely what we want - with uv,
+;;   each file with PEP723 dependencies gets its own magic venv. And this glue
+;;   code just tells elisp to use it when launching pyright / basedpyright.
+;;
+;;   This _assumes_ the venv is managed by uv. If managed by poetry or some other
+;;   tool, then this glue logic won't work as is. If you use something other than
+;;   basedpyright for the LSP Server, like ty or pylsp or etc, then this logic
+;;   won't work as is.
+;;
+;; - a function, `dcpe/basedpyright-check-command`, to automatically set the
+;;   python-check-command for use with basedpyright, for `python-check`.
+;;
+;; - FUTURE - similar work to set the python-check-command for use with ty language server.
+;;
+;; - others?
+;;
+;;
+;; Future enhancement would include allowing the user to specify the use of
+;; poetry vs uv, etc for thevenv manager.
+;;
+;;
+;; To use it, invoke this within the python-mode-hook
+;;  (require 'dino-python-extensions)
+;;  (dcpe/setup-basedpyright-lsp-workspace-handling)
+;;  (setq python-check-custom-command nil)
+;;  (setq python-check-command (dcpe/basedpyright-check-command))
+;;
 ;;
 
-;; To use it, invoke this within the python-mode-hook
-;;  (require 'eglot-python-pep723-extensions)
-;;  (epep723/setup-basedpyright-lsp-workspace-handling)
-;;
-;;
-;; It looks for PEP723 markup in the python file, and when present, it tells
-;; basedpyright-langserver to treat that file as contained within its own
-;; "project", with a particular venv. This is precisely what we want - with uv,
-;; each file with PEP723 dependencies gets its own magic venv. And this glue
-;; code just tells elisp to use it when launching pyright / basedpyright.
-;;
-;; This _assumes_ the venv is managed by uv. If managed by poetry or some other
-;; tool, then this glue logic won't work as is. If you use something other than
-;; basedpyright for the LSP Server, like ty or pylsp or etc, then this logic
-;; won't work as is.
 
 ;;; Code:
 
 (require 'eglot)
 
-;; (defvar epep723/original-python-contact nil
+;; (defvar dcpe/original-python-contact nil
 ;;   "Storage for the original eglot-server-programs entry for Python.
 ;; Will be set on first run.")
 
-(defun epep723/has-pep723-p (&optional _file)
+(defun dcpe/has-pep723-p (&optional _file)
   "Return non-nil if current buffer contains PEP 723 script metadata."
   (let ((case-fold-search nil))
     (save-match-data
@@ -48,93 +68,88 @@
           ;; Search first 2048 chars for the script tag
           (re-search-forward "^# /// script" 2048 t))))))
 
-(defun epep723/uv-get-pythonexe (file-name)
-  "Ensure the uv magic invisible venv is built, then find the python
+(defun dcpe/uv-get-pythonexe (file-name)
+  "Ensure that uv magic invisible venv is built, then find the python
 interpreter. On Windows, the result will be something like
 C:/Users/me/AppData/Local/uv/cache/env-v2/filename-af3c4e/Scripts/python.exe
 "
   ;; Ensure uv has built the venv at least once
-  (with-temp-buffer
-    (call-process "uv" nil '(t t) nil "sync" "--script" file-name))
-  ;; Now that it's built, get the string.
-  (with-temp-buffer
-    (if (zerop (call-process "uv" nil '(t t) nil "python" "find" "--script" file-name))
-        (if-let* ((pythonexe (string-trim (buffer-string)))
-                  (truname (file-truename pythonexe))
-                  (_ (file-exists-p truname)))
-            truname
-          (error "uv found venv for %s but it does not exist" file-name))
-      (error "uv could not find/build venv for %s" file-name))))
+  (if (file-exists-p (executable-find "uv"))
+      (progn
+        (with-temp-buffer
+          (call-process "uv" nil '(t t) nil "sync" "--script" file-name))
+        ;; Now that it's built, get the string.
+        (with-temp-buffer
+          (if (zerop (call-process "uv" nil '(t t) nil "python" "find" "--script" file-name))
+              (if-let* ((pythonexe (string-trim (buffer-string)))
+                        (truname (file-truename pythonexe))
+                        (_ (file-exists-p truname)))
+                  truname
+                (error "uv found venv python for %s but it does not exist" file-name))
+            (error "uv could not find/build venv python for %s" file-name))))
+    (error "emacs could not find uv. is it installed?")))
 
+(defvar dcpe/basedpyright-base-config
+  (list :basedpyright.analysis
+        '( :autoImportCompletions :json-false
+           :typeCheckingMode "standard")) ;; off/basic/standard/recommended
+  "Default base configuration data for Python LSP workspace/configuration requests,
+used by `dcpe/basedpyright-workspace-config`.
 
-(defun epep723/eglot-python-workspace-config (server)
+This list is tailored for basedpyright, specifying analysis options.")
+
+(defun dcpe/basedpyright-workspace-config (server)
   "Provide data to allow emacs to respond to workspace/configuration
-inquiries from the LSP Server. With basedpyright, the python.pythonPath
-tells it how to resolve the venv. The required workspace/configuration
-may not be the same for other LSP servers, like ty or pylsp."
-  ;; Ideally the base config will be customizable, rather than
-  ;; hardcoded here.
-  (let ((config (list :basedpyright.analysis
-                      '( :autoImportCompletions :json-false
-                         :typeCheckingMode "recommended")))) ;; off/basic/standard
+inquiries from the basedpyright LSP Server. With basedpyright, the
+python.pythonPath tells it how to resolve the venv. The required
+workspace/configuration may not be the same for other LSP servers, like
+ty or pylsp."
+  (let ((config dcpe/basedpyright-base-config))
     (if-let* ((list (eglot--managed-buffers server))
               (_ (and list (null (cdr list))))
               (buffer (car list)))
         (with-current-buffer buffer
           (if (and buffer-file-name
                    (derived-mode-p 'python-base-mode)
-                   (epep723/has-pep723-p))
-              (let ((python-path (epep723/uv-get-pythonexe buffer-file-name)))
+                   (dcpe/has-pep723-p))
+              (let ((python-path (dcpe/uv-get-pythonexe buffer-file-name)))
                 (append config `(:python (:pythonPath ,python-path))))
             config))
       config)))
 
-
-;; (setq-local eglot-workspace-configuration
-;;             `(:python (:pythonPath ,python-path
-;;                        :analysis (:extraPaths [,site-pkgs]
-;;                                   ;; This forces the external folder into the index
-;;                                   :include [,(file-name-directory file) ,site-pkgs]
-;;                                   :useLibraryCodeForTypes t))
-;;               :basedpyright (:analysis (:extraPaths [,site-pkgs]
-;;                                         :useLibraryCodeForTypes t)
-;;                              :venvPath ,(file-name-directory (directory-file-name venv-root))
-;;                              :venv ,(file-name-nondirectory (directory-file-name venv-root)))))
-
-
-(defun epep723/setup-basedpyright-lsp-workspace-handling ()
+(defun dcpe/setup-basedpyright-lsp-workspace-handling ()
   "Setup for PEP723 extensions for basedpyright LSP. Invoke this in your
 python-mode-hook before `eglot-ensure'."
-  (setq-default eglot-workspace-configuration #'epep723/eglot-python-workspace-config))
+  (setq-default eglot-workspace-configuration #'dcpe/basedpyright-workspace-config))
 
 
-;; (defun epep723/python-script-project-finder (dir)
+;; (defun dcpe/python-script-project-finder (dir)
 ;;   "If the file has PEP 723 markup, treat its directory as a transient project root.
 ;; This allows eglot to trigger the contact-wrapper for this specific file.
 ;;
 ;; Using a distinct LSP launch/contact per file makes sense and is
 ;; required when each file has distinct PEP723 dependency markup."
-;;   (when (and buffer-file-name (epep723/has-pep723-p))
+;;   (when (and buffer-file-name (dcpe/has-pep723-p))
 ;;     (cons 'transient dir)))
 ;;
 ;; (with-eval-after-load 'project
-;;   (add-hook 'project-find-functions #'epep723/python-script-project-finder -10))
+;;   (add-hook 'project-find-functions #'dcpe/python-script-project-finder -10))
 
 
 
 ;; ;; Do not even need this.  This would be required if we needed initializationOptions, but
 ;; ;; that is not required for basedpyright.
 ;;
-;; (defun epep723/python-contact-wrapper (interactive)
+;; (defun dcpe/python-contact-wrapper (interactive)
 ;;   (let* ((file (buffer-file-name))
-;;          (want-per-file-lsp (and file (epep723/has-pep723-p)))
+;;          (want-per-file-lsp (and file (dcpe/has-pep723-p)))
 ;;          (base-contact
-;;           (if (functionp epep723/original-python-contact)
-;;               (funcall epep723/original-python-contact interactive)
-;;             epep723/original-python-contact)))
+;;           (if (functionp dcpe/original-python-contact)
+;;               (funcall dcpe/original-python-contact interactive)
+;;             dcpe/original-python-contact)))
 ;;
 ;;     (if want-per-file-lsp
-;;         (let* ((python-path (expand-file-name (epep723/uv-get-pythonexe file)))
+;;         (let* ((python-path (expand-file-name (dcpe/uv-get-pythonexe file)))
 ;;                (full-venv-path (file-name-parent-directory (file-name-parent-directory python-path)))
 ;;                (where-venvs-reside (file-name-parent-directory full-venv-path))
 ;;                (shortname-of-the-actual-venv (file-name-nondirectory (directory-file-name full-venv-path)))
@@ -166,12 +181,12 @@ python-mode-hook before `eglot-ensure'."
 ;;
 ;;
 ;; (with-eval-after-load 'eglot
-;;   (setq epep723/original-python-contact
+;;   (setq dcpe/original-python-contact
 ;;         (copy-tree (cdr (assoc '(python-mode python-ts-mode) eglot-server-programs))))
 ;;
 ;;   (setf (alist-get '(python-mode python-ts-mode) eglot-server-programs
 ;;                    nil nil #'equal)
-;;         #'epep723/python-contact-wrapper))
+;;         #'dcpe/python-contact-wrapper))
 
 
 ;; ;; delete ALL:
@@ -188,7 +203,7 @@ python-mode-hook before `eglot-ensure'."
 ;;                         eglot-server-programs))))
 
 
-(defun epep723/find-basedpyright ()
+(defun dcpe/find-basedpyright ()
   "find basedpyright on the current machine."
   (if (eq system-type 'windows-nt)
       (with-temp-buffer
@@ -196,7 +211,22 @@ python-mode-hook before `eglot-ensure'."
             (string-trim (buffer-string))))
     (executable-find "basedpyright")))
 
-(defun epep723/basedpyright-check-command ()
+
+  (defun dcpe/rename-python-check-buffer ()
+    "Rename the Python check buffer to omit the full command. Without this,
+the name of the compilation buffer can be over 180 characters. Not helpful."
+    (let ((current-name (buffer-name)))
+      ;; Check if this is a python-check buffer
+      (when (string-match "Python check: .* \"\\([^\"]+\\)\"\\*$" current-name)
+        (let* ((extracted-file (match-string 1 current-name))
+               (new-name (format "*Python check basedpyright: %s*" extracted-file)))
+          ;; Clear out old buffers with the same name to prevent <2>, <3>
+          (when (and (get-buffer new-name) (not (eq (current-buffer) (get-buffer new-name))))
+            (let ((kill-buffer-query-functions nil))
+              (kill-buffer new-name)))
+          (rename-buffer new-name)))))
+
+(defun dcpe/basedpyright-check-command ()
   "Get the python check command for the current file. This will
 return something sensible, if uv and basedpyright are installed, whether or
 not PEP723 markup is present.
@@ -208,22 +238,28 @@ it figure out the venv.
 
 If no basedpyright, then fall back to *ruff check*, without checking for
 existence."
-  (if-let* ((basedpyright (epep723/find-basedpyright)))
-      (if-let* ((_ (epep723/has-pep723-p))
-                (python-path (epep723/uv-get-pythonexe buffer-file-name)))
-
-          (format (if (eq system-type 'windows-nt)
+  (if-let* ((basedpyright (dcpe/find-basedpyright)))
+      (progn
+        (add-hook 'compilation-mode-hook #'dcpe/rename-python-check-buffer)
+        (with-eval-after-load 'compile
+              (add-to-list 'compilation-error-regexp-alist-alist
+                           '(basedpyright
+                             "^[[:space:]]+\\([A-Za-z]:[^:\n]+\\):\\([0-9]+\\):\\([0-9]+\\)"
+                             1 2 3))
+              (add-to-list 'compilation-error-regexp-alist 'basedpyright))
+        (if-let* ((_ (dcpe/has-pep723-p))
+                  (python-path (dcpe/uv-get-pythonexe buffer-file-name)))
+            (format (if (eq system-type 'windows-nt)
                       ;; 20260103-1802
                       ;; I found that using -Command on Windows with pwsh.exe is
-                      ;; essential to letting cmdproxy.exe know that the process has ended.
-                      ;; If you use -File, the compilation will hang forever.
+                      ;; essential to correct behavior.  When I use -File, the
+                      ;; compilation hangs forever.
                       "pwsh.exe -NonInteractive -Command %s --pythonpath %s "
                     "%s --pythonpath %s ")
                   basedpyright python-path)
-        basedpyright)
+        basedpyright))
     "ruff check"))
 
+(provide 'dino-python-extensions)
 
-(provide 'eglot-python-pep723-extensions)
-
-;;; eglot-python-pep723-extensions.el ends here
+;;; dino-python-extensions.el ends here

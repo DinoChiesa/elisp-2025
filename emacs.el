@@ -699,7 +699,6 @@ based on the prompt, should the need arise in the future."
          )
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
   :config
-  (require 'eglot-python-pep723-extensions)
   (setq flymake-show-diagnostics-at-end-of-line t)
 
   ;; disable eglot for json-mode
@@ -2035,7 +2034,7 @@ more information."
 
   (require 'cl-seq)
 
-  ;; load my prompts
+  ;; load my custom prompts
   (let ((prompt-file (expand-file-name "~/elisp/.gptel-prompts")))
     (when (file-exists-p prompt-file)
       (condition-case err
@@ -3637,7 +3636,8 @@ Does not consider word syntax tables.
   ;; But! the above gets wiped out by eglot. So I re-add it later, see
   ;; `dino-repair-eglot-python-flymake-setup'.
   (flymake-mode)
-  (epep723/setup-basedpyright-lsp-workspace-handling)
+  (require 'dino-python-extensions)
+  (dcpe/setup-basedpyright-lsp-workspace-handling)
   (eglot-ensure) ;; eglot will use "pyright". Installing basedpyright satisfies this.
 
   (yas-minor-mode)
@@ -3663,31 +3663,7 @@ Does not consider word syntax tables.
   ;; different command for each file. This logic sets it up.
 
   (setq python-check-custom-command nil)
-  (setq python-check-command (epep723/basedpyright-check-command))
-
-  (defun dino-rename-python-check-buffer ()
-    "Rename the Python check buffer to omit the full command. Without this,
-the name of the compilation buffer can be over 180 characters. Not helpful."
-    (let ((current-name (buffer-name)))
-      ;; Check if this is a python-check buffer
-      (when (string-match "Python check: .* \"\\([^\"]+\\)\"\\*$" current-name)
-        (let* ((extracted-file (match-string 1 current-name))
-               (new-name (format "*Python check basedpyright: %s*" extracted-file)))
-          ;; Clear out old buffers with the same name to prevent <2>, <3>
-          (when (and (get-buffer new-name) (not (eq (current-buffer) (get-buffer new-name))))
-            (let ((kill-buffer-query-functions nil))
-              (kill-buffer new-name)))
-          (rename-buffer new-name)))))
-
-  (add-hook 'compilation-mode-hook #'dino-rename-python-check-buffer)
-
-  (with-eval-after-load 'compile
-    (add-to-list 'compilation-error-regexp-alist-alist
-                 '(basedpyright
-                   "^[[:space:]]+\\([A-Za-z]:[^:\n]+\\):\\([0-9]+\\):\\([0-9]+\\)"
-                   1 2 3))
-    (add-to-list 'compilation-error-regexp-alist 'basedpyright)
-    )
+  (setq python-check-command (dcpe/basedpyright-check-command))
 
 
   ;; uv python find --script ergodicity-2.py
