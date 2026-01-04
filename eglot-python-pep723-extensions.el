@@ -188,6 +188,42 @@ python-mode-hook before `eglot-ensure'."
 ;;                         eglot-server-programs))))
 
 
+(defun epep723/find-basedpyright ()
+  "find basedpyright on the current machine."
+  (if (eq system-type 'windows-nt)
+      (with-temp-buffer
+        (if (zerop (call-process "where.exe" nil '(t t) nil "basedpyright.ps1" ))
+            (string-trim (buffer-string))))
+    (executable-find "basedpyright")))
+
+(defun epep723/basedpyright-check-command ()
+  "Get the python check command for the current file. This will
+return something sensible, if uv and basedpyright are installed, whether or
+not PEP723 markup is present.
+
+If PEP723 markup, then find the right pythonexe and give that to the
+basedpyright command. If no markup, or if uv does not return the python
+path, but basedpyright is installed, then just run basedpyright, and let
+it figure out the venv.
+
+If no basedpyright, then fall back to *ruff check*, without checking for
+existence."
+  (if-let* ((basedpyright (epep723/find-basedpyright)))
+      (if-let* ((_ (epep723/has-pep723-p))
+                (python-path (epep723/uv-get-pythonexe buffer-file-name)))
+
+          (format (if (eq system-type 'windows-nt)
+                      ;; 20260103-1802
+                      ;; I found that using -Command on Windows with pwsh.exe is
+                      ;; essential to letting cmdproxy.exe know that the process has ended.
+                      ;; If you use -File, the compilation will hang forever.
+                      "pwsh.exe -NonInteractive -Command %s --pythonpath %s "
+                    "%s --pythonpath %s ")
+                  basedpyright python-path)
+        basedpyright)
+    "ruff check"))
+
+
 (provide 'eglot-python-pep723-extensions)
 
 ;;; eglot-python-pep723-extensions.el ends here

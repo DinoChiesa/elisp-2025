@@ -3654,7 +3654,47 @@ Does not consider word syntax tables.
   ;; pyright, obviates the need for this.  Even so, I might run it
   ;; inadvertently. python-mode forcibly sets python-check-command to be pyflakes.  The
   ;; following will reset it. This remains here for legacy purposes only.
-  (setq python-check-command "ruff check")
+
+  ;; 20260103-1748
+  ;; What I have found: the basedpyright-langserver still is not behaving 100% reliably
+  ;; on python code that uses PEP723 markup, which means I get spurious errors about
+  ;; "unable to resolve import" and etc.  To work around that I can manually run
+  ;; a python check, using basedpyright. But to make that happen, I need to use a
+  ;; different command for each file. This logic sets it up.
+
+  (setq python-check-custom-command nil)
+  (setq python-check-command (epep723/basedpyright-check-command))
+
+  (defun dino-rename-python-check-buffer ()
+    "Rename the Python check buffer to omit the full command. Without this,
+the name of the compilation buffer can be over 180 characters. Not helpful."
+    (let ((current-name (buffer-name)))
+      ;; Check if this is a python-check buffer
+      (when (string-match "Python check: .* \"\\([^\"]+\\)\"\\*$" current-name)
+        (let* ((extracted-file (match-string 1 current-name))
+               (new-name (format "*Python check basedpyright: %s*" extracted-file)))
+          ;; Clear out old buffers with the same name to prevent <2>, <3>
+          (when (and (get-buffer new-name) (not (eq (current-buffer) (get-buffer new-name))))
+            (let ((kill-buffer-query-functions nil))
+              (kill-buffer new-name)))
+          (rename-buffer new-name)))))
+
+  (add-hook 'compilation-mode-hook #'dino-rename-python-check-buffer)
+
+  (with-eval-after-load 'compile
+    (add-to-list 'compilation-error-regexp-alist-alist
+                 '(basedpyright
+                   "^[[:space:]]+\\([A-Za-z]:[^:\n]+\\):\\([0-9]+\\):\\([0-9]+\\)"
+                   1 2 3))
+    (add-to-list 'compilation-error-regexp-alist 'basedpyright)
+    )
+
+
+  ;; uv python find --script ergodicity-2.py
+  ;; c:\Users\dpchi\AppData\Roaming\npm\basedpyright.ps1 --pythonpath C:\Users\dpchi\AppData\Local\uv\cache\environments-v2\ergodicity-2-d457e2e24b007c47\Scripts\python.exe ergodicity-2.py
+
+
+
   (setq-local compile-command "ruff check .")  ;; for M-x compile, checks the entire project
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t) )
 
