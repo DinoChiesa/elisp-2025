@@ -730,3 +730,8 @@ com.github.benmanes.caffeine.cache.Cache
 org.springframework.http.ResponseCookie
 com.apigee.keymanagement.oauth.ApiProductValidationBean
 com.apigee.quota.QuotaBucketConfiguration
+io.swagger.v3.oas.models.OpenAPI
+io.swagger.v3.oas.models.media.ComposedSchema
+io.swagger.v3.parser.OpenAPIV3Parser
+io.swagger.v3.parser.core.models.ParseOptions
+io.swagger.v3.parser.core.models.SwaggerParseResult
