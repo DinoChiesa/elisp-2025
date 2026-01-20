@@ -509,13 +509,14 @@
   ;; when selecting a branch, the candidates are sorted by length of the name. (headslap)
 
   (dolist (entry
-           `((buffer           . ((styles  . (initials flex)) (cycle . 10)))
+           `((buffer           . ((styles  . (initials flex)) (cycle . 10)
+                                  (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
              (command          . ((styles . (substring))
                                   (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
-             (consult-location . ((styles . (substring))))
+             (consult-location . ((styles . (substring)))) ;; also not sure about this
              (symbol-help      . ((styles . (substring))
                                   (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
-             (symbol           . ((styles . (basic shorthand substring))))
+             (symbol           . ((styles . (basic shorthand substring)))) ;; not sure when this is used
              (file             . ((styles . (basic substring))
                                   (cycle-sort-function . ,#'dpc-ss-files)
                                   (cycle . 10)))))
