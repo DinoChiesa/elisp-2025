@@ -3705,25 +3705,32 @@ in flymake."
 
 ;; rass is an LSP Multiplexer.
 
-;; The reason to use it: each particular LSP does not
-;; give the complete set of desired features.
+;; The reason to use it: each particular LSP does not give the complete set of
+;; desired features.
+;;
 ;; see https://www.reddit.com/r/emacs/comments/1pkan2e/comment/ntwju3t/?context=1
 ;;
 ;; So with rassumfrassum, you can get the superset of features from multiple
-;; LSPs.  Unfortunately it does not work on windows, I think because of
-;; https://github.com/python/cpython/issues/71019 , which is a longstanding
-;; cpython bug.
+;; LSPs.
 ;;
 ;; (with-eval-after-load 'eglot
 ;;   (add-to-list 'eglot-server-programs
 ;;                ;; https://www.reddit.com/r/emacs/comments/1pkan2e/comment/ntwju3t/?context=1
 ;;                ;; https://github.com/joaotavora/rassumfrassum
 ;;                ;; see also ~/.config/rassumfrassum/PRESET.py
-;;                ;; I thnk this will not work on windows.
-;;                ;; https://github.com/joaotavora/rassumfrassum/issues/5
 ;;                ;;
 ;;                ;; due to https://github.com/python/cpython/issues/71019
 ;;                '(python-base-mode . ("rass" "python") )))
+
+;; Unfortunately it does not work on windows, I think because of
+;; https://github.com/python/cpython/issues/71019 , which is a longstanding
+;; cpython bug.  logged as  https://github.com/joaotavora/rassumfrassum/issues/5
+;; 20260120-1544 - But joao made a fix, maybe this will now work:
+;;
+;; (add-to-list 'eglot-server-programs
+;;              (cons '(python-ts-mode python-mode)
+;;                         (string-split "uvx --from git+https://github.com/joaotavora/rassumfrassum.git python -m rassumfrassum python")))
+
 
 ;; 20251213-1844
 ;; not sure if I also need this:
