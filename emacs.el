@@ -234,9 +234,14 @@
 ;; csslint, magit, csharpier, shfmt, aider, basedpyright and more - need
 ;; exec-path AND/or environment PATH to be set.  Any nodejs tool installed via
 ;; "npm i -g" (eg ) should be on the path already.
+;;
+;; 20260128-1052
+;; TODO: This list of paths should really be loaded from a config file.
+;; embedding it in elisp is not quite right.
 (dino/maybe-add-to-exec-path
  (let ((home-dir (replace-regexp-in-string "\\\\" "/" (file-truename (getenv "HOME")) )))
    (list
+    "c:/gcloud-sdk/google-cloud-sdk/bin"
     "c:/Program Files/Git/usr/bin"       ;; lots of unix utilities here for various purposes
     "c:/Users/dpchi/AppData/Roaming/npm" ;; prettier, etc. (on Windows obvs)
     "c:/Python314"
@@ -945,6 +950,8 @@ server program."
            (or
             (when (file-exists-p (expand-file-name "~/.apigeecli/bin/apigeecli"))
               (expand-file-name "~/.apigeecli/bin/apigeecli"))
+            (when (file-exists-p (expand-file-name "~/dev/apigeecli/bin/apigeecli.exe"))
+              (expand-file-name "~/dev/apigeecli/bin/apigeecli.exe"))
             (executable-find "apigeecli"))))
       (if apigeecli-path
           (setf (alist-get 'apigeecli apigee-programs-alist) apigeecli-path)
@@ -972,7 +979,7 @@ server program."
 
       (if found-apigeelint-path
           (setf (alist-get 'apigeelint apigee-programs-alist)
-                (format "node %s" found-apigeelint-path))
+                (list "node" found-apigeelint-path))
         (message "cannot find apigeelint-cli.js in any of the candidate paths: %s"
                  (mapcar #'expand-file-name apigeelint-candidate-paths))))
 
