@@ -241,6 +241,7 @@
 (dino/maybe-add-to-exec-path
  (let ((home-dir (replace-regexp-in-string "\\\\" "/" (file-truename (getenv "HOME")) )))
    (list
+    "c:/Program Files/Eclipse Adoptium/jdk-11/bin"
     "c:/gcloud-sdk/google-cloud-sdk/bin"
     "c:/Program Files/Git/usr/bin"       ;; lots of unix utilities here for various purposes
     "c:/Users/dpchi/AppData/Roaming/npm" ;; prettier, etc. (on Windows obvs)
