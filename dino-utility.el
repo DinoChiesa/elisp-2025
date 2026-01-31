@@ -1341,10 +1341,13 @@ original drive letter casing (as provided by file-truename)."
     result-paths))
 
 (defun dino/maybe-add-to-exec-path (paths)
-  "Add each item from PATHS to `exec-path' and the PATH environment variable
-  if the item exists as a directory and is not already present,
-  after deduplicating existing paths."
+  "Given PATHS, a list of strings representing directiory names,
+deduplicate the list, then add each item to `exec-path' and the PATH
+environment variable, if the item exists as a directory and is not
+already present. Report the number of dirs added and removed to each.
 
+This is intended for use at startup. It is useful when the system or user
+path differs from what you want to use in emacs."
   (let ((path-env-entries (split-string (getenv "PATH") path-separator)))
     (let ((exec-path-added-count 0)
           (path-env-added-count 0)
@@ -1408,6 +1411,32 @@ original drive letter casing (as provided by file-truename)."
                exec-path-added-count exec-path-removed-count
                path-env-added-count path-env-removed-count))))
 
+
+(defun dino/fixup-exec-path (paths-file)
+  "Read lines from a PATHS-FILE and add them to the `exec-path'.
+The PATHS-FILE should be a list of paths, one for each line, no
+separator. Empty lines or lines beginning with # are ignored.
+
+This to support various tools and packages - apheleia, csslint, magit,
+csharpier, shfmt, aider, basedpyright and more - need exec-path AND/or
+environment PATH to be set.  Any nodejs tool installed via «npm i -g»
+should be on the path already."
+  (if-let*
+      ((file-contents (and (file-exists-p paths-file)
+                           (with-temp-buffer
+                             (insert-file-contents paths-file)
+                             (buffer-substring-no-properties (point-min) (point-max)))))
+       (lines (mapcar #'string-trim
+                      (split-string file-contents "\n" t)))
+       (filtered-lines (seq-filter (lambda (s)
+                                     (and (not (string-empty-p s)) (not (string-prefix-p "#" s))))
+                                   lines))
+       (home-dir (replace-regexp-in-string "\\\\" "/" (getenv "HOME")))
+       (mapped-lines
+        (mapcar (lambda (s)
+                  (replace-regexp-in-string "\$HOME" home-dir s t))
+                filtered-lines)))
+      (dino/maybe-add-to-exec-path mapped-lines)))
 
 (defun dino-reorder-list (list predicate)
   "Reorders LIST so that elements satisfying PREDICATE come first.

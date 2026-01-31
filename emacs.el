@@ -160,6 +160,7 @@
              dino/shfmt-buffer)
   :autoload (dino/insert-or-modify-alist-entry
              dino/maybe-add-to-exec-path
+             dino/fixup-exec-path
              dino/find-latest-nvm-version-bin-dir
              dino/setup-shmode-for-apheleia
              dino/find-executable-in-paths)
@@ -227,36 +228,37 @@
   :config
   (path-helper-setenv "PATH"))
 
-;; 20241122-1947
-;;
-;; Intelligently adds paths to exec-path and PATH without duplication and only
-;; if the path exists.  This to support various tools and packages - apheleia,
-;; csslint, magit, csharpier, shfmt, aider, basedpyright and more - need
-;; exec-path AND/or environment PATH to be set.  Any nodejs tool installed via
-;; "npm i -g" (eg ) should be on the path already.
-;;
+;; 20260131-1235
+;; Add paths to exec-path and PATH without duplication.
+(let* ((this-script-dir (file-name-directory load-file-name))
+       (paths-file (expand-file-name ".exec-paths" this-script-dir)))
+  (dino/fixup-exec-path paths-file))
+
+(dino/maybe-add-to-exec-path (list (dino/find-latest-nvm-version-bin-dir)))
+
 ;; 20260128-1052
 ;; TODO: This list of paths should really be loaded from a config file.
 ;; embedding it in elisp is not quite right.
-(dino/maybe-add-to-exec-path
- (let ((home-dir (replace-regexp-in-string "\\\\" "/" (file-truename (getenv "HOME")) )))
-   (list
-    "c:/Program Files/Eclipse Adoptium/jdk-11/bin"
-    "c:/gcloud-sdk/google-cloud-sdk/bin"
-    "c:/Program Files/Git/usr/bin"       ;; lots of unix utilities here for various purposes
-    "c:/Users/dpchi/AppData/Roaming/npm" ;; prettier, etc. (on Windows obvs)
-    "c:/Python314"
-    (dino/find-latest-nvm-version-bin-dir)
-    (concat home-dir "/.dotnet/tools")   ;; csharpier
-    (concat home-dir "/bin")
-    (concat home-dir "/.local/bin")      ;; aider
-    (concat home-dir "/.fzf/bin")        ;; fzf obvs
-    (concat home-dir "/go/bin")          ;; shfmt, jsonnetfmt
-    "/usr/local/bin"
-    "/usr/bin"
-    "/usr/lib/google-golang/bin"
-    "/usr/local/git/current/bin"
-    )))
+;;
+;; (dino/maybe-add-to-exec-path
+;;  (let ((home-dir (replace-regexp-in-string "\\\\" "/" (file-truename (getenv "HOME")) )))
+;;    (list
+;;     "c:/Program Files/Eclipse Adoptium/jdk-11/bin"
+;;     "c:/gcloud-sdk/google-cloud-sdk/bin"
+;;     "c:/Program Files/Git/usr/bin"       ;; lots of unix utilities here for various purposes
+;;     "c:/Users/dpchi/AppData/Roaming/npm" ;;din prettier, etc. (on Windows obvs)
+;;     "c:/Python314"
+;;     (dino/find-latest-nvm-version-bin-dir)
+;;     (concat home-dir "/.dotnet/tools")   ;; csharpier
+;;     (concat home-dir "/bin")
+;;     (concat home-dir "/.local/bin")      ;; aider
+;;     (concat home-dir "/.fzf/bin")        ;; fzf obvs
+;;     (concat home-dir "/go/bin")          ;; shfmt, jsonnetfmt
+;;     "/usr/local/bin"
+;;     "/usr/bin"
+;;     "/usr/lib/google-golang/bin"
+;;     "/usr/local/git/current/bin"
+;;     )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; apheleia - clever code reformatting for multiple languages.

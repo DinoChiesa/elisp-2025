@@ -1,0 +1,29 @@
+# Paths to add to emacs exec-path, at startup.
+#
+# See dino/fixup-exec-path
+
+c:/Program Files/Eclipse Adoptium/jdk-11/bin
+c:/gcloud-sdk/google-cloud-sdk/bin
+
+#  lots of unix utilities here for various purposes
+c:/Program Files/Git/usr/bin
+
+# prettier, csslint, etc. (on Windows obvs)
+c:/Users/dpchi/AppData/Roaming/npm
+
+c:/Python314
+
+# csharpier
+$HOME/.dotnet/tools
+$HOME/bind
+# aider
+$HOME/.local/bin
+# fzf obvs
+$HOME/.fzf/bin
+# shfmt, jsonnetfmt
+$HOME/go/bin
+
+/usr/local/bin
+/usr/bin
+/usr/lib/google-golang/bin
+/usr/local/git/current/bin
