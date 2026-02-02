@@ -167,6 +167,34 @@
   :config
   (add-hook 'before-save-hook 'dino/untabify-maybe))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; peggy-mode for pegjs files
+;;
+(use-package peggy-mode
+  :load-path "~/elisp"
+  :pin manual
+  :commands (peggy-mode))
+
+(use-package polymode
+  ;; this allows font-locking etc in the JS blocks in a pegjs file
+  :ensure t
+  :mode ("\.pegjs$" . poly-peggy-mode)
+  :config
+  (setq polymode-prefix-key (kbd "C-c n"))
+  (define-hostmode poly-peggy-hostmode :mode 'peggy-mode)
+
+  ;; treat blocks surrounded by double curly as JS
+  (define-innermode poly-peggy-js-innermode
+    :mode 'js-ts-mode
+    :head-matcher "^{{"
+    :tail-matcher "^}}"
+    :head-mode 'host
+    :tail-mode 'host)
+
+  (define-polymode poly-peggy-mode
+    :hostmode 'poly-peggy-hostmode
+    :innermodes '(poly-peggy-js-innermode)
+    ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timestamp insertion functions
@@ -3450,10 +3478,13 @@ Does not consider word syntax tables.
   ;; The python xmllsp works for files with .xsd schema, but for files with .rnc
   ;; schema, it may be better to just use the nxml builtin capability, and not
   ;; the LSP MSBuild project files are one with good .rnc schema.
-  (unless (and buffer-file-name
+  ;;
+  ;; But do not run on Windows in any case.
+  (unless (or (eq system-type 'windows-nt)
+              (and buffer-file-name
                (or
                 (string-suffix-p ".xsd" buffer-file-name)
-                (string-suffix-p ".csproj" buffer-file-name)))
+                (string-suffix-p ".csproj" buffer-file-name))))
     (eglot-ensure))
 
   ;; M-C-i to get completion popups, whether from nxml or eglot
