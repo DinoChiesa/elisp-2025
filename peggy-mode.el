@@ -23,6 +23,15 @@
 ;; To use it, save this file as `peggy-mode.el` in a directory in your
 ;; `load-path`, and add `(require 'peggy-mode)` to your init file.
 ;; Files ending in `.pegjs` will automatically open in `peggy-mode`.
+;;
+;; TODO
+;;
+;; Variables declared in a JS function are parsed as "Rule definition" (with
+;; equals sign); they should just be parsed as variables within the context of
+;; the Javascript.  idea: look for containment within a curly brace, and
+;; parse as variable in that case.  I don't know a good way to do this without
+;; an AST.
+;;
 
 ;;; Code:
 
@@ -79,7 +88,7 @@
   :group 'peggy)
 
 ;; What does this do?
-(put 'peggy-js-block-face 'font-lock-fontify-region-function #'peggy--fontify-js-region)
+;;(put 'peggy-js-block-face 'font-lock-fontify-region-function #'peggy--fontify-js-region)
 
 
 ;; (defun peggy-fontlock-mark-block ()
@@ -246,7 +255,7 @@
    ;; Rule definition with line continuation
    '("^\\s-*\\([a-zA-Z_][a-zA-Z0-9_]*\\)\\s-*$" (1 font-lock-type-face))
 
-   ;; Rule definition with equals sign
+   ;; Rule definition with equals sign on same line
    '("^\\s-*\\([a-zA-Z_][a-zA-Z0-9_]*\\)\\s-+\\(=\\)"
      (1 font-lock-type-face)
      (2 font-lock-builtin-face))
