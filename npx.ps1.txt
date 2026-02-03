@@ -2,53 +2,73 @@
 ## Saturday, 25 October 2025, 09:27
 ## Included here just for posterity. This file is shipped by nvm, and normally
 ## lives at C:\nvm4w\nodejs\npx.ps1 . The changes here modify the encoding so
-## that apheleia and prettier work properly on Windows. If I update nvm, I may
-## need to re-apply the changes.
-## 
+## that apheleia and prettier work properly on Windows. After an update to nvm,
+## npx.ps1 will be different and I will need to re-apply the changes.
+##
 
 
 #!/usr/bin/env pwsh
-$basedir=Split-Path $MyInvocation.MyCommand.Definition -Parent
 
-# Dino - 20251019-1503, for apheleia-mode
+Set-StrictMode -Version 'Latest'
+
+$NODE_EXE="$PSScriptRoot/node.exe"
+if (-not (Test-Path $NODE_EXE)) {
+  $NODE_EXE="$PSScriptRoot/node"
+}
+if (-not (Test-Path $NODE_EXE)) {
+  $NODE_EXE="node"
+}
+
+$NPM_PREFIX_JS="$PSScriptRoot/node_modules/npm/bin/npm-prefix.js"
+$NPX_CLI_JS="$PSScriptRoot/node_modules/npm/bin/npx-cli.js"
+$NPM_PREFIX=(& $NODE_EXE $NPM_PREFIX_JS)
+
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "Could not determine Node.js install directory"
+  exit 1
+}
+
+$NPM_PREFIX_NPX_CLI_JS="$NPM_PREFIX/node_modules/npm/bin/npx-cli.js"
+if (Test-Path $NPM_PREFIX_NPX_CLI_JS) {
+  $NPX_CLI_JS=$NPM_PREFIX_NPX_CLI_JS
+}
+
+# Dino - 20260131-1245, for apheleia-mode
 # Apply desired UTF8 settings
 $OriginalConsoleOutputEncoding = [Console]::OutputEncoding
-$OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+# Create one instance of UTF8 that encodes without a BOM
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+# 1. Use it for pipes between programs
+$OutputEncoding = $Utf8NoBom
+# 2. Use it for the final output to the console/editor
+[Console]::OutputEncoding = $Utf8NoBom
 
-$exe=""
-if ($PSVersionTable.PSVersion -lt "6.0" -or $IsWindows) {
-  # Fix case when both the Windows and Linux builds of Node
-  # are installed in the same directory
-  $exe=".exe"
-}
-$ret=0
-if (Test-Path "$basedir/node$exe") {
-  # Support pipeline input
-  if ($MyInvocation.ExpectingInput) {
-    # write-host "1a"
-    $input | & "$basedir/node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
+
+if ($MyInvocation.ExpectingInput) { # takes pipeline input
+  $input | & $NODE_EXE $NPX_CLI_JS $args
+} elseif (-not $MyInvocation.Line) { # used "-File" argument
+  & $NODE_EXE $NPX_CLI_JS $args
+} else { # used "-Command" argument
+  if (($MyInvocation | Get-Member -Name 'Statement') -and $MyInvocation.Statement) {
+    $NPX_ORIGINAL_COMMAND = $MyInvocation.Statement
   } else {
-    # write-host "1b"
-    & "$basedir/node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
+    $NPX_ORIGINAL_COMMAND = (
+      [Management.Automation.InvocationInfo].GetProperty('ScriptPosition', [Reflection.BindingFlags] 'Instance, NonPublic')
+    ).GetValue($MyInvocation).Text
   }
-  $ret=$LASTEXITCODE
-} else {
-  # Support pipeline input
-  if ($MyInvocation.ExpectingInput) {
-    # write-host "2a"
-    $input | & "node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
-  } else {
-    # write-host "2b"
-    & "node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
-  }
-  $ret=$LASTEXITCODE
+
+  $NODE_EXE = $NODE_EXE.Replace("``", "````")
+  $NPX_CLI_JS = $NPX_CLI_JS.Replace("``", "````")
+
+  $NPX_COMMAND_ARRAY = [Management.Automation.Language.Parser]::ParseInput($NPX_ORIGINAL_COMMAND, [ref] $null, [ref] $null).
+    EndBlock.Statements.PipelineElements.CommandElements.Extent.Text
+  $NPX_ARGS = ($NPX_COMMAND_ARRAY | Select-Object -Skip 1) -join ' '
+
+  Invoke-Expression "& `"$NODE_EXE`" `"$NPX_CLI_JS`" $NPX_ARGS"
 }
 
-# Restore the original encoding settings before the script exits
-$OutputEncoding = $OriginalOutputEncoding
+# Dino - 20260131-1245, for apheleia-mode
+$OutputEncoding = $OriginalConsoleOutputEncoding
 [Console]::OutputEncoding = $OriginalConsoleOutputEncoding
 
-#write-host "goodbye"
-
-exit $ret
+exit $LASTEXITCODE

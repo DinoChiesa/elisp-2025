@@ -350,25 +350,37 @@
                     (setf (cadr item) "npx.ps1"))))
 
             ;; 20251025-0909
-            ;; Was having trouble with apheleia + prettier causing copyright symbols
-            ;; and other unicode chars to be converted to ASCII, specifically on Windows.
-            ;; It turns out my powershell defaults for text encoding in the shell were
-            ;; the culprit.  In npx.ps1, which is delivered by nvm?, this command:
-            ;;   `$input | & node.exe "$basedir/node_modules/npm/bin/npx-cli.js" $args`
-            ;; ...specifically the piped input, converts © to ┬⌐ .
-            ;; Modifying that file to do
-            ;;   $OutputEncoding = [System.Text.Encoding]::UTF8
-            ;;   [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-            ;; before running the piped input to node.exe, avoids the problem.
-            ;; See also npx.ps1.txt here in this directory.  If I ever upgrade nvm,
-            ;; I will probably need to re-apply these changes.
+            ;;
+            ;; Was having trouble with apheleia + prettier causing copyright symbols and
+            ;; other unicode chars to be converted to ASCII, specifically on Windows.  It
+            ;; turns out my powershell defaults for text encoding in the shell were the
+            ;; culprit.  npx.ps1, which is delivered by nvm?, uses this command: `$input |
+            ;; & node.exe "$basedir/node_modules/npm/bin/npx-cli.js" $args` ...to pipe
+            ;; input.
+            ;;
+            ;; When the encoding is ASCII, it converts © to ┬⌐ . That's bad.
+            ;; When the encoding is UTF8, it inserts a BOM. Also bad.
+            ;; We need it to be UTF8-with-no-BOM.
+            ;;
+            ;; Modifying npx.ps1 to explicitly set the right encoding, solves the problem. eg:
+            ;;
+            ;;    $OriginalConsoleOutputEncoding = [Console]::OutputEncoding
+            ;;    # Create an instance of UTF8Encoding that encodes without a BOM
+            ;;    $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+            ;;    # 1. Use it for pipes between programs
+            ;;    $OutputEncoding = $Utf8NoBom
+            ;;    # 2. Use it for the final output to the console/editor
+            ;;    [Console]::OutputEncoding = $Utf8NoBom
+            ;;
+            ;; ...before running the piped input to node.exe.  See
+            ;; also npx.ps1.txt here in this directory.  After upgrading nvm, re-apply
+            ;; these changes. Or, the "UTF8-no-BOM" enoding as default system-wide (how??)
 
             ;; 20250223-1330
             ;;
-            ;; I learned today that modifying `apheleia-mode-alist' is
-            ;; unnecessary. In my csharp-ts-mode-fn, I could just (setq-local
-            ;; apheleia-formatter 'csharpier) ... to override the
-            ;; apheleia-mode-alist lookup.
+            ;; I learned today that modifying `apheleia-mode-alist' is unnecessary. In my
+            ;; csharp-ts-mode-fn, I could just (setq-local apheleia-formatter 'csharpier)
+            ;; ... to override the apheleia-mode-alist lookup.
             (setq apheleia-formatters (cl-remove-if (lambda (element)
                                                       (eq (car element) 'csharpier))
                                                     apheleia-formatters))
@@ -3482,9 +3494,9 @@ Does not consider word syntax tables.
   ;; But do not run on Windows in any case.
   (unless (or (eq system-type 'windows-nt)
               (and buffer-file-name
-               (or
-                (string-suffix-p ".xsd" buffer-file-name)
-                (string-suffix-p ".csproj" buffer-file-name))))
+                   (or
+                    (string-suffix-p ".xsd" buffer-file-name)
+                    (string-suffix-p ".csproj" buffer-file-name))))
     (eglot-ensure))
 
   ;; M-C-i to get completion popups, whether from nxml or eglot
