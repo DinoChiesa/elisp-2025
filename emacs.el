@@ -557,8 +557,12 @@
   ;; when selecting a branch, the candidates are sorted by length of the name. (headslap)
 
   (dolist (entry
-           `((buffer           . ((styles  . (initials flex)) (cycle . 10)
-                                  (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
+           `(
+             ;; Sorting buffers alphabetically might seem like a good idea, but the default
+             ;; (based on recency) is a more usable and familiar approach.
+
+             ;;(buffer           . ((styles  . (initials flex)) (cycle . 10)
+             ;;                     (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
              (command          . ((styles . (substring))
                                   (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
              (consult-location . ((styles . (substring)))) ;; also not sure about this
