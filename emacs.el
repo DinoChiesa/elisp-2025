@@ -58,7 +58,7 @@
 (setq visible-bell nil)
 (setq ring-bell-function `(lambda ()
                             (set-face-background 'default "DodgerBlue")
-                            (sit-for 0.002)
+                            (sit-for 0.001)
                             (set-face-background 'default "black")))
 
 (setq scroll-error-top-bottom t) ;; move cursor when scrolling not possible
@@ -349,6 +349,52 @@
                   (when (and (consp (cdr item)) (equal "apheleia-npx" (cadr item)))
                     (setf (cadr item) "npx.ps1"))))
 
+
+            ;; (setf (alist-get 'prettier-javascript apheleia-formatters)
+            ;;       '("npx.ps1" "prettier" "--stdin-filepath" filepath "--parser=babel-flow" (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))
+
+
+            ;;(apheleia-formatters-js-indent "--use-tabs" "--tab-width")
+
+
+            ;; 20260203-1524
+            ;;
+            ;; install prettierd with "npm install -g prettierd"
+            ;;
+            ;; prettierd (https://github.com/fsouza/prettierd) is significantly faster
+            ;; than using prettier alone. At first I had trouble, trying to pass
+            ;; formatting arguments to the prettierd command. prettierd does not support
+            ;; spaces between arguments, so "--tab-width" "2" does not work. But
+            ;; "--tab-with=2" works. Or, prettierd can read options from .prettierrc
+            ;; . Contents of that file should be like: { "parser": "babel-flow",
+            ;; "tabWidth": 2 } And then the formatter config is simple:
+
+            (if-let* ((prettierd (executable-find "prettierd")))
+                (setf (alist-get 'prettier-javascript apheleia-formatters)
+                      '("prettierd" filepath "--parser=babel-flow"
+                        (s-join "=" (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))))
+
+
+            ;; 20260203-1450
+            ;;
+            ;; At first prettierd was not working for me, so I also tried
+            ;; prettier_d_slim . But did not find joy there either.
+            ;;
+            ;; prettier_d_slim has a good readme but (a) seems ineffectual, it just
+            ;; passes through the stdin, and does not prettify the input. Is it
+            ;; missing configuration somewhere? and (b) it has not been updated to
+            ;; latest prettier 3.8.1.  So this won't work.
+            ;;
+            ;; (if-let* ((prettierd (executable-find "prettier_d_slim"))
+            ;;           (prettierd-aux (if (eq system-type 'windows-nt)
+            ;;                              (replace-regexp-in-string "\\.cmd" ".ps1" prettierd)
+            ;;                            prettierd))
+            ;;           (_ (file-exists-p prettierd-aux)))
+            ;;     (setf (alist-get 'prettier-javascript apheleia-formatters)
+            ;;           `(,prettierd-aux "--stdin" "--stdin-filepath" filepath
+            ;;             "--parser=babel-flow" (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))
+            ;;   )
+
             ;; 20251025-0909
             ;;
             ;; Was having trouble with apheleia + prettier causing copyright symbols and
@@ -544,7 +590,7 @@
   ;; Fixup the categories for a few things.
   ;;
   ;; `completion-category-overrides' is a list of category-specific user overrides
-  ;; for completion metadata.  Each override has the shape (CATEGORY . ALIST)
+  ;; for completion metadata. Each override has the shape (CATEGORY . ALIST)
   ;; where ALIST is an association list that can specify properties to givern sort
   ;; order, filtering, cycle size, and more.
   ;;
@@ -555,14 +601,23 @@
   ;; NB: magit does use `completing-read' but does not use `completion-category'.
   ;; So there is no way to affect the sort order of various selections. For example
   ;; when selecting a branch, the candidates are sorted by length of the name. (headslap)
+  ;; I believe magit is evolving slowly to adopt categories.
+  ;; TODO: when selecting a branch, for example to set the upstream, prefer the
+  ;; name origin/LOCAL-BRANCH . Right now I have to search for this.
+  ;;
+  ;; Also note: the `completion-extra-properties' variable can define the default category, for
+  ;; any completion table that does not define a category.
+  ;;
 
   (dolist (entry
            `(
-             ;; Sorting buffers alphabetically might seem like a good idea, but the default
-             ;; (based on recency) is a more usable and familiar approach.
-
-             ;;(buffer           . ((styles  . (initials flex)) (cycle . 10)
-             ;;                     (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
+             (buffer           . ((styles  . (initials flex)) (cycle . 10)
+                                  ;; Sorting buffers alphabetically is not a good
+                                  ;; idea. The default (based on recency) is a more
+                                  ;; usable approach.
+                                  ;;
+                                  ;; (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)
+                                  ))
              (command          . ((styles . (substring))
                                   (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
              (consult-location . ((styles . (substring)))) ;; also not sure about this
