@@ -51,6 +51,15 @@
 (set-locale-environment "en.UTF-8")
 (prefer-coding-system 'utf-8)
 
+
+;; 20260217-0043
+;;
+;; not sure why, but ... within an emacs launched from "Terminator", which I am
+;; now evaluating, using (set-face-background 'default "black") results in a
+;; gray background, while using "gray02" results in a (apparently) completely
+;; black background.
+(set-face-background 'default "gray02")
+
 ;; 20250406 This needs to be system-wide. Setting it in a mode hook is too late,
 ;; as the file local vars will have already been evaluated and set.
 (setq enable-local-variables t)
@@ -59,7 +68,8 @@
 (setq ring-bell-function `(lambda ()
                             (set-face-background 'default "DodgerBlue")
                             (sit-for 0.001)
-                            (set-face-background 'default "black")))
+                            (set-face-background 'default "gray02"))) ;; black
+
 
 (setq scroll-error-top-bottom t) ;; move cursor when scrolling not possible
 (setq user-mail-address "dpchiesa@hotmail.com")
@@ -185,16 +195,16 @@
 
   ;; treat blocks surrounded by double curly as JS
   (define-innermode poly-peggy-js-innermode
-    :mode 'js-ts-mode
-    :head-matcher "^{{"
-    :tail-matcher "^}}"
-    :head-mode 'host
-    :tail-mode 'host)
+                    :mode 'js-ts-mode
+                    :head-matcher "^{{"
+                    :tail-matcher "^}}"
+                    :head-mode 'host
+                    :tail-mode 'host)
 
   (define-polymode poly-peggy-mode
-    :hostmode 'poly-peggy-hostmode
-    :innermodes '(poly-peggy-js-innermode)
-    ))
+                   :hostmode 'poly-peggy-hostmode
+                   :innermodes '(poly-peggy-js-innermode)
+                   ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timestamp insertion functions
