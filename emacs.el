@@ -27,6 +27,20 @@
 ;; Setting package-gnupghome-dir to a "WSL" type form, seems to solve it.
 ;; eg "/c/users/dpchi/.emacs.d/elpa/gnupg/"
 ;;
+
+;; 20260213-1422
+;; When trying to decrypt with gpg in dired, I am getting a related error:
+;; Error while decrypting with "c:/Program Files/Git/usr/bin/gpg.exe":
+;;
+;; gpg: keyblock resource '/c/Users/dpchi/.emacs.d/elpa/gnupg/c:\\users\\dpchi\\.gnupg/pubring.kbx': No such file or directory
+;;
+;; Running gpg from the command line also gives me odd results:
+;;
+;;   Home: /c/Users/dpchi/c:\users\dpchi\.gnupg
+;;
+;; Setting env var GNUPGHOME to "/c/Users/dpchi/.gnupg" seems to avoid THAT.
+;; Not sure if it will avoid the other error.
+;;
 ;; Separately, there was an update from Stephen Monnier to the
 ;; gnu-elpa-keyring-update package (v2025.10.1 from 2025-Oct-09).
 ;; There may have been a problem that was more general. In any case, my tests
@@ -128,6 +142,14 @@
      ;;      (defadvice tetris-end-game (around zap-scores activate)
      ;;        (save-window-excursion ad-do-it))
      )
+
+;; (use-package elcity
+;;   :ensure nil
+;;   :vc (:url "https://github.com/vkazanov/elcity"
+;;        :rev :newest
+;;        :main-file "elcity.el"
+;;        :branch "main")
+;;   :commands (elcity-start))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; package manager
@@ -1091,7 +1113,7 @@ server program."
 
       (if found-apigeelint-path
           (setf (alist-get 'apigeelint apigee-programs-alist)
-                (list "node" found-apigeelint-path))
+                (concat "node " found-apigeelint-path))
         (message "cannot find apigeelint-cli.js in any of the candidate paths: %s"
                  (mapcar #'expand-file-name apigeelint-candidate-paths))))
 
