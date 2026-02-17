@@ -111,8 +111,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; setting up faces etc
+;;
+;; 20260217-0043
+;;
+;; Not sure why, but ... within an emacs launched from a terminal running in
+;; "Terminator", which I am now evaluating, using (set-face-background 'default
+;; "black") results in a gray background, while using "gray02" results in a
+;; (apparently) completely black background.
 (custom-set-faces
- '(default                         ((t (:background "black" :foreground "white") )))
+ '(default                         ((t (:background "gray02" :foreground "white") )))  ;; black => gray02
  '(region                          ((t (:background "gray19"))))
  '(flycheck-error                  ((t (:background "firebrick4"))))
  '(font-lock-comment-face          ((t (:foreground "PaleVioletRed3"))))
@@ -125,19 +132,13 @@
  '(font-lock-variable-name-face    ((t (:foreground "LightGoldenrod"))))
  '(font-lock-string-face           ((t (:background "gray11" :foreground "MediumOrchid1")))))
 
-
-;; 20260217-0043
+;; 20260217-0442
 ;;
-;; Not sure why, but ... within an emacs launched from a terminal running in
-;; "Terminator", which I am now evaluating, using (set-face-background 'default
-;; "black") results in a gray background, while using "gray02" results in a
-;; (apparently) completely black background.
-
 ;; Similar but independent problem: within an emacs running in a terminal
-;; launched from SecureShell, some of the other faces are also
+;; launched from SecureShell, the colors for many faces are just
 ;; unsatisfactory. For example, in the minibuffer the default text is too dark,
 ;; and the highlighted option is too light, making both unreadable. Similar
-;; problems with magit and eros.
+;; problems with magit and eros, and I'm sure others.
 ;;
 ;; This is a giant hassle.
 ;;
@@ -148,8 +149,7 @@
 ;; inappropriate.
 ;;
 ;; The following - blindly forcing dark background mode - seems to solve all
-;; the font color problems with SecureShell. Unsure whether it also corrects
-;; the problems with the "not quite black" background when launched from Terminator.
+;; the font color problems with SecureShell.
 (setq frame-background-mode 'dark)
 
 ;; A remaining mystery: why does the frame-background-mode get inferred as "light" when
@@ -260,16 +260,16 @@
 
   ;; treat blocks surrounded by double curly as JS
   (define-innermode poly-peggy-js-innermode
-    :mode 'js-ts-mode
-    :head-matcher "^{{"
-    :tail-matcher "^}}"
-    :head-mode 'host
-    :tail-mode 'host)
+                    :mode 'js-ts-mode
+                    :head-matcher "^{{"
+                    :tail-matcher "^}}"
+                    :head-mode 'host
+                    :tail-mode 'host)
 
   (define-polymode poly-peggy-mode
-    :hostmode 'poly-peggy-hostmode
-    :innermodes '(poly-peggy-js-innermode)
-    ))
+                   :hostmode 'poly-peggy-hostmode
+                   :innermodes '(poly-peggy-js-innermode)
+                   ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timestamp insertion functions
