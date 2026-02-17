@@ -66,13 +66,8 @@
 (prefer-coding-system 'utf-8)
 
 
-;; 20260217-0043
-;;
-;; not sure why, but ... within an emacs launched from "Terminator", which I am
-;; now evaluating, using (set-face-background 'default "black") results in a
-;; gray background, while using "gray02" results in a (apparently) completely
-;; black background.
-(set-face-background 'default "gray02")
+
+
 
 ;; 20250406 This needs to be system-wide. Setting it in a mode hook is too late,
 ;; as the file local vars will have already been evaluated and set.
@@ -130,7 +125,55 @@
  '(font-lock-variable-name-face    ((t (:foreground "LightGoldenrod"))))
  '(font-lock-string-face           ((t (:background "gray11" :foreground "MediumOrchid1")))))
 
-;; to try just one:
+
+;; 20260217-0043
+;;
+;; Not sure why, but ... within an emacs launched from a terminal running in
+;; "Terminator", which I am now evaluating, using (set-face-background 'default
+;; "black") results in a gray background, while using "gray02" results in a
+;; (apparently) completely black background.
+
+;; Similar but independent problem: within an emacs running in a terminal
+;; launched from SecureShell, some of the other faces are also
+;; unsatisfactory. For example, in the minibuffer the default text is too dark,
+;; and the highlighted option is too light, making both unreadable. Similar
+;; problems with magit and eros.
+;;
+;; This is a giant hassle.
+;;
+;; Gemini suggests:
+;;
+;; if `(setq frame-background-mode 'dark)` returns "light" , that is why
+;; the faces in magit and probably in other places, are turning out to be exactly
+;; inappropriate.
+;;
+;; The following - blindly forcing dark background mode - seems to solve all
+;; the font color problems with SecureShell. Unsure whether it also corrects
+;; the problems with the "not quite black" background when launched from Terminator.
+(setq frame-background-mode 'dark)
+
+;; A remaining mystery: why does the frame-background-mode get inferred as "light" when
+;; launched through SecureShell? Unknown.
+
+
+;; (custom-set-faces
+;;  '(default                  ((t (:background "gray02"))))
+;;  '(completions-highlight    ((t (:background "color-234" :foreground "color-112" :inherit nil))))
+;;  '(magit-section-highlight  ((t (:inherit nil :background "gray20"))))
+;;  '(magit-diff-context-highlight  ((t ( :background "gray03"))))
+;;  '(magit-diff-removed-highlight  ((t ( :background "gray03" :foreground "red"))))
+;;  '(magit-diff-hunk-heading-highlight ((t ( :background "gray03"))))
+;;  '(minibuffer-prompt        ((t (:background "color-16" :foreground "brightblue"))))
+;;  '(icomplete-selected-match ((t (:background "color-238" :foreground "color-112" ))))
+;;  '(eros-result-overlay-face ((t (:inherit nil
+;;                                  :background "gray02" ;; kinda black. But I can't use black!
+;;                                  :slant italic ;; I think this isn't supported
+;;                                  ))))
+;;  )
+
+;;(set-face-attribute 'magit-section-highlight nil :background "gray20")
+
+;; to set just one:
 ;; (set-face-attribute 'dictionary-button-face nil :background "gray11"  :foreground "LightSteelBlue")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -217,16 +260,16 @@
 
   ;; treat blocks surrounded by double curly as JS
   (define-innermode poly-peggy-js-innermode
-                    :mode 'js-ts-mode
-                    :head-matcher "^{{"
-                    :tail-matcher "^}}"
-                    :head-mode 'host
-                    :tail-mode 'host)
+    :mode 'js-ts-mode
+    :head-matcher "^{{"
+    :tail-matcher "^}}"
+    :head-mode 'host
+    :tail-mode 'host)
 
   (define-polymode poly-peggy-mode
-                   :hostmode 'poly-peggy-hostmode
-                   :innermodes '(poly-peggy-js-innermode)
-                   ))
+    :hostmode 'poly-peggy-hostmode
+    :innermodes '(poly-peggy-js-innermode)
+    ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timestamp insertion functions
@@ -585,9 +628,9 @@
 
 (use-package hl-line
   ;;:defer 9
-  :config (progn
-            (set-face-background hl-line-face "gray18")
-            (global-hl-line-mode)))
+  :config
+  (set-face-attribute 'hl-line nil :background "gray20" :inherit nil)
+  (global-hl-line-mode))
 
 (use-package dpc-sane-sorting
   ;; helpers that make icomplete-vertical sort sanely
@@ -4842,7 +4885,6 @@ Enable `recentf-mode' if it isn't already."
 (define-key key-translation-map (kbd "\C-x 8 p") (kbd "π")) ;; pi - 03C0
 (define-key key-translation-map (kbd "\C-x 8 >") (kbd "»")) ;; right double arrow - 0BB
 (define-key key-translation-map (kbd "\C-x 8 <") (kbd "«")) ;; left double arrow - 0AB
-
 
 
 (message "Done with emacs.el...")
