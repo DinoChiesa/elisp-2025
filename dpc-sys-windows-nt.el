@@ -92,4 +92,17 @@ there (and xargs, etc)."
 (setenv "PYTHONUTF8" "1")
 (setenv "PYTHONUNBUFFERED" "1") ;; for buffering output in pwsh.exe shells
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(cond
+ ((eq system-type 'windows-nt)
+  (dpc-windows-nt-configure-external-utilities)
+  )
+ (t   ;; not windows-nt
+  (eval-after-load "grep"
+    '(progn
+       (grep-apply-setting 'grep-command "grep -H -i -n " )
+       ;; (setq-default grep-command "grep -H -i -n ")
+       ))))
+
 (provide 'dpc-sys-windows-nt)

@@ -20,4 +20,16 @@
   (shell-command "open ."))
 (keymap-global-set "<f8>" #'open-in-finder)))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Set the path correctly on MacOS, based on /etc/paths.d .
+;; I am unsure whether this helps on linux or Windows, I've never
+;; examined it closely. I have my own dino/fixup-exec-path fn that
+;; seems to work for me, see below.
+(use-package path-helper
+  :ensure t
+  :config
+  (path-helper-setenv "PATH"))
+
+
 (provide 'dpc-sys-darwin)

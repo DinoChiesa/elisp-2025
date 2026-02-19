@@ -9,6 +9,7 @@
 (message "Running emacs.el...")
 (require 'cl-seq)
 (require 'json)
+(require 's)
 (if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 
 (setq inhibit-splash-screen t)
@@ -277,14 +278,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Some configuration specific for system-types.
-;; Loads system-type config; e.g. "dpc-sys-darwin.el" on Mac,
-;; dpc-sys-windows-nt.el on Windows.
+;; Loads system-type config; e.g.
+;;   MacOS   => dpc-sys-darwin.el
+;;   Windows => dpc-sys-windows-nt.el
+;;   Linux   => dpc-sys-gnu-linux.el
 ;;
-;; TODO: if in the future I have any customizations pertinent to
-;; "gnu/linux" I will need to replace slashes in that system-type and and
-;; add a new file.
-
-(let ((system-specific-elisp (concat "~/elisp/dpc-sys-" (symbol-name system-type) ".el")))
+(let ((system-specific-elisp (concat "~/elisp/dpc-sys-"
+                                     (s-replace "/" "-" (symbol-name system-type)) ".el")))
   (if (file-exists-p system-specific-elisp)
       (load system-specific-elisp)))
 
@@ -292,19 +292,6 @@
  '(ls-lisp-format-time-list (quote ("%Y-%m-%d %H:%M" "%Y-%m-%d %H:%M")))
  '(ls-lisp-use-localized-time-format t)
  '(temporary-file-directory "/tmp"))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(cond
- ((eq system-type 'windows-nt)
-  (dpc-windows-nt-configure-external-utilities)
-  )
- (t   ;; not windows-nt
-  (eval-after-load "grep"
-    '(progn
-       (grep-apply-setting 'grep-command "grep -H -i -n " )
-       ;; (setq-default grep-command "grep -H -i -n ")
-       ))))
-
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;; To make sure we transmit kill to clipboard, and yank from clipboard.
@@ -314,17 +301,6 @@
 ;;   :ensure t
 ;;   :config (xclip-mode 1))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Set the path correctly on MacOS, based on /etc/paths.d .
-;; I am unsure whether this helps on linux or Windows, I've never
-;; examined it closely. I have my own dino/fixup-exec-path fn that
-;; seems to work for me, see below.
-(use-package path-helper
-  :if (eq system-type 'darwin)
-  :ensure t
-  :config
-  (path-helper-setenv "PATH"))
 
 ;; 20260131-1235
 ;; Add paths to exec-path and PATH without duplication.
@@ -477,7 +453,7 @@
 (use-package lazy-revert
   ;; A layer on top of auto-revert-mode, It reverts only those buffers that are
   ;; currently _displayed_. For all others, flag them and revert when they get
-  ;; displayed. Performs better when there are 00's of buffers.
+  ;; displayed. Performs better when there are many buffers.
   :ensure nil
   :vc (:url "https://github.com/yilin-zhang/lazy-revert"
        :rev :newest
@@ -655,7 +631,7 @@
   :bind (:map global-map
          ("C-c ?" . consult-line))
   :config
-  ;; 20251214-1130 - I am not quite sure what this does.
+  ;; 20251214-1130 - I forget what this does and why I added it.
   (setq completion-in-region-function #'consult-completion-in-region)
   )
 
@@ -3503,25 +3479,24 @@ Does not consider word syntax tables.
 ;; XML (nxml-mode)
 ;;
 (when (boundp 'apheleia-formatters)
-  ;; TODO: use smarter path resolution here
-  (push '(dino-xmlpretty .
-          ("java" "-jar"
-           "/Users/dchiesa/dev/java/XmlPretty/target/com.google.dchiesa-xml-prettifier-20230725.jar"
-           "-"))
-        apheleia-formatters)
+  (let ((jarfile
+         "/Users/dchiesa/dev/java/XmlPretty/target/com.google.dchiesa-xml-prettifier-20230725.jar"))
+    (if (file-exists-p jarfile)
+        (push `(dino-xmlpretty . ("java" "-jar" ,jarfile "-")) apheleia-formatters)))
 
-  ;; TODO: use smarter path resolution here
-  (push '(xml-prettier .
-          ("/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"
-           "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
-           "--stdin-filepath" "foo.xml"))
-        apheleia-formatters)
+  (let ((exefile "/Users/dchiesa/dev/java/XmlPretty/node_modules/.bin/prettier"))
+    (if (file-exists-p exefile)
+        (push `(xml-prettier .
+                (,exefile
+                 "--config" "/Users/dchiesa/dev/java/XmlPretty/prettier-config.json"
+                 "--stdin-filepath" "foo.xml"))
+              apheleia-formatters)))
 
   ;; 20250401-1837
   ;;
-  ;; In the end I stopped using the XML prettier (I thought so anyway) because
-  ;; it was a little too aggressive and disruptive in reformatting my XML files,
-  ;; for my taste.
+  ;; In the end I stopped using any prettier tool for XML because each of them
+  ;; was too aggressive and disruptive in reformatting my XML files, for my
+  ;; taste.
 
 
   ;; ;; change an existing formatter in the alist (during development only)
@@ -3537,9 +3512,11 @@ Does not consider word syntax tables.
   (setq hs-isearch-open t)
   ;; 20250702-2204
   ;;
-  ;; The python xmllsp works for files with .xsd schema, but for files with .rnc
-  ;; schema, it may be better to just use the nxml builtin capability, and not
-  ;; the LSP MSBuild project files are one with good .rnc schema.
+  ;; Dino's custom python-based xmllsp works for files with .xsd schema. For
+  ;; files with .rnc schema, it is better to just use the nxml builtin
+  ;; capability. Few files have .rnc schema. MSBuild project files are one
+  ;; exception, but I use the xmllsp for all. (See below for checks for
+  ;; xmllsp-loc)
   ;;
   ;; But do not run on Windows in any case.
   (unless (or (eq system-type 'windows-nt)
@@ -3576,7 +3553,7 @@ Does not consider word syntax tables.
   ;; I guess because xml-mode is derived from text-mode where
   ;; it's an apostrophe used in contractions.
   ;; But treating it as part of a word is counter-productive in an XML buffer.
-  (if (boundp 'sgml-mode-syntax-table)
+  (if (derived-mode-p 'sgml-mode)
       (modify-syntax-entry ?\' "\"" sgml-mode-syntax-table)
     (modify-syntax-entry ?\' ".")) ;; . = punctuation
 
@@ -3608,15 +3585,16 @@ Does not consider word syntax tables.
 
 
 (let ((xmllsp-loc (expand-file-name "~/newdev/xmllsp")))
-  (with-eval-after-load 'eglot
-    (add-to-list
-     'eglot-server-programs
-     `(nxml-mode .
-       (,(file-name-concat xmllsp-loc ".venv/bin/python")
-        ,(file-name-concat xmllsp-loc "xml_language_server/xmllsp.py")
-        "--log-level"
-        "INFO"
-        :initializationOptions dpc-xmllsp-init-options)))))
+  (if (file-exists-p xmllsp-loc)
+      (with-eval-after-load 'eglot
+        (add-to-list
+         'eglot-server-programs
+         `(nxml-mode .
+           (,(file-name-concat xmllsp-loc ".venv/bin/python")
+            ,(file-name-concat xmllsp-loc "xml_language_server/xmllsp.py")
+            "--log-level"
+            "INFO"
+            :initializationOptions dpc-xmllsp-init-options))))))
 
 ;; For fixing up if I've messed up the above:
 ;;
@@ -3629,7 +3607,6 @@ Does not consider word syntax tables.
 ;;    ,(concat (getenv "HOME")
 ;;             "/newdev/xmllsp/xml_language_server/xmllsp.py")
 ;;    :initializationOptions dpc-xmllsp-init-options))
-
 
 
 ;; not sure why I have to do this again, here.
@@ -3772,10 +3749,8 @@ Does not consider word syntax tables.
   (setq python-check-custom-command nil)
   (setq python-check-command (dcpe/basedpyright-check-command))
 
-
   ;; uv python find --script ergodicity-2.py
   ;; c:\Users\dpchi\AppData\Roaming\npm\basedpyright.ps1 --pythonpath C:\Users\dpchi\AppData\Local\uv\cache\environments-v2\ergodicity-2-d457e2e24b007c47\Scripts\python.exe ergodicity-2.py
-
 
   (when (executable-find "ruff")
     (setq-local compile-command "ruff check .")) ;; for M-x compile, checks the entire project
@@ -3807,7 +3782,6 @@ in flymake."
       (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t))))
 
 (add-hook 'eglot-managed-mode-hook #'dino-repair-eglot-python-flymake-setup)
-
 
 
 
