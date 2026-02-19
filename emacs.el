@@ -318,7 +318,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Set the path correctly on MacOS, based on /etc/paths.d .
 ;; I am unsure whether this helps on linux or Windows, I've never
-;; tested it. I have my own dino/maybe-add-to-exec-path that
+;; examined it closely. I have my own dino/fixup-exec-path fn that
 ;; seems to work for me, see below.
 (use-package path-helper
   :if (eq system-type 'darwin)
@@ -334,29 +334,6 @@
 
 (dino/maybe-add-to-exec-path (list (dino/find-latest-nvm-version-bin-dir)))
 
-;; 20260128-1052
-;; TODO: This list of paths should really be loaded from a config file.
-;; embedding it in elisp is not quite right.
-;;
-;; (dino/maybe-add-to-exec-path
-;;  (let ((home-dir (replace-regexp-in-string "\\\\" "/" (file-truename (getenv "HOME")) )))
-;;    (list
-;;     "c:/Program Files/Eclipse Adoptium/jdk-11/bin"
-;;     "c:/gcloud-sdk/google-cloud-sdk/bin"
-;;     "c:/Program Files/Git/usr/bin"       ;; lots of unix utilities here for various purposes
-;;     "c:/Users/dpchi/AppData/Roaming/npm" ;;din prettier, etc. (on Windows obvs)
-;;     "c:/Python314"
-;;     (dino/find-latest-nvm-version-bin-dir)
-;;     (concat home-dir "/.dotnet/tools")   ;; csharpier
-;;     (concat home-dir "/bin")
-;;     (concat home-dir "/.local/bin")      ;; aider
-;;     (concat home-dir "/.fzf/bin")        ;; fzf obvs
-;;     (concat home-dir "/go/bin")          ;; shfmt, jsonnetfmt
-;;     "/usr/local/bin"
-;;     "/usr/bin"
-;;     "/usr/lib/google-golang/bin"
-;;     "/usr/local/git/current/bin"
-;;     )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; apheleia - clever code reformatting for multiple languages.
@@ -377,139 +354,88 @@
 ;; appropriate apheleia formatter to be configured and available.
 ;;
 
-
-;; (defun dpc/apheleia-set-or-push-formatter (mode formatter alist-var)
-;;   "Set the formatter for a given MODE in ALIST-VAR,
-;; or push a new pair if MODE is not found.
-;;
-;; MODE is the major mode symbol (e.g., 'csharp-mode).
-;; FORMATTER is the formatter name (e.g., 'csharpier).
-;; ALIST-VAR is the symbol of the association list variable
-;; (e.g., 'apheleia-mode-alist)."
-;;   (interactive)
-;;   (let ((pair (assq mode (symbol-value alist-var))))
-;;     (if pair
-;;         ;; If the pair exists, update the cdr (the formatter)
-;;         (setcdr pair formatter)
-;;       ;; If the pair does not exist, push a new one
-;;       (push (cons mode formatter) (symbol-value alist-var)))))
-;;
-;; (defun dpc/apheleia-set-mode-formatter (mode formatter)
-;;   "Set FORMATTER for MODE in `apheleia-mode-alist`."
-;;   ;; To retrieve a formatter by name:
-;;   ;; (alist-get 'csharpier apheleia-formatters)
-;;   ;;
-;;   ;; To remove a formatter incorrectly added:
-;;   ;;(setq apheleia-formatters (delq (assoc 'csharpier apheleia-formatters) apheleia-formatters))
-;;   ;;
-;;   ;; To check a mode from the mode-alist:
-;;   ;;(alist-get 'csharp-mode apheleia-mode-alist)
-;;   (dpc/apheleia-set-or-push-formatter mode formatter 'apheleia-mode-alist))
-
 (use-package apheleia
   :ensure t
   :defer t
-  :config (progn
-            (require 'apheleia-log)
-            (require 'cl-seq)
-            (setq apheleia-log-debug-info t)
+  :config
+  (require 'apheleia-log)
+  (require 'cl-seq)
+  (setq apheleia-log-debug-info t)
 
-            (if (eq system-type 'windows-nt)
-                (cl-dolist (item apheleia-formatters)
-                  (when (and (consp (cdr item)) (equal "apheleia-npx" (cadr item)))
-                    (setf (cadr item) "npx.ps1"))))
+  (if (eq system-type 'windows-nt)
+      (cl-dolist (item apheleia-formatters)
+        (when (and (consp (cdr item)) (equal "apheleia-npx" (cadr item)))
+          (setf (cadr item) "npx.ps1"))))
 
-
-            ;; (setf (alist-get 'prettier-javascript apheleia-formatters)
-            ;;       '("npx.ps1" "prettier" "--stdin-filepath" filepath "--parser=babel-flow" (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))
-
-
-            ;;(apheleia-formatters-js-indent "--use-tabs" "--tab-width")
+  ;; (setf (alist-get 'prettier-javascript apheleia-formatters)
+  ;;       '("npx.ps1" "prettier" "--stdin-filepath" filepath "--parser=babel-flow" (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))
 
 
-            ;; 20260203-1524
-            ;;
-            ;; install prettierd with "npm install -g prettierd"
-            ;;
-            ;; prettierd (https://github.com/fsouza/prettierd) is significantly faster
-            ;; than using prettier alone. At first I had trouble, trying to pass
-            ;; formatting arguments to the prettierd command. prettierd does not support
-            ;; spaces between arguments, so "--tab-width" "2" does not work. But
-            ;; "--tab-with=2" works. Or, prettierd can read options from .prettierrc
-            ;; . Contents of that file should be like: { "parser": "babel-flow",
-            ;; "tabWidth": 2 } And then the formatter config is simple:
-
-            (if-let* ((prettierd (executable-find "prettierd")))
-                (setf (alist-get 'prettier-javascript apheleia-formatters)
-                      '("prettierd" filepath "--parser=babel-flow"
-                        (s-join "=" (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))))
+  ;;(apheleia-formatters-js-indent "--use-tabs" "--tab-width")
 
 
-            ;; 20260203-1450
-            ;;
-            ;; At first prettierd was not working for me, so I also tried
-            ;; prettier_d_slim . But did not find joy there either.
-            ;;
-            ;; prettier_d_slim has a good readme but (a) seems ineffectual, it just
-            ;; passes through the stdin, and does not prettify the input. Is it
-            ;; missing configuration somewhere? and (b) it has not been updated to
-            ;; latest prettier 3.8.1.  So this won't work.
-            ;;
-            ;; (if-let* ((prettierd (executable-find "prettier_d_slim"))
-            ;;           (prettierd-aux (if (eq system-type 'windows-nt)
-            ;;                              (replace-regexp-in-string "\\.cmd" ".ps1" prettierd)
-            ;;                            prettierd))
-            ;;           (_ (file-exists-p prettierd-aux)))
-            ;;     (setf (alist-get 'prettier-javascript apheleia-formatters)
-            ;;           `(,prettierd-aux "--stdin" "--stdin-filepath" filepath
-            ;;             "--parser=babel-flow" (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))
-            ;;   )
+  ;; 20260203-1524
+  ;;
+  ;; install prettierd with "npm install -g prettierd"
+  ;;
+  ;; prettierd (https://github.com/fsouza/prettierd) is significantly faster
+  ;; than using prettier alone. At first I had trouble, trying to pass
+  ;; formatting arguments to the prettierd command. prettierd does not support
+  ;; spaces between arguments, so "--tab-width" "2" does not work. But
+  ;; "--tab-with=2" works. Or, prettierd can read options from .prettierrc
+  ;; . Contents of that file should be like: { "parser": "babel-flow",
+  ;; "tabWidth": 2 } And then the formatter config is simple:
 
-            ;; 20251025-0909
-            ;;
-            ;; Was having trouble with apheleia + prettier causing copyright symbols and
-            ;; other unicode chars to be converted to ASCII, specifically on Windows.  It
-            ;; turns out my powershell defaults for text encoding in the shell were the
-            ;; culprit.  npx.ps1, which is delivered by nvm?, uses this command: `$input |
-            ;; & node.exe "$basedir/node_modules/npm/bin/npx-cli.js" $args` ...to pipe
-            ;; input.
-            ;;
-            ;; When the encoding is ASCII, it converts © to ┬⌐ . That's bad.
-            ;; When the encoding is UTF8, it inserts a BOM. Also bad.
-            ;; We need it to be UTF8-with-no-BOM.
-            ;;
-            ;; Modifying npx.ps1 to explicitly set the right encoding, solves the problem. eg:
-            ;;
-            ;;    $OriginalConsoleOutputEncoding = [Console]::OutputEncoding
-            ;;    # Create an instance of UTF8Encoding that encodes without a BOM
-            ;;    $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-            ;;    # 1. Use it for pipes between programs
-            ;;    $OutputEncoding = $Utf8NoBom
-            ;;    # 2. Use it for the final output to the console/editor
-            ;;    [Console]::OutputEncoding = $Utf8NoBom
-            ;;
-            ;; ...before running the piped input to node.exe.  See
-            ;; also npx.ps1.txt here in this directory.  After upgrading nvm, re-apply
-            ;; these changes. Or, the "UTF8-no-BOM" enoding as default system-wide (how??)
+  (if-let* ((prettierd (executable-find "prettierd")))
+      (setf (alist-get 'prettier-javascript apheleia-formatters)
+            '("prettierd" filepath "--parser=babel-flow"
+              (s-join "=" (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))))
 
-            ;; 20250223-1330
-            ;;
-            ;; I learned today that modifying `apheleia-mode-alist' is unnecessary. In my
-            ;; csharp-ts-mode-fn, I could just (setq-local apheleia-formatter 'csharpier)
-            ;; ... to override the apheleia-mode-alist lookup.
-            (setq apheleia-formatters (cl-remove-if (lambda (element)
-                                                      (eq (car element) 'csharpier))
-                                                    apheleia-formatters))
-            (let ((cmd-list
-                   (if (eq system-type 'windows-nt)
-                       '("dotnet" "csharpier" "--write-stdout")
-                     '("csharpier" "format")
-                     )))
-              (push (cons 'csharpier cmd-list) apheleia-formatters))
+  ;; 20251025-0909
+  ;;
+  ;; Was having trouble with apheleia + prettier causing copyright symbols and
+  ;; other unicode chars to be converted to ASCII, specifically on Windows.  It
+  ;; turns out my powershell defaults for text encoding in the shell were the
+  ;; culprit.  npx.ps1, which is delivered by nvm?, uses this command: `$input |
+  ;; & node.exe "$basedir/node_modules/npm/bin/npx-cli.js" $args` ...to pipe
+  ;; input.
+  ;;
+  ;; When the encoding is ASCII, it converts © to ┬⌐ . That's bad.
+  ;; When the encoding is UTF8, it inserts a BOM. Also bad.
+  ;; We need it to be UTF8-with-no-BOM.
+  ;;
+  ;; Modifying npx.ps1 to explicitly set the right encoding, solves the problem. eg:
+  ;;
+  ;;    $OriginalConsoleOutputEncoding = [Console]::OutputEncoding
+  ;;    # Create an instance of UTF8Encoding that encodes without a BOM
+  ;;    $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+  ;;    # 1. Use it for pipes between programs
+  ;;    $OutputEncoding = $Utf8NoBom
+  ;;    # 2. Use it for the final output to the console/editor
+  ;;    [Console]::OutputEncoding = $Utf8NoBom
+  ;;
+  ;; ...before running the piped input to node.exe.  See
+  ;; also npx.ps1.txt here in this directory.  After upgrading nvm, re-apply
+  ;; these changes. Or, the "UTF8-no-BOM" enoding as default system-wide (how??)
 
-            (setf (alist-get 'csharp-mode apheleia-mode-alist) 'csharpier)
-            (setf (alist-get 'csharp-ts-mode apheleia-mode-alist) 'csharpier)
-            ))
+  ;; 20250223-1330
+  ;;
+  ;; I learned today that modifying `apheleia-mode-alist' is unnecessary. In my
+  ;; csharp-ts-mode-fn, I could just (setq-local apheleia-formatter 'csharpier)
+  ;; ... to override the apheleia-mode-alist lookup.
+  (setq apheleia-formatters (cl-remove-if (lambda (element)
+                                            (eq (car element) 'csharpier))
+                                          apheleia-formatters))
+  (let ((cmd-list
+         (if (eq system-type 'windows-nt)
+             '("dotnet" "csharpier" "--write-stdout")
+           '("csharpier" "format")
+           )))
+    (push (cons 'csharpier cmd-list) apheleia-formatters))
+
+  (setf (alist-get 'csharp-mode apheleia-mode-alist) 'csharpier)
+  (setf (alist-get 'csharp-ts-mode apheleia-mode-alist) 'csharpier)
+  )
 
 (use-package company
   ;; COMPlete-ANYthing.
@@ -596,27 +522,25 @@
              (alist-get 'rego-mode apheleia-mode-alist))
     (apheleia-mode)))
 
-(use-package rego-mode
-  ;; OPA configuration language. As of 20250312-0217,
-  ;; rego-mode on MELPA is out of date and unmaintained.
-  :if (file-exists-p "~/elisp/rego-mode.el")
-  :load-path "~/elisp"
-  ;;:init
-  :hook dino-rego-mode-fn
-  :pin manual
-  :defer t
-  :commands (rego-repl-show rego-mode)
-  :config
-  (add-hook 'rego-mode-hook #'dino-rego-mode-fn)
-  (when (boundp 'apheleia-formatters)
-    (setf (alist-get 'opa-fmt apheleia-formatters) '("opa" "fmt"))
-    (setf (alist-get 'rego-mode apheleia-mode-alist) 'opa-fmt)) )
+(when (file-exists-p "~/elisp/rego-mode.el")
+  (use-package rego-mode
+    ;; OPA configuration language. As of 20250312-0217,
+    ;; rego-mode on MELPA is out of date and unmaintained.
+    :load-path "~/elisp"
+    ;;:init
+    :hook dino-rego-mode-fn
+    :pin manual
+    :defer t
+    :commands (rego-repl-show rego-mode)
+    :config
+    (add-hook 'rego-mode-hook #'dino-rego-mode-fn)
+    (when (boundp 'apheleia-formatters)
+      (setf (alist-get 'opa-fmt apheleia-formatters) '("opa" "fmt"))
+      (setf (alist-get 'rego-mode apheleia-mode-alist) 'opa-fmt)) ))
 
 (use-package treesit
   :defer t
   :config
-  ;; 20241229 - There is a grammar for c# at https://github.com/tree-sitter/tree-sitter-c-sharp
-  ;; but the Makefile there says that "Windows is not supported."  Wow!
   (message (concat "csharp TS lang available ?: "
                    (prin1-to-string
                     (treesit-language-available-p 'c-sharp)))))
@@ -750,7 +674,6 @@
          ("M-A" . marginalia-cycle))
 
   :config
-  ;; Enable the mode right away. This forces loading the package.
   (marginalia-mode))
 
 (use-package electric-operator
@@ -1705,6 +1628,7 @@ then switch to the markdown output buffer."
 (defun dino-typescript-mode-fn ()
   (turn-on-font-lock)
   (apheleia-mode)
+  (electric-operator-mode)
   (setq typescript-indent-level 2)
   (define-key (current-local-map) (kbd "ESC C-R") #'indent-region)
   (define-key (current-local-map) (kbd "C-c C-c")  #'comment-region)
@@ -2311,7 +2235,7 @@ more information."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; time zones
 ;;
-;; ui in emacs to translate timezones
+;; ui in emacs to translate timezones. I forget how to use this now!
 ;;
 (use-package time-zones
   :vc (:url "https://github.com/xenodium/time-zones"
@@ -2396,19 +2320,12 @@ more information."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; auto-insert - 20241206-0142
 ;;
-;; builtin to emaccs
 (use-package autoinsert
   :defer t
   :config
   (auto-insert-mode 1);; global minor mode
   (setq auto-insert-query nil) ;; no prompt before auto-insertion
   (setq auto-insert-directory "~/elisp/auto-insert-content")
-
-  ;; my extensions, to make it more like the old "defaultcontent" with
-  ;; expansion macro support.
-  (use-package auto-insert-plus
-    :load-path "~/elisp"
-    :ensure nil)
 
   ;; specify the template to use for various filename regexi:
   (setq auto-insert-alist
@@ -2449,10 +2366,14 @@ more information."
            ("\\.org$"                     .  "Template.org" )
            ) )))
 
+(use-package auto-insert-plus
+  :after (autoinsert)
+  :load-path "~/elisp"
+  :ensure nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Dired mode
-
+;;
 (defun dino-dired-mode-hook-fn ()
   (mapc (lambda (binding)
           (define-key dired-mode-map (kbd (car binding)) (cdr binding)))
