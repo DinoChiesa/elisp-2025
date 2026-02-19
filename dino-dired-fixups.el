@@ -94,7 +94,6 @@ which is up to 10gb.  Some files are larger than that.
              (or (cadr found) "t"))
         "t")))
 
-
 (defun dino-dired-sort-cycle (&optional arg)
   "This is intended as a replacement for, or alternative to,
 the `dired-sort-toggle' fn from dired.el. Normally, dired sorts on
@@ -132,47 +131,49 @@ initial sort."
 
               ;; The following will rotate the sorting switches, and then re-apply the time
               ;; format switch if it is available.
-              (concat dino-dired-time-format-switch " "
-                      ;; There are two cases. (a) The existing switches have a space, (b) the existing
-                      ;; switches do not use a space.
-                      (cond
-                       ;; This case handles the situation in which the options to ls are not concatted.
-                       ((string-match " " switches-without-time-format)
-                        (let ((n 0)
-                              (L (1- (length dino-dired-sort-switches-to-cycle)))
-                              result)
-                          (while (and (< n L) (not result))
-                            (let ((cur-switch (nth n dino-dired-sort-switches-to-cycle)))
+              ;; There are two cases. (a) The existing switches have a space, (b) the existing
+              ;; switches do not use a space.
+              (cond
+               ;; This case handles the situation in which the options to ls are not concatted.
+               ((string-match " " switches-without-time-format)
+                (let ((n 0)
+                      (L (1- (length dino-dired-sort-switches-to-cycle)))
+                      result)
+                  (while (and (< n L) (not result))
+                    (let ((cur-switch (nth n dino-dired-sort-switches-to-cycle)))
 
-                              (if (and (not (string= cur-switch ""))
-                                       (string-match (concat " -" cur-switch "\\'") switches-without-time-format))
-                                  (setq result
-                                        (concat
-                                         (substring switches-without-time-format 0 (match-beginning 0))
-                                         " -" (dino-dired-next-sorting-switch cur-switch))))))
-                          (or result
-                              (concat switches-without-time-format " -t"))))
+                      (if (and (not (string= cur-switch ""))
+                               (string-match (concat " -" cur-switch "\\'") switches-without-time-format))
+                          (setq result
+                                (concat
+                                 (substring switches-without-time-format 0 (match-beginning 0))
+                                 " -" (dino-dired-next-sorting-switch cur-switch))))))
+                  (or result
+                      (concat switches-without-time-format " -t"))))
 
-                       ;; the options to ls are collapsed, no intervening spaces
-                       (t
-                        (let* ((switches-regex
-                                (concat "[" (mapconcat 'identity dino-dired-sort-switches-to-cycle "") "]"))
-                               (old-sorting-switch
-                                (if (string-match switches-regex switches-without-time-format)
-                                    (substring switches-without-time-format (match-beginning 0) (match-end 0))
-                                  "ZZ")))
-                          (dino-dired-generate-new-sorting-switch-string
-                           (dino-dired-next-sorting-switch old-sorting-switch)
-                           switches-without-time-format))))))))))
+               ;; the options to ls are collapsed, no intervening spaces
+               (t
+                (let* ((switches-regex
+                        (concat "[" (mapconcat 'identity dino-dired-sort-switches-to-cycle "") "]"))
+                       (old-sorting-switch
+                        (if (string-match switches-regex switches-without-time-format)
+                            (substring switches-without-time-format (match-beginning 0) (match-end 0))
+                          "ZZ")))
+                  (dino-dired-generate-new-sorting-switch-string
+                   (dino-dired-next-sorting-switch old-sorting-switch)
+                   switches-without-time-format)))))))))
 
-  (dino-dired-sort-set-modeline (s-trim
-                                 (s-chop-prefix dino-dired-time-format-switch dired-actual-switches)))
+  (dino-dired-sort-set-modeline dired-actual-switches)
+  (if (not (s-blank? dino-dired-time-format-switch))
+      (setq dired-actual-switches
+            (concat dino-dired-time-format-switch " " dired-actual-switches)))
+
   (revert-buffer))
 
 
 (defun dino-dired-generate-new-sorting-switch-string (new &optional old)
   (concat
-   "-l"
+   "-la"
    ;; strip -l and any other sorting switches
    (replace-regexp-in-string
     (concat "[-l" (mapconcat 'identity dino-dired-sort-switches-to-cycle "") "]")
@@ -366,7 +367,8 @@ typing M-n ."
 (setq dired-use-ls-dired nil)
 
 
-(setq dired-listing-switches "-la")
+(setq dired-listing-switches (concat dino-dired-time-format-switch " -la"))
+;; (setq dired-actual-switches "--time-style=long-iso -laS")
 
 (provide 'dino-dired-fixups)
 
