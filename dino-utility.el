@@ -1905,6 +1905,51 @@ prompt for the directory. Otherwise, use the current `magit-toplevel`."
         (error (message "GitHub API Error: %s" (error-message-string err)))))))
 
 
+(defun dino/update-os-window-title ()
+  "Using Xterm Control Sequences, aka OSC escape sequences, update the
+hterm/xterm tab title (aka Window title) with
+
+emacs: user@host
+
+Normally it would be necessary to do this just once. But I use a ssh
+with a session persistence tool (shpool), which means it is possible to
+disconnect from an emacs session, and then reconnect later from a
+different terminal.  In that case, the Window title (OS window, not
+emacs window) will be wrong.
+
+The trick is to get this to execute as necessary. In fact emacs is
+unaware of session persistence (as appropriate) and it does not know
+when a session gets re-attached, which would necessitate updating the
+window title.
+
+options for how/when to execute this fn:
+ - explicitly. downside: Requires user action.
+ - on a timer. downside: will be 99.99% unnecessary.
+ - post-command-hook. downside: executes way too often.
+
+In the end I settled on attaching it to the
+`window-configuration-change-hook'.  Window configuration
+change (splitting windows, flipping from H to V split, etc.) is
+completely irrelevant to the window title of course. But it happens much
+less frequently than post-command-hook and much less frequently than a
+timer. So, sort of a compromise.
+
+In 99% of cases, executing this fn will be redundant: the correct title
+will be already in place, and will just get rewritten.  But in the
+disconnect + reconnect case it will make me happy."
+  (when (not (display-graphic-p)) ; Only run in -nw (terminal) mode
+    (if-let* ((sysname-parts (string-split (system-name) "\\."))
+              (sysname
+               (if (and (eq (length sysname-parts) 4)
+                        (string= (nth 2 sysname-parts)  "googlers"))
+                   "cloudtop"
+                 (system-name)))
+              (title (format "emacs: %s@%s" (user-login-name) sysname)))
+        (send-string-to-terminal (format "\033]0;%s\007" title)))))
+
+(add-hook 'window-configuration-change-hook #'dino/update-os-window-title)
+;;(remove-hook 'window-configuration-change-hook #'dino-update-os-window-title)
+
 (provide 'dino-utility)
 
 ;;; dino-utility.el ends here

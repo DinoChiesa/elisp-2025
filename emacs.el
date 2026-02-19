@@ -67,8 +67,6 @@
 
 
 
-
-
 ;; 20250406 This needs to be system-wide. Setting it in a mode hook is too late,
 ;; as the file local vars will have already been evaluated and set.
 (setq enable-local-variables t)
@@ -107,17 +105,12 @@
 (setq-default show-trailing-whitespace t)
 (setq-default fill-column 80)
 
+
 (add-to-list 'load-path "~/elisp")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; setting up faces etc
 ;;
-;; 20260217-0043
-;;
-;; Not sure why, but ... within an emacs launched from a terminal running in
-;; "Terminator", which I am now evaluating, using (set-face-background 'default
-;; "black") results in a gray background, while using "gray02" results in a
-;; (apparently) completely black background.
 (custom-set-faces
  '(default                         ((t (:background "gray02" :foreground "white") )))  ;; black => gray02
  '(region                          ((t (:background "gray19"))))
@@ -232,7 +225,9 @@
              dino/snake-to-camelcase-word-at-point
              dino/indent-buffer
              dino/indent-line-to-current-column
-             dino/shfmt-buffer)
+             dino/shfmt-buffer
+             dino/create-github-repo
+             dino/display-full-year-calendar)
   :autoload (dino/insert-or-modify-alist-entry
              dino/maybe-add-to-exec-path
              dino/fixup-exec-path
@@ -260,16 +255,16 @@
 
   ;; treat blocks surrounded by double curly as JS
   (define-innermode poly-peggy-js-innermode
-                    :mode 'js-ts-mode
-                    :head-matcher "^{{"
-                    :tail-matcher "^}}"
-                    :head-mode 'host
-                    :tail-mode 'host)
+    :mode 'js-ts-mode
+    :head-matcher "^{{"
+    :tail-matcher "^}}"
+    :head-mode 'host
+    :tail-mode 'host)
 
   (define-polymode poly-peggy-mode
-                   :hostmode 'poly-peggy-hostmode
-                   :innermodes '(poly-peggy-js-innermode)
-                   ))
+    :hostmode 'poly-peggy-hostmode
+    :innermodes '(poly-peggy-js-innermode)
+    ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timestamp insertion functions
@@ -3779,8 +3774,9 @@ Does not consider word syntax tables.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Python
 
-(use-package flymake-ruff
-  :ensure t)
+(when (executable-find "ruff")
+  (use-package flymake-ruff
+    :ensure t))
 
 (defun dino-python-mode-fn ()
   ;; python-mode is not a prog-mode!
@@ -3818,11 +3814,13 @@ Does not consider word syntax tables.
   ;; Ordering is important. Set the  `flymake-diagnostic-functions', then enable flymake.
   (setq-local python-flymake-command '("ruff" "check")) ;; failsafe
   (remove-hook 'flymake-diagnostic-functions #'python-flymake t)
-  (require 'flymake-ruff)
-  ;;(flymake-ruff-load) ;; this is equivalent to the following add-hook
-  (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t)
+  (when (executable-find "ruff")
+    (require 'flymake-ruff)
+    ;;(flymake-ruff-load) ;; this is equivalent to the following add-hook
+    (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t))
   ;; But! the above gets wiped out by eglot. So I re-add it later, see
   ;; `dino-repair-eglot-python-flymake-setup'.
+
   (flymake-mode)
   (require 'dino-python-extensions)
   (dcpe/setup-basedpyright-lsp-workspace-handling)
@@ -3858,8 +3856,9 @@ Does not consider word syntax tables.
   ;; c:\Users\dpchi\AppData\Roaming\npm\basedpyright.ps1 --pythonpath C:\Users\dpchi\AppData\Local\uv\cache\environments-v2\ergodicity-2-d457e2e24b007c47\Scripts\python.exe ergodicity-2.py
 
 
+  (when (executable-find "ruff")
+    (setq-local compile-command "ruff check .")) ;; for M-x compile, checks the entire project
 
-  (setq-local compile-command "ruff check .")  ;; for M-x compile, checks the entire project
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t) )
 
 
@@ -3882,8 +3881,9 @@ pyright (the LSP) is great at Type checking but ruff is much faster and
 better at linting.  By using eglot(pyright) and ruff, I get both checks
 in flymake."
   (when (derived-mode-p 'python-base-mode)
-    (require 'flymake-ruff)
-    (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t)))
+    (when (executable-find "ruff")
+      (require 'flymake-ruff)
+      (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t))))
 
 (add-hook 'eglot-managed-mode-hook #'dino-repair-eglot-python-flymake-setup)
 
