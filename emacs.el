@@ -4588,6 +4588,19 @@ Enable `recentf-mode' if it isn't already."
   )
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; vterm
+
+(defun dino-dont-show-trailing-ws ()
+  "turn off highlights of trailing whitespace for
+the local buffer."
+  (setq show-trailing-whitespace nil))
+
+(when (eq system-type 'gnu/linux)
+  (use-package vterm
+    :defer t
+    :hook dino-dont-show-trailing-ws))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timestamp
 ;;
@@ -4609,6 +4622,8 @@ Enable `recentf-mode' if it isn't already."
 ;; can also add this to source code: // (set-variable time-stamp-format "%Y-%:b-%02d %02H:%02M:%02S")
 
 (add-hook 'before-save-hook 'time-stamp)  ; update time stamps when saving
+
+
 
 
 
