@@ -9,12 +9,14 @@
 (message "Running emacs.el...")
 (require 'cl-seq)
 (require 'json)
+(require 'seq)
 (require 's)
 (if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 
 (setq inhibit-splash-screen t)
 (setq initial-scratch-message ";;;  -*- lexical-binding: t; -*-\n;; scratch buffer\n")
 
+(setq debug-on-error t)
 
 ;; 20251011-1123
 ;; On Windows
@@ -67,7 +69,6 @@
 (prefer-coding-system 'utf-8)
 
 
-
 ;; 20250406 This needs to be system-wide. Setting it in a mode hook is too late,
 ;; as the file local vars will have already been evaluated and set.
 (setq enable-local-variables t)
@@ -76,7 +77,7 @@
 (setq ring-bell-function `(lambda ()
                             (set-face-background 'default "DodgerBlue")
                             (sit-for 0.001)
-                            (set-face-background 'default "gray02"))) ;; black
+                            (set-face-background 'default "black")))
 
 
 (setq scroll-error-top-bottom t) ;; move cursor when scrolling not possible
@@ -113,12 +114,16 @@
 ;; setting up faces etc
 ;;
 (custom-set-faces
- '(default                         ((t (:background "gray02" :foreground "white") )))  ;; black => gray02
+ '(line-number                     ((t (:inherit (shadow default) :foreground "gray36"))))
+ '(default                         ((t (:background "black" :foreground "white") )))
  '(region                          ((t (:background "gray19"))))
+ '(tooltip                         ((t (:foreground "Navy" :background "khaki1"))))
  '(flycheck-error                  ((t (:background "firebrick4"))))
+ '(dictionary-button-button        ((t (:family "Sans Serif"))))
+ '(dictionary-button-face          ((t (:background "gray11" :foreground "LightSteelBlue"))))
+ '(dictionary-word-definition-face ((t (:family "Sans Serif"))))
  '(font-lock-comment-face          ((t (:foreground "PaleVioletRed3"))))
  '(font-lock-keyword-face          ((t (:foreground "CadetBlue2"))))
- '(tooltip                         ((t (:foreground "Navy" :background "khaki1"))))
  ;;'(font-lock-keyword-face        ((t (:foreground "Cyan1"))))
  '(font-lock-type-face             ((t (:foreground "PaleGreen"))))
  '(font-lock-constant-face         ((t (:foreground "DodgerBlue"))))
@@ -128,19 +133,16 @@
 
 ;; 20260217-0442
 ;;
-;; Similar but independent problem: within an emacs running in a terminal
-;; launched from SecureShell, the colors for many faces are just
-;; unsatisfactory. For example, in the minibuffer the default text is too dark,
-;; and the highlighted option is too light, making both unreadable. Similar
-;; problems with magit and eros, and I'm sure others.
+;; Within an emacs running in a terminal launched from SecureShell, the colors
+;; for many faces are just unsatisfactory. For example, in the minibuffer the
+;; default text is too dark, and the highlighted option is too light, making
+;; both unreadable. Similar problems with magit and eros, and I'm sure others.
 ;;
 ;; This is a giant hassle.
 ;;
-;; Gemini suggests:
-;;
-;; if `(setq frame-background-mode 'dark)` returns "light" , that is why
-;; the faces in magit and probably in other places, are turning out to be exactly
-;; inappropriate.
+;; Gemini suggests that if `(setq frame-background-mode 'dark)` returns "light",
+;; that is why the faces in magit and probably in other places, are turning
+;; out to be exactly inappropriate.
 ;;
 ;; The following - blindly forcing dark background mode - seems to solve all
 ;; the font color problems with SecureShell.
@@ -149,26 +151,10 @@
 ;; A remaining mystery: why does the frame-background-mode get inferred as "light" when
 ;; launched through SecureShell? Unknown.
 
-
-;; (custom-set-faces
-;;  '(default                  ((t (:background "gray02"))))
-;;  '(completions-highlight    ((t (:background "color-234" :foreground "color-112" :inherit nil))))
-;;  '(magit-section-highlight  ((t (:inherit nil :background "gray20"))))
-;;  '(magit-diff-context-highlight  ((t ( :background "gray03"))))
-;;  '(magit-diff-removed-highlight  ((t ( :background "gray03" :foreground "red"))))
-;;  '(magit-diff-hunk-heading-highlight ((t ( :background "gray03"))))
-;;  '(minibuffer-prompt        ((t (:background "color-16" :foreground "brightblue"))))
-;;  '(icomplete-selected-match ((t (:background "color-238" :foreground "color-112" ))))
-;;  '(eros-result-overlay-face ((t (:inherit nil
-;;                                  :background "gray02" ;; kinda black. But I can't use black!
-;;                                  :slant italic ;; I think this isn't supported
-;;                                  ))))
-;;  )
-
-;;(set-face-attribute 'magit-section-highlight nil :background "gray20")
-
-;; to set just one:
-;; (set-face-attribute 'dictionary-button-face nil :background "gray11"  :foreground "LightSteelBlue")
+;; to set just one face:
+;; (set-face-attribute 'dictionary-button-face nil
+;;                     :background "gray11"
+;;                     :foreground "LightSteelBlue")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; for tetris
@@ -206,6 +192,9 @@
 (let ((default-directory "~/.emacs.d/elpa"))
   (normal-top-level-add-subdirs-to-load-path))
 
+;; de-duplicate entries in load-path
+(setq load-path (seq-uniq load-path))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; some must-have utility things
 ;;
@@ -228,7 +217,8 @@
              dino/indent-line-to-current-column
              dino/shfmt-buffer
              dino/create-github-repo
-             dino/display-full-year-calendar)
+             dino/display-full-year-calendar
+             dino/cleanup-stale-elpa-packages)
   :autoload (dino/insert-or-modify-alist-entry
              dino/maybe-add-to-exec-path
              dino/fixup-exec-path
@@ -335,7 +325,6 @@
   :defer t
   :config
   (require 'apheleia-log)
-  (require 'cl-seq)
   (setq apheleia-log-debug-info t)
 
   (if (eq system-type 'windows-nt)
@@ -2112,8 +2101,6 @@ more information."
   ;; for transient menu different view?
   ;;  (setq gptel-expert-commands t)
 
-  (require 'cl-seq)
-
   ;; load my custom prompts
   (let ((prompt-file (expand-file-name "~/elisp/.gptel-prompts")))
     (when (file-exists-p prompt-file)
@@ -3640,7 +3627,6 @@ Does not consider word syntax tables.
   (keymap-local-set "C-x C-e"  #'byte-compile-file)
 
   ;; never convert leading spaces to tabs:
-  ;;(make-local-variable 'indent-tabs-mode)
   (setq indent-tabs-mode nil)
   ;;(hl-line-mode 1)
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
@@ -3648,6 +3634,7 @@ Does not consider word syntax tables.
   (company-mode)
   (apheleia-mode)
   (flycheck-mode)
+  (setq flycheck-emacs-lisp-load-path 'inherit) ;;flycheck should use my load path
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t)
   (require 'elisp-fix-indent)
   (advice-add #'calculate-lisp-indent :override #'efi/calculate-lisp-indent)
@@ -4781,6 +4768,7 @@ Enable `recentf-mode' if it isn't already."
 (define-key key-translation-map (kbd "\C-x 8 >") (kbd "»")) ;; right double arrow - 0BB
 (define-key key-translation-map (kbd "\C-x 8 <") (kbd "«")) ;; left double arrow - 0AB
 
+(setq debug-on-error nil)
 
 (message "Done with emacs.el...")
 ;; Local Variables:
