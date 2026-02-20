@@ -55,7 +55,7 @@
 (require 's)
 (require 'dash)   ;; for -every
 (require 'cl-seq) ;; for cl-remove-if-not
-(require 'cl-lib) ;; For assoc-if
+(require 'cl-lib) ;; For assoc-if, etc
 (require 'json)
 (require 'memoize)
 (require 'ansi-color)
@@ -319,10 +319,12 @@ filename."
   (dino--gcloud-auth-print-token "identity"))
 
 (defun dino-googleapis-token-for-sa (json-keyfile)
-  "generate and return a new OAuth token for googleapis.com for a service account"
+  "generate and return a new OAuth token for googleapis.com for a service
+account, given a JSON-KEYFILE that contains a downloaded JSON Key. This
+method of authenticating is a Bad Idea in general."
   ;; There is some problem with emacs and TLS v1.3
   ;; So we try turning it off.
-  ;; TODO 20250424-1831
+  ;; XODO 20250424-1831
   ;; investigate whether this is still a problem in emacs v30+
   (setq gnutls-algorithm-priority "NORMAL:-VERS-TLS1.3")
   (let ((project-id (dino-googleapis-project-id json-keyfile)))
@@ -1949,6 +1951,72 @@ disconnect + reconnect case it will make me happy."
 
 (add-hook 'window-configuration-change-hook #'dino/update-os-window-title)
 ;;(remove-hook 'window-configuration-change-hook #'dino-update-os-window-title)
+
+
+
+(defun dino/cleanup-stale-elpa-packages (&optional target-dir dry-run)
+  "Remove older versions of timestamped directories.
+By default, operates on ='package-user-dir'=.
+With a prefix argument (C-u), prompts for a directory and dry-run status."
+  (interactive
+   (if current-prefix-arg
+       (list (read-directory-name "Select directory: " package-user-dir)
+             (y-or-n-p "Perform a dry-run? "))
+     (list package-user-dir nil)))
+
+  (let ((dir-map (make-hash-table :test 'equal))
+        (regex "\\(.+\\)-\\([0-9]\\{8\\}\\.[0-9]+\\)$")
+        (deleted-count 0)
+        (removed-from-load-path nil))
+
+    ;; 1. Identify the latest versions
+    (dolist (file (directory-files target-dir nil nil t))
+      (let ((full-path (expand-file-name file target-dir)))
+        (when (and (file-directory-p full-path)
+                   (not (member file '("." "..")))
+                   (string-match regex file))
+          (let* ((module-name (match-string 1 file))
+                 (timestamp (match-string 2 file))
+                 (time-val (string-to-number timestamp))
+                 (existing (gethash module-name dir-map)))
+
+            (if (or (null existing)
+                    (> time-val (cdr existing)))
+                (puthash module-name (cons file time-val) dir-map))))))
+
+    ;; 2. Identify and remove the stale ones
+    (let ((kept-files (let (acc)
+                        (maphash (lambda (_k v) (push (car v) acc)) dir-map)
+                        acc)))
+      (dolist (file (directory-files target-dir nil nil t))
+        (let ((full-path (expand-file-name file target-dir)))
+          (when (and (file-directory-p full-path)
+                     (not (member file '("." "..")))
+                     (string-match regex file)
+                     (not (member file kept-files)))
+
+            ;; Check if this path (with or without trailing slash) is in load-path
+            (let ((normalized-path (directory-file-name full-path)))
+              (when (cl-member normalized-path load-path :test 'string-equal)
+                (push file removed-from-load-path)))
+
+            (if dry-run
+                (message "[Dry-run] Would delete: %s" file)
+              (setq deleted-count (1+ deleted-count))
+              (delete-directory full-path t))))))
+
+    ;; 3. Final Report
+    (cond
+     (dry-run
+      (message "Dry-run complete. No files were actually deleted."))
+     ((> deleted-count 0)
+      (message "Cleanup complete: Removed %d stale directories." deleted-count)
+      (when removed-from-load-path
+        (warn "ACTIVE PATHS REMOVED: The following were in your load-path: %s. You must now restart Emacs."
+              (mapconcat 'identity removed-from-load-path ", "))))
+     (t
+      (message "No stale packages found. Everything is up to date.")))))
+
 
 (provide 'dino-utility)
 
