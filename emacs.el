@@ -1973,6 +1973,8 @@ more information."
 (use-package json-mode
   :defer t
   :init (defun dino-json-mode-fn ()
+          (require 'flycheck)
+          (flycheck-mode)
           ;; hierarchy: (prog-mode js-base-mode js-mode javascript-mode json-mode)
           ;;(turn-on-font-lock)
           ;;(flycheck-mode 0)
@@ -1994,6 +1996,7 @@ more information."
           ;; and because c:\python313 lies before that WindowsApps directory with the reparse points,
           ;; flycheck finds the command successfully and is able to execute the checker.
           ;;
+
           (if (eq system-type 'windows-nt)
               (setf (car (flycheck-checker-get 'json-python-json 'command))
                     "python"))
@@ -4599,7 +4602,7 @@ the local buffer."
 (when (eq system-type 'gnu/linux)
   (use-package vterm
     :defer t
-    :hook dino-dont-show-trailing-ws))
+    :hook (vterm-mode . dino-dont-show-trailing-ws)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timestamp
