@@ -114,7 +114,6 @@ and is not already present on the path."
                   (setenv "PATH" (concat (getenv "PATH") ":" path)))
              (add-to-list 'exec-path path))))))
 
-
 (defun dino-toggle-frame-split ()
   "If the frame is split vertically, split it horizontally or vice versa.
 This works only when the frame is split into exactly two windows."
@@ -127,7 +126,6 @@ This works only when the frame is split into exactly two windows."
         (split-window-horizontally)
       (split-window-vertically)) ; gives us a split with the other window twice
     (switch-to-buffer nil))) ; restore the original window in this part of the frame
-
 
 (defun dino-insert-filename (&optional arg)
   "inserts the name of the file behind the buffer, at point.
@@ -156,7 +154,6 @@ filename including the full directory path into the kill ring."
           (setq found (buffer-substring-no-properties (match-beginning 0) (match-end 0)))
           (delete-region (match-beginning 0) (match-end 0))))
     found))
-
 
 (defun dino-replace-filename (&optional arg)
   "inserts the name of the file behind the buffer, at point, replacing
@@ -252,7 +249,6 @@ in the list `dino-no-untabify-modes'
   (interactive)
   (setq truncate-lines (not truncate-lines))
   (redraw-display))
-
 
 (defvar dino-base64-prog
   (if (eq system-type 'windows-nt)
@@ -355,7 +351,6 @@ appropriate string has been found and deleted. Else return nil."
 (defconst dino--punctuation-regex "[\\!\?\"\.'#$%&*+/;<=>@^`|~]"
   "regexp for punctuation")
 
-
 (defun dino-maybe-delete-uuid-under-point ()
   "if point is on a uuid string, delete it.
 Return t if an
@@ -430,20 +425,15 @@ Handy for editing .resx files within emacs.
       (exchange-point-and-mark))))
 
 (defun dino-csharp-snippet ()
-  "convert a file into a snippet, just by narrowing. "
+  "narrow a block of csharp code. "
   (interactive)
   (save-excursion
-    (let ((beg (point))
-          top-of-fn
-          bot-of-fn)
-
-      (re-search-backward "{")
-      (forward-char 1)
-      (set-mark (point))
-      (re-search-forward "}")
-      (forward-char -1)
-      (narrow-to-region (point) (mark)))))
-
+    (re-search-backward "{")
+    (forward-char 1)
+    (set-mark (point))
+    (re-search-forward "}")
+    (forward-char -1)
+    (narrow-to-region (point) (mark))))
 
 (defun dino-file-contents-as-string (filename)
   "Get the contents of a file as a string. Be careful!"
@@ -583,7 +573,8 @@ Like `replace-string' but for non-interactive use. "
 
 
 (defun dino/urlencode-region (start end)
-  "calls the Javascript function encodeURIComponent() (via nodejs) on the string in region."
+  "calls the Javascript function encodeURIComponent() (via node)
+on the string in region."
   (interactive "r")
   (save-excursion
     (save-restriction
@@ -602,7 +593,6 @@ Like `replace-string' but for non-interactive use. "
              "'" "~~"
              (replace-regexp-in-string "\n" "" str))
             "'))\"" ))))))))
-
 
 
 (defun dino-urldecode-region (start end)
@@ -701,17 +691,16 @@ Overwrites register 9. "
 
 (defun dino-filter-list (condp lst)
   "A filter. Emacs Lisp doesn't come with a filter function to keep
-elements that satisfy a conditional and excise the elements that
-do not satisfy it. One can use mapcar to iterate over a list with
-a conditional, and then use delq to remove the nil
-values.
+elements that satisfy a conditional and excise the elements that do not
+satisfy it. One can use mapcar to iterate over a list with a
+conditional, and then use delq to remove the nil values.
 
 Usage:
 
  (let ((num-list '(1 'a 2 \"nil\" 3 nil 4)))
     (dino-filter-list 'numberp num-list))   ;; ==> (1 2 3 4)
 
-This function be unnecessary. See `cl-remove-if' and `cl-remove-if-not'
+This function be unnecessary. See ='cl-remove-if'= and ='cl-remove-if-not'=
 
 eg,
   (cl-remove-if-not 'file-exists-p  list-of-possible-files)
@@ -769,12 +758,10 @@ Why don't i just use `file-directory-p' ?"
 (defvar dino-move-timer-list nil
   "list of timers for `dino-move-whenever'")
 
-
 (defun dino-get-unique-filename (fname dir)
   "returns a unique filename for FNAME in diretory DIR,
 by appending -N, N=1,2,3... to FNAME when FNAME exists
-in DIR.
-"
+in DIR."
   (let ((testname
          (concat (file-name-as-directory dir) fname)))
     (if (file-exists-p testname)
@@ -1256,6 +1243,37 @@ The first line is indented with INDENT-STRING."
              (ticket-id (s-chop-prefixes '("b" "b/") raw-text))
              (url (concat "https://b.corp.google.com/issues/" ticket-id)))
         (browse-url url)))))
+
+
+(defun dino/gitignore ()
+  "create a .gitignore file in the current working directory if one does
+not yet exist."
+  (interactive)
+  (or (file-exists-p ".gitignore")
+      (progn
+        (with-temp-file ".gitignore"
+          (insert (concat
+                   "**/#*.*#\n"
+                   "**/*.*~\n"
+                   "**/#*#\n"
+                   "**/*~\n"
+                   "\n"
+                   "**/target/\n"
+                   "**/*.class\n"
+                   "\n"
+                   "**/node_modules/\n"
+                   "\n"
+                   ".env\n"
+                   "\n"
+                   ".venv/\n"
+                   "\n"
+                   "__pycache__/\n"
+                   "*.pyc\n"
+                   "*.pyo\n"
+                   "*.pyd\n"
+                   "\n"
+                   "NOT-USED/\n"
+                   ))))))
 
 
 ;; ;; ====================================================================
