@@ -439,22 +439,42 @@
   :defer 36
   :ensure t)
 
-(use-package lazy-revert
+
+(use-package visible-auto-revert
   ;; A layer on top of auto-revert-mode, It reverts only those buffers that are
-  ;; currently _displayed_. For all others, flag them and revert when they get
-  ;; displayed. Performs better when there are many buffers.
-  :ensure nil
-  :vc (:url "https://github.com/yilin-zhang/lazy-revert"
+  ;; currently _displayed_. For diagnostics:
+  ;; M-x visible-auto-revert-status  - Show current monitoring status
+  :vc (:url "https://github.com/kn66/visible-auto-revert.el.git"
        :rev :newest
-       :main-file "lazy-revert.el"
-       :branch "master")
-  :hook (after-init . lazy-revert-mode)
+       :main-file "visible-auto-revert.el"
+       :branch "main")
   :config
+  ;; It is a global minor mode. You do not need to enable it for each buffer.
+  ;; It intelligently manages which buffers get auto-revert-mode.
+  (visible-auto-revert-mode +1)
   (setq auto-revert-verbose t ; let us know when it happens
-        auto-revert-use-notify nil ; use polling, not inotify
+        ;;auto-revert-use-notify nil ; nil=use polling, not inotify (why?)
         auto-revert-stop-on-user-input nil
         ;; Only prompts for confirmation when buffer is unsaved.
-        revert-without-query (list ".")))
+        revert-without-query (list "."))
+  )
+
+;; 20260226-1345 - TODO: Delete this eventually. I do not need this
+;; if visible-auto-revert works as expected.
+;;
+;; (use-package lazy-revert
+;;   ;; A layer on top of auto-revert-mode, It reverts only those buffers that
+;;   ;; are currently _displayed_, and only when switching buffers. For all
+;;   ;; others, flag them and revert when they get displayed. Performs better
+;;   ;; when there are many buffers.
+;;   :ensure nil
+;;   :vc (:url "https://github.com/yilin-zhang/lazy-revert"
+;;        :rev :newest
+;;        :main-file "lazy-revert.el"
+;;        :branch "master")
+;;   :hook (after-init . lazy-revert-mode)
+;;   :config
+;; )
 
 (use-package uniline
   ;; easily make line drawings with unicode symbols.
