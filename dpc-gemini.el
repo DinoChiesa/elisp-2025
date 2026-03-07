@@ -85,21 +85,24 @@ Eg,
   :type 'string
   :group 'dpc-gemini)
 
-(defvar dpc-gemini-selected-model "gemini-2.5-flash-preview-05-20"
+(defvar dpc-gemini-selected-model "gemini-flash-latest"
   "The model key for Gemini. This package uses the specified model, and other
 packages may choose to reference this, too.
 
-examples: \"gemini-2.5-flash-preview-05-20\",
-\"gemini-2.5-pro-exp-03-25\"
+examples: \"gemini-flash-latest\",
+\"gemini-pro-latest\", \"gemini-3-pro-preview\"
 See also `dpc-gemini/list-models'")
 
 (defvar dpc-gemini--properties-cache nil
   "Cache for properties read from `dpc-gemini-properties-file'.
-  An alist where each element is (PROPERTY-NAME . VALUE). Keys are downcased symbols.")
+
+An alist where each element is (PROPERTY-NAME . VALUE). Keys are
+downcased symbols.")
 
 (defvar dpc-gemini--properties-file-mtime nil
-  "Last modification time of `dpc-gemini-properties-file' when it was last read into cache.
-  Used to detect if the file has changed and needs re-reading.")
+  "Last modification time of `dpc-gemini-properties-file' when it was last
+read into cache. Used to detect if the file has changed and needs
+re-reading.")
 
 (defface
   dpc-gemini-text '((t (:background "black" :foreground "MediumSeaGreen")))
@@ -125,8 +128,7 @@ See also `dpc-gemini/list-models'")
   "Perform an HTTP POST to GEM-URL with a one-part text prompt given
 in GEM-PROMPT.
 
-Places the result into a newly created buffer, and then
-`switch-to-buffer' is called on that buffer when complete."
+Places the result into a buffer named *gemini-response*."
   ;; curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent" \
   ;; -H 'X-goog-api-key: $YOUR_API_KEY' \
   ;; -H 'Content-Type: application/json' \
@@ -139,20 +141,20 @@ Places the result into a newly created buffer, and then
 
   (if-let* ((gemini-apikey (dpc-gemini/--internal-get-gemini-key)))
       (let ((buf (get-buffer-create "*gemini-response*")))
-        (switch-to-buffer buf)
-        (erase-buffer)
-        (text-mode)
-        (call-process "curl" nil t t
-                      "-s"
-                      "-X" "POST"
-                      "-H" "content-type: application/json"
-                      "-H" (concat "X-Goog-API-Key:" gemini-apikey)
-                      "-d"
-                      (json-encode
-                       `(("contents" .
-                          [(("parts" . [(("text" . ,gem-prompt))]))]
-                          )))
-                      gem-url))))
+        (with-current-buffer buf
+          (erase-buffer)
+          (text-mode)
+          (call-process "curl" nil t t
+                        "-s"
+                        "-X" "POST"
+                        "-H" "content-type: application/json"
+                        "-H" (concat "X-Goog-API-Key:" gemini-apikey)
+                        "-d"
+                        (json-encode
+                         `(("contents" .
+                            [(("parts" . [(("text" . ,gem-prompt))]))]
+                            )))
+                        gem-url)))))
 
 (defun dpc-gemini/-current-generative-model-p (response)
   "A predicate that looks at a model in RESPONSE and returns non-nil
@@ -309,14 +311,15 @@ This function is interactive and behaves differently based on the
 state of the region:
 
 1.  If a region is active and contains MORE THAN ONE newline:
-    - A new temporary buffer is created in 'text-mode'.
+    - A new temporary buffer is created in ='text-mode'=.
     - The user can compose a message in this buffer.
-    - Pressing 'C-c C-c' accepts the content.
-    - Pressing 'C-c C-k' abandons the composition (returns nil).
-    - The function returns the composed text as a plain string (or nil if abandoned).
+    - Pressing C-c C-c accepts the content.
+    - Pressing C-c C-k abandons the composition (returns nil).
+    - The function returns the composed text as a plain string
+      (or nil if abandoned).
 
 2.  If a region is active and contains ONE LINE (or less):
-    - The minibuffer is used to read a string ('read-string').
+    - The minibuffer is used to read a string (='read-string'=).
     - The minibuffer is pre-populated with the text from the region.
     - The function returns the string from the minibuffer.
 
@@ -354,7 +357,7 @@ state of the region:
         (font-lock-add-keywords nil '(("^##.*" . 'font-lock-comment-face)))
         ;;(buffer-face-set 'font-lock-type-face)
         (buffer-face-set 'dpc-gemini-text)
-        (font-lock-fontify-buffer) ;; i think this is required?
+        (font-lock-ensure) ;; i think this is required?
         (pop-to-buffer (current-buffer))
 
         ;; Enter a recursive edit. Emacs will now wait for the user
@@ -392,6 +395,7 @@ If the region is active, use region content as suggested prompt."
       (progn
         (message (concat "invoking " gem-url))
         (dpc-gemini/post-prompt gem-url gem-prompt)
+        (pop-to-buffer "*gemini-response*")
         (let* ((json-object-type 'hash-table)
                (json-array-type 'list)
                (json-key-type 'string)
@@ -456,12 +460,12 @@ If it has not been previously set, this function will try to read
 
 
 (defun dpc-gemini/--parse-properties-file-into-cache ()
-  "Reads the properties file `dpc-gemini-properties-file' and
-populates `dpc-gemini--properties-cache'. Returns t if the file was
+  "Reads the properties file ='dpc-gemini-properties-file' and
+populates ='dpc-gemini--properties-cache'. Returns t if the file was
 successfully parsed or re-parsed, nil otherwise. Invalidates cache and
 re-reads if the file's modification time changes. Within the file, this
-function handles 'key: value' format, skips empty lines and lines
-starting with '#'."
+function handles «key: value» format, skips empty lines and lines
+starting with #."
   (let* ((expanded-props-file (expand-file-name dpc-gemini-properties-file))
          (file-attrs (file-attributes expanded-props-file)))
 

@@ -1,9 +1,9 @@
 ;;; dino-python-extensions.el  -*- coding: utf-8; lexical-binding: t;  -*-
 
-;; Copyright (c) 2025 Dino Chiesa
+;; Copyright © 2025-2026 Dino Chiesa
 ;;
 ;; Author: Dino Chiesa
-;; Version: 20251228
+;; Version: 20260306
 ;;
 
 ;;; Commentary:
@@ -52,6 +52,8 @@
 ;;; Code:
 
 (require 'eglot)
+(require 'dpc-gemini)
+(require 'json)
 
 ;; (defvar dcpe/original-python-contact nil
 ;;   "Storage for the original eglot-server-programs entry for Python.
@@ -67,6 +69,26 @@
           (goto-char (point-min))
           ;; Search first 2048 chars for the script tag
           (re-search-forward "^# /// script" 2048 t))))))
+
+(defun dcpe/inject-pep723-metadata ()
+  "Inject a PEP 723 script metadata block at the top of the buffer.
+If a block already exists, do nothing."
+  (interactive)
+  (if (dcpe/has-pep723-p)
+      (message "PEP 723 block already exists.")
+    (save-excursion
+      (goto-char (point-min))
+      (when (looking-at "^#!")
+        (forward-line 1))
+      (let* ((dependencies (dcpe/infer-dependencies))
+             ;; Trim and prefix internal newlines with "# "
+             (formatted (replace-regexp-in-string "\n" "\n# " (string-trim dependencies))))
+        (insert "# /// script\n"
+                "# requires-python = \">=3.13\"\n"
+                "# dependencies = "
+                formatted
+                "\n# ///\n\n")
+        (message "Injected PEP 723 metadata.")))))
 
 (defun dcpe/uv-get-pythonexe (file-name)
   "Ensure that uv magic invisible venv is built, then find the python
@@ -212,19 +234,19 @@ python-mode-hook before `eglot-ensure'."
     (executable-find "basedpyright")))
 
 
-  (defun dcpe/rename-python-check-buffer ()
-    "Rename the Python check buffer to omit the full command. Without this,
+(defun dcpe/rename-python-check-buffer ()
+  "Rename the Python check buffer to omit the full command. Without this,
 the name of the compilation buffer can be over 180 characters. Not helpful."
-    (let ((current-name (buffer-name)))
-      ;; Check if this is a python-check buffer
-      (when (string-match "Python check: .* \"\\([^\"]+\\)\"\\*$" current-name)
-        (let* ((extracted-file (match-string 1 current-name))
-               (new-name (format "*Python check basedpyright: %s*" extracted-file)))
-          ;; Clear out old buffers with the same name to prevent <2>, <3>
-          (when (and (get-buffer new-name) (not (eq (current-buffer) (get-buffer new-name))))
-            (let ((kill-buffer-query-functions nil))
-              (kill-buffer new-name)))
-          (rename-buffer new-name)))))
+  (let ((current-name (buffer-name)))
+    ;; Check if this is a python-check buffer
+    (when (string-match "Python check: .* \"\\([^\"]+\\)\"\\*$" current-name)
+      (let* ((extracted-file (match-string 1 current-name))
+             (new-name (format "*Python check basedpyright: %s*" extracted-file)))
+        ;; Clear out old buffers with the same name to prevent <2>, <3>
+        (when (and (get-buffer new-name) (not (eq (current-buffer) (get-buffer new-name))))
+          (let ((kill-buffer-query-functions nil))
+            (kill-buffer new-name)))
+        (rename-buffer new-name)))))
 
 (defun dcpe/basedpyright-check-command ()
   "Get the python check command for the current file. This will
@@ -242,24 +264,85 @@ existence."
       (progn
         (add-hook 'compilation-mode-hook #'dcpe/rename-python-check-buffer)
         (with-eval-after-load 'compile
-              (add-to-list 'compilation-error-regexp-alist-alist
-                           '(basedpyright
-                             "^[[:space:]]+\\([A-Za-z]:[^:\n]+\\):\\([0-9]+\\):\\([0-9]+\\)"
-                             1 2 3))
-              (add-to-list 'compilation-error-regexp-alist 'basedpyright))
+          (add-to-list 'compilation-error-regexp-alist-alist
+                       '(basedpyright
+                         "^[[:space:]]+\\([A-Za-z]:[^:\n]+\\):\\([0-9]+\\):\\([0-9]+\\)"
+                         1 2 3))
+          (add-to-list 'compilation-error-regexp-alist 'basedpyright))
         (if-let* ((_ (dcpe/has-pep723-p))
                   (python-path (dcpe/uv-get-pythonexe buffer-file-name)))
             (format (if (eq system-type 'windows-nt)
-                      ;; 20260103-1802
-                      ;; I found that using -Command on Windows with pwsh.exe is
-                      ;; essential to correct behavior.  When I use -File, the
-                      ;; compilation hangs forever.
-                      "pwsh.exe -NonInteractive -Command %s --pythonpath %s "
-                    "%s --pythonpath %s ")
-                  basedpyright python-path)
-        basedpyright))
+                        ;; 20260103-1802
+                        ;; I found that using -Command on Windows with pwsh.exe is
+                        ;; essential to correct behavior.  When I use -File, the
+                        ;; compilation hangs forever.
+                        "pwsh.exe -NonInteractive -Command %s --pythonpath %s "
+                      "%s --pythonpath %s ")
+                    basedpyright python-path)
+          basedpyright))
     "ruff check"))
 
+(defun dcpe/extract-python-imports ()
+  "Scan the current buffer and extract Python import statements.
+Verifies that the buffer is in ='python-mode'= or ='python-ts-mode'=.
+Returns the text of the import lines without text properties."
+  (unless (derived-mode-p 'python-mode 'python-ts-mode)
+    (error "Current buffer is not in python-mode or python-ts-mode"))
+  (let ((imports))
+    (save-excursion
+      (save-restriction
+        (widen)
+        (goto-char (point-min))
+        ;; Scan for lines starting with \"import\" or \"from\"
+        (while (re-search-forward "^\\(?:import\\|from\\)\\s-+" nil t)
+          (let ((start (match-beginning 0)))
+            ;; Check for multiline imports using parentheses
+            (if (re-search-forward "(" (line-end-position) t)
+                (progn
+                  (backward-char)
+                  (condition-case nil
+                      (forward-list)
+                    (error (goto-char (line-end-position))))
+                  (push (buffer-substring-no-properties start (point)) imports))
+              ;; Otherwise, capture the rest of the line
+              (let ((end (line-end-position)))
+                (push (buffer-substring-no-properties start end) imports)
+                (goto-char end)))))))
+    (mapconcat #'identity (nreverse imports) "\n")))
+
+(defun dcpe/infer-dependencies ()
+  "Infers Python dependencies based on imports in the current buffer.
+Returns the inferred list of modules as a string like \"[ \"mod1\", \"mod2\" ]\"."
+  (let* ((imports (dcpe/extract-python-imports))
+         (prompt (concat
+                  "You are a python development expert. Given these imports in a python module, what python modules do I need to require/install ?\n\n"
+                  "<IMPORTS START>\n"
+                  imports "\n"
+                  "<IMPORTS END>\n\n"
+                  "Return your response as a python list, of quoted module names.  For example the result could take this form:\n\n"
+                  "  [ \"requests\", \"python-dotenv\" ]")))
+    (unless dpc-gemini-selected-model
+      (dpc-gemini/read-settings-from-properties-file))
+    (let ((gem-url (concat dpc-gemini-base-url "v1beta/models/" dpc-gemini-selected-model ":generateContent")))
+      (dpc-gemini/post-prompt gem-url prompt)
+      (save-excursion
+        (with-current-buffer "*gemini-response*"
+          (let* ((json-object-type 'hash-table)
+                 (json-array-type 'list)
+                 (json-key-type 'string)
+                 (parsed-response (json-read-from-string (buffer-substring-no-properties (point-min) (point-max)))))
+            (if-let* ((candidates (gethash "candidates" parsed-response))
+                      (first-candidate (car candidates))
+                      (content (gethash "content" first-candidate))
+                      (parts (gethash "parts" content))
+                      (first-part (car parts))
+                      (text (gethash "text" first-part)))
+                (if (string-match "\\[[[:space:]\n]*\"[^\"]+\"\\(?:[[:space:]\n]*,[[:space:]\n]*\"[^\"]+\"\\)*[[:space:]\n]*\\]" text)
+                    (match-string 0 text)
+                  (error "Could not find a dependency list in Gemini's response: %s" text))
+              (error "Unexpected response format from Gemini"))))))))
+
 (provide 'dino-python-extensions)
+
 
 ;;; dino-python-extensions.el ends here
