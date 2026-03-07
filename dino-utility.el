@@ -2036,6 +2036,13 @@ With a prefix argument (C-u), prompts for a directory and dry-run status."
       (message "No stale packages found. Everything is up to date.")))))
 
 
+
+(defun dino/find-g3-experimental-file ()
+  "Open find-file starting at a specific long project directory."
+  (interactive)
+  (let ((default-directory "/google/src/files/head/depot/google3/experimental/users"))
+    (call-interactively 'find-file)))
+
 (provide 'dino-utility)
 
 ;;; dino-utility.el ends here
