@@ -226,6 +226,7 @@
              dino/setup-shmode-for-apheleia
              dino/find-executable-in-paths)
   :config
+  (dino/cleanup-stale-elpa-packages) ;; try once on startup
   (add-hook 'before-save-hook 'dino/untabify-maybe))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2374,7 +2375,7 @@ more information."
           ( "F" . dino-dired-do-find)
           ( "s" . dino-dired-sort-cycle)))
   (dino-dired-sort-cycle "t") ;; by default, sort by time
-  ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
+  (auto-revert-mode 1)
   )
 
 (use-package dired
@@ -2451,7 +2452,7 @@ just auto-corrects on common mis-spellings by me."
 
 (defun dino-prog-mode-hook-fn ()
   (abbrev-mode 1)
-  ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
+  (auto-revert-mode 1)
   (display-line-numbers-mode)
   (setq show-trailing-whitespace t)
   )
@@ -3517,7 +3518,7 @@ Does not consider word syntax tables.
   (setf (alist-get 'nxml-mode apheleia-mode-alist) 'xml-prettier))
 
 (defun dino-xml-mode-fn ()
-  ;;(turn-on-auto-revert-mode) ;; in favor of lazy-revert globally
+  (turn-on-auto-revert-mode)
   (hs-minor-mode 1)
   (setq hs-isearch-open t)
   ;; 20250702-2204
@@ -4681,11 +4682,8 @@ the local buffer."
 (put 'narrow-to-region 'disabled nil)
 
 
-;; 20251012-0900
-;; Trying out lazy-revert
-;; ;; auto-revert for all files.
-;; (add-hook 'find-file-hook
-;;           (lambda () (turn-on-auto-revert-mode)))
+;; auto-revert for all files.
+(add-hook 'find-file-hook #'turn-on-auto-revert-mode)
 
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -4757,9 +4755,10 @@ the local buffer."
 (define-key global-map (kbd "C-x C-d")     #'delete-window)
 (define-key global-map (kbd "C-x x")       #'copy-to-register)
 (define-key global-map (kbd "C-x g")       #'insert-register)
-(define-key global-map (kbd "C-x p")       #'previous-window)
-(define-key global-map (kbd "C-x C-p")     #'previous-window)
+(define-key global-map (kbd "C-x p")       (lambda () (interactive) (other-window -1)))
+(define-key global-map (kbd "C-x C-p")     (lambda () (interactive) (other-window -1)))
 (define-key global-map (kbd "C-x n")       #'other-window)
+(define-key global-map (kbd "C-x o")       #'other-window)
 (define-key global-map (kbd "C-c w")       #'where-is)
 (define-key global-map (kbd "C-c C-w")     #'compare-windows)
 (define-key global-map (kbd "C-c C-y")     #'dcjava-wacapps-intelligently-open-file)
