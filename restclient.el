@@ -1,5 +1,4 @@
-;;; -*- coding: utf-8; lexical-binding: t;  -*-
-;;; restclient.el --- An interactive HTTP client for Emacs
+;;; restclient.el --- An interactive HTTP client for Emacs  -*- coding: utf-8; lexical-binding: t;  -*-
 ;;
 ;; Public domain.
 
@@ -52,6 +51,9 @@
   :type 'boolean)
 
 (defvar restclient-within-call nil)
+
+(defvar restclient-current-vars nil
+  "Variable to hold the current alist of variables for restclient-var0.")
 
 (defvar restclient-request-time-start nil)
 (defvar restclient-request-time-end nil)
@@ -363,7 +365,7 @@ The buffer contains the raw HTTP response sent by the server."
           (condition-case err
               (setq vars (cons
                           (cons name (if should-eval
-                                         (restclient-eval-var value)
+                                         (restclient-eval-var-expr value vars)
                                        (restclient-replace-all-in-string vars value)))
                           vars))
             (error
@@ -379,10 +381,19 @@ Usage example:
                  (concat (restclient-var \":username\")
                     \":\" (restclient-var \":pwd\"))
 "
-  (cdr (assoc name vars)))
+  (let ((vars (restclient-find-vars-before-point)))
+    (cdr (assoc name vars))))
 
-(defun restclient-eval-var (string)
-  (with-output-to-string (princ (eval (read string)))))
+(defun restclient-var0 (name)
+  "like ='restclient-var'=, but using the current known set of vars.
+For internal use."
+  (cdr (assoc name restclient-current-vars)))
+
+(defun restclient-eval-var-expr (string vars)
+  "Evaluate a string as an expression given a known set of variables."
+  (let ((restclient-current-vars vars)
+        (doctored-string (replace-regexp-in-string "\\brestclient-var\\b" "restclient-var0" string t t)))
+    (with-output-to-string (princ (eval (read doctored-string))))))
 
 (defun restclient--trim-right (s)
   "Remove whitespace at the end of S."
