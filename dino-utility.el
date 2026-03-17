@@ -1987,6 +1987,14 @@ With a prefix argument (C-u), prompts for a directory and dry-run status."
         (deleted-count 0)
         (removed-from-load-path nil))
 
+    ;; 20260310-1116
+    ;;
+    ;; I had to add this in case this fn was invoked non-interactively to set
+    ;; the default values. I suspect there is a better way to do this.
+    (if (not target-dir)
+        (setq target-dir package-user-dir
+              dry-run nil))
+
     ;; 1. Identify the latest versions
     (dolist (file (directory-files target-dir nil nil t))
       (let ((full-path (expand-file-name file target-dir)))
