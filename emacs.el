@@ -205,6 +205,15 @@
   :defer t
   :ensure t)
 
+(use-package xr
+  :defer t
+  :ensure t)
+
+(use-package el-xeger
+  :defer t
+  :autoload (el-xeger-from-rx el-xeger-from-exp)
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; my own various unorganized utility functions
 ;;
@@ -324,6 +333,9 @@
 (use-package apheleia
   :ensure t
   :defer t
+  :custom
+  (apheleia-formatters-respect-fill-column t)
+  (apheleia-formatters-respect-indent-level t)
   :config
   (require 'apheleia-log)
   (setq apheleia-log-debug-info t)
@@ -3687,9 +3699,12 @@ Does not consider word syntax tables.
   (use-package flymake-ruff
     :ensure t))
 
+(customize-set-variable 'python-indent-offset 2)
+
 (defun dino-python-mode-fn ()
   ;; python-mode is not a prog-mode!
-
+  (require 'dino-python-extensions)
+  (customize-set-variable 'python-indent-offset 2)
   (let ((local-map (current-local-map))) ;; one of {python-mode-map, python-ts-mode-map}
     (when local-map
       (mapc (lambda (binding)
@@ -3697,6 +3712,8 @@ Does not consider word syntax tables.
             '(("ESC C-R" . indent-region) ;; not sure if useful in python
               ("C-<tab>" . company-complete)
               ("ESC #"   . dino/toggle-flymake-diagnostics)
+              ("C-c p f" . dcpe/pyformat)
+              ("C-c p l" . dcpe/gpylint)
               ("C-c C-c" . comment-region)
               ("C-c C-d" . delete-trailing-whitespace)
               ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
@@ -3709,6 +3726,10 @@ Does not consider word syntax tables.
   (modify-syntax-entry ?_ "w")
   (set (make-local-variable 'indent-tabs-mode) nil)
   (display-line-numbers-mode)
+  ;; the following two are relevant to ruff as a formatter
+  (customize-set-variable 'apheleia-formatters-respect-fill-column t)
+  (customize-set-variable 'apheleia-formatters-respect-indent-level t)
+  (setq fill-column 80)
   (apheleia-mode)
   (company-mode)
   (electric-pair-mode)
@@ -3729,9 +3750,14 @@ Does not consider word syntax tables.
     (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t))
   ;; But! the above gets wiped out by eglot. So I re-add it later, see
   ;; `dino-repair-eglot-python-flymake-setup'.
-
   (flymake-mode)
-  (require 'dino-python-extensions)
+
+  (flycheck-mode)
+  (setq flycheck-python-pylint-executable "gpylint") ;; This isn't working.
+  (setq flycheck-pylintrc nil)
+  (setq flycheck-check-syntax-automatically '(save idle-change mode-enable)) ;; check on save, idle and mode-change
+  (setq flycheck-idle-change-delay 4)
+
   (dcpe/setup-basedpyright-lsp-workspace-handling)
   (eglot-ensure) ;; eglot will use "pyright". Installing basedpyright satisfies this.
 
@@ -3795,7 +3821,6 @@ in flymake."
 (add-hook 'eglot-managed-mode-hook #'dino-repair-eglot-python-flymake-setup)
 
 
-
 ;; rass is an LSP Multiplexer.
 
 ;; The reason to use it: each particular LSP does not give the complete set of
@@ -3852,12 +3877,30 @@ in flymake."
   ;; This formatter consolidates those steps.
   (setf (alist-get 'ruff-custom apheleia-formatters)
         '("ruff" "check" "--fix" "--unsafe-fixes" "--exit-zero"
+          ;;"--line-length" "80"
           "--select" "I,D200,D207,D208,D209,D210,D213,D403,D415"
           "--stdin-filename" filepath "-"))
 
+  (setf (alist-get 'ruff apheleia-formatters)
+        `("ruff" "format"
+          "--silent"
+          (apheleia-formatters-fill-column "--line-length")
+          "--config" (format "indent-width=%d" python-indent-offset)
+          ;;(apheleia-formatters-indent "--indent-style" "--indent-width" 'python-indent-offset)
+          "--stdin-filename" filepath
+          "-"))
+
+  ;; 20260312-1044 - this is working, and should be used on work machine only.
+  (setf (alist-get 'pyformat apheleia-formatters)
+        `("pyformat"
+          ;;"-i" ;; omit -i to format stdin
+          "--assume_filename" filepath
+          ))
+
+  ;; TODO: make pyformat for work machine, ruff for others
   ;;(setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-isort ruff))
-  (setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-custom ruff))
-  (setf (alist-get 'python-ts-mode apheleia-mode-alist) '(ruff-custom ruff)))
+  (setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-custom ruff pyformat))
+  (setf (alist-get 'python-ts-mode apheleia-mode-alist) '(ruff-custom ruff pyformat)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
