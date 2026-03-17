@@ -90,26 +90,52 @@ If a block already exists, do nothing."
                 "\n# ///\n\n")
         (message "Injected PEP 723 metadata.")))))
 
+(defun dcpe/add-pep723-dependency (dependency)
+  "Add DEPENDENCY in the PEP 723 script metadata block at the top of the file.
+This uses a temporary file to avoid forcing a save of the current buffer,
+allowing the change to be undone within Emacs."
+  (interactive "sDependency to add: ")
+  (unless (derived-mode-p 'python-mode 'python-ts-mode)
+    (error "Current buffer is not in python-mode or python-ts-mode"))
+  (let ((uv (executable-find "uv"))
+        (temp-file (make-temp-file "dcpe-uv-" nil ".py")))
+    (unless uv
+      (error "Could not find 'uv' executable"))
+    (unwind-protect
+        (progn
+          ;; Write current buffer content (including unsaved changes) to temp file
+          (write-region (point-min) (point-max) temp-file nil 'quiet)
+          ;; Let uv modify the temp file
+          (if (zerop (call-process uv nil "*uv-output*" t "add" "--script" temp-file dependency))
+              (progn
+                ;; Replace buffer content with modified temp file content.
+                ;; This is undo-friendly and preserves markers.
+                (insert-file-contents temp-file nil nil nil t)
+                (message "Added dependency '%s'" dependency))
+            (error "Failed to add dependency. See *uv-output* buffer for details")))
+      ;; Ensure cleanup
+      (when (file-exists-p temp-file)
+        (delete-file temp-file)))))
+
 (defun dcpe/uv-get-pythonexe (file-name)
   "Ensure that uv magic invisible venv is built, then find the python
 interpreter. On Windows, the result will be something like
-C:/Users/me/AppData/Local/uv/cache/env-v2/filename-af3c4e/Scripts/python.exe
-"
-  ;; Ensure uv has built the venv at least once
-  (if (file-exists-p (executable-find "uv"))
-      (progn
-        (with-temp-buffer
-          (call-process "uv" nil '(t t) nil "sync" "--script" file-name))
-        ;; Now that it's built, get the string.
-        (with-temp-buffer
-          (if (zerop (call-process "uv" nil '(t t) nil "python" "find" "--script" file-name))
-              (if-let* ((pythonexe (string-trim (buffer-string)))
-                        (truname (file-truename pythonexe))
-                        (_ (file-exists-p truname)))
-                  truname
-                (error "uv found venv python for %s but it does not exist" file-name))
-            (error "uv could not find/build venv python for %s" file-name))))
-    (error "emacs could not find uv. is it installed?")))
+C:/Users/me/AppData/Local/uv/cache/env-v2/filename-af3c4e/Scripts/python.exe"
+  (let ((uv (executable-find "uv")))
+    (unless uv
+      (error "Could not find 'uv' executable"))
+    ;; Ensure uv has built the venv at least once
+    (with-temp-buffer
+      (call-process uv nil '(t t) nil "sync" "--script" file-name))
+    ;; Now that it's built, get the string.
+    (with-temp-buffer
+      (if (zerop (call-process uv nil '(t t) nil "python" "find" "--script" file-name))
+          (if-let* ((pythonexe (string-trim (buffer-string)))
+                    (truname (file-truename pythonexe))
+                    (_ (file-exists-p truname)))
+              truname
+            (error "uv found venv python for %s but it does not exist" file-name))
+        (error "uv could not find/build venv python for %s" file-name)))))
 
 (defvar dcpe/basedpyright-base-config
   (list :basedpyright.analysis
@@ -341,6 +367,33 @@ Returns the inferred list of modules as a string like \"[ \"mod1\", \"mod2\" ]\"
                     (match-string 0 text)
                   (error "Could not find a dependency list in Gemini's response: %s" text))
               (error "Unexpected response format from Gemini"))))))))
+
+(defun dcpe/gpylint ()
+  "Run gpylint on the file in the currently visited buffer."
+  (interactive)
+  (if (and buffer-file-name
+           (derived-mode-p 'python-base-mode))
+      (let ((gpylint (executable-find "gpylint")))
+        (unless gpylint
+          (error "Could not find 'gpylint' executable"))
+        (let* ((command
+                (concat
+                 gpylint " --mode=base --output-format=text --msg-template='{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}' "
+                 buffer-file-name)))
+          (compilation-start command )))))
+
+(defun dcpe/pyformat ()
+  "Run pyformat on the file in the currently visited buffer."
+  (interactive)
+  (if (and buffer-file-name
+           (derived-mode-p 'python-base-mode))
+      (let ((pyformat (executable-find "pyformat")))
+        (unless pyformat
+          (error "Could not find 'pyformat' executable"))
+        (let* ((command (concat pyformat " -i " buffer-file-name)))
+          (compilation-start command )))))
+
+
 
 (provide 'dino-python-extensions)
 
