@@ -1,0 +1,9 @@
+# key : vrun
+# name : function vrun() {...}
+# --
+
+vrun() {
+  echo 1>&2 "+[$${{SHLVL}}] $*"
+  "$@"
+}
+$0
