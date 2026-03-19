@@ -57,6 +57,8 @@
                                        (replace-regexp-in-string "\\\\" "/" (getenv "HOME")))
              "/.emacs.d/elpa/gnupg")))
 
+(defvar dpc/hostname (system-name)
+  "The hostname of the machine Emacs is running on.")
 
 ;; (concat
 ;;  (replace-regexp-in-string "\\\\" "/" (getenv "HOME")) "/.emacs.d/elpa/gnupg")
@@ -3714,6 +3716,7 @@ Does not consider word syntax tables.
               ("ESC #"   . dino/toggle-flymake-diagnostics)
               ("C-c p f" . dcpe/pyformat)
               ("C-c p l" . dcpe/gpylint)
+              ;; TODO: add in "p4 edit FILENAME" as another command
               ("C-c C-c" . comment-region)
               ("C-c C-d" . delete-trailing-whitespace)
               ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
@@ -3897,10 +3900,20 @@ in flymake."
           "--assume_filename" filepath
           ))
 
-  ;; TODO: make pyformat for work machine, ruff for others
   ;;(setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-isort ruff))
-  (setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-custom ruff pyformat))
-  (setf (alist-get 'python-ts-mode apheleia-mode-alist) '(ruff-custom ruff pyformat)))
+
+  ;; make pyformat for work machine, ruff for others
+  (let ((python-formatters
+         (if (member (system-name) '("dpchiesa.c.googlers.com" "dchiesa35"))
+             '(pyformat)
+           '(ruff-custom ruff))))
+    (dolist (mode '(python-mode python-ts-mode))
+      (setf (alist-get mode apheleia-mode-alist) python-formatters)))
+
+  ;;(setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-custom ruff pyformat))
+  ;;(setf (alist-get 'python-ts-mode apheleia-mode-alist) '(ruff-custom ruff pyformat))
+
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
