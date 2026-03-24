@@ -492,7 +492,9 @@
 ;; )
 
 (use-package uniline
-  ;; easily make line drawings with unicode symbols.
+  ;; Easily make line drawings with unicode symbols.
+  ;; To use: M-x uniline-mode
+  :ensure t
   :defer t)
 
 (if ;;(or (not (eq system-type 'windows-nt))
