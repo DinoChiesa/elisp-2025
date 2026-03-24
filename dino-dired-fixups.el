@@ -121,12 +121,13 @@ initial sort."
 
            ;; Rotate among the available sort switches.
            (t
-            ;; Strip off the time-format switch, which this logic forces to always
-            ;; be prefixed to any dired switches.
+            ;; Strip off the time-format switch. The logic in this module
+            ;; currently forces it to always be suffixed to any dired switches.
             (let ((switches-without-time-format
                    (s-trim
                     (if (not (s-blank? dino-dired-time-format-switch))
-                        (s-chop-prefix dino-dired-time-format-switch dired-actual-switches)
+                        (s-chop-prefix dino-dired-time-format-switch
+                                       (s-chop-suffix dino-dired-time-format-switch dired-actual-switches))
                       dired-actual-switches))))
 
               ;; The following will rotate the sorting switches, and then re-apply the time
@@ -166,7 +167,12 @@ initial sort."
   (dino-dired-sort-set-modeline dired-actual-switches)
   (if (not (s-blank? dino-dired-time-format-switch))
       (setq dired-actual-switches
-            (concat dino-dired-time-format-switch " " dired-actual-switches)))
+            ;; 20260228-1401 - On windows anyway (maybe because of ls-lisp?) if
+            ;; the time-format switch appears before the other "-la?" switches,
+            ;; then the 'a' is apparently ignored, which means the dot and
+            ;; double-dot (current and parent dir) are not shown in dired. So
+            ;; this logic appends the time-format switch.
+            (concat dired-actual-switches " " dino-dired-time-format-switch)))
 
   (revert-buffer))
 
@@ -367,7 +373,7 @@ typing M-n ."
 (setq dired-use-ls-dired nil)
 
 
-(setq dired-listing-switches (concat dino-dired-time-format-switch " -la"))
+(setq dired-listing-switches (concat "-la " dino-dired-time-format-switch))
 ;; (setq dired-actual-switches "--time-style=long-iso -laS")
 
 (provide 'dino-dired-fixups)
