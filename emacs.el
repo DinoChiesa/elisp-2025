@@ -366,10 +366,28 @@
   ;; . Contents of that file should be like: { "parser": "babel-flow",
   ;; "tabWidth": 2 } And then the formatter config is simple:
 
-  (if-let* ((prettierd (executable-find "prettierd")))
+  ;; 20260321-1544
+  ;; Suddenly this is no longer working. It was prepending "sh" to the command for
+  ;; some reason. Apheleia is opaque.
+
+  (if-let* ((prettier (executable-find "prettierd")))
       (setf (alist-get 'prettier-javascript apheleia-formatters)
-            '("prettierd" filepath "--parser=babel-flow"
-              (s-join "=" (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))))
+            `(
+              ;;,prettier
+              "C:\\nvm4w\\nodejs\\node_modules\\@fsouza\\prettierd\\bin\\prettierd"
+              ;;"--stdin-filepath" filepath
+              "--parser=babel-flow"
+              (s-join "=" (apheleia-formatters-js-indent "--use-tabs" "--tab-width"))
+              file)))
+
+
+  ;; 20260321-1547
+  ;; This also does not work.  RRRRrrrrrr.
+  ;;
+  ;; (if-let* ((prettier (executable-find "prettier")))
+  ;;     (setf (alist-get 'prettier-javascript apheleia-formatters)
+  ;;           `(,prettier filepath "--parser" "babel-flow"
+  ;;             (s-join " " (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))))
 
   ;; 20251025-0909
   ;;
@@ -4120,7 +4138,6 @@ counteracts that. "
                     (typescript-mode :language-id "typescript"))
                    . ("vtsls" "--stdio"))))
 
-
 ;; fix when broken
 ;; (setq eglot-server-programs (assoc-delete-all '(js-mode js-ts-mode typescript-ts-mode) eglot-server-programs ))
 ;;
@@ -4134,11 +4151,13 @@ counteracts that. "
 ;; for {jshint, jslint, flycheck javascript-jshint} to work,
 ;; the path  ust have been previously set correctly.
 
+;; 20260322-1241 - for eslint "stylish" error messages
+(add-to-list 'compilation-error-regexp-alist 'eslint-stylish)
+(add-to-list 'compilation-error-regexp-alist-alist
+             '(eslint-stylish
+               "^\\(?:[[:alpha:]]:\\)?\\([^ \t\n]+\\)\n\\(?:[ \t]+\\([0-9]+\\):\\([0-9]+\\)[ \t]+\\(?:error\\|warning\\)\\)"
+               1 2 3))
 
-;; 20241215-0000
-;; I think I probably no longer need these fixups, with all the
-;; improvements in js-mode over the years. Let's try.
-;; (require 'js-mode-fixups)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(require 'aspx-mode)
