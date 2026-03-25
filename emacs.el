@@ -358,17 +358,30 @@
   ;;
   ;; install prettierd with "npm install -g prettierd"
   ;;
-  ;; prettierd (https://github.com/fsouza/prettierd) is significantly faster
-  ;; than using prettier alone. At first I had trouble, trying to pass
-  ;; formatting arguments to the prettierd command. prettierd does not support
-  ;; spaces between arguments, so "--tab-width" "2" does not work. But
-  ;; "--tab-with=2" works. Or, prettierd can read options from .prettierrc
+  ;; prettierd is sort of a garage project that turns prettier into a daemon.
+  ;; It wraps prettier, supplants it, but does not fully replace it.
+  ;;
+  ;; Using prettierd (https://github.com/fsouza/prettierd) is significantly faster
+  ;; than using prettier alone, because the prettier process remains running.
+  ;;
+  ;; At first I had trouble, trying to pass formatting arguments to the
+  ;; prettierd command. prettierd does not support spaces between arguments in
+  ;; the same way that prettier does, so "--tab-width" "2" does not work. But
+  ;; "--tab-with=2" works. Also, prettierd can read options from .prettierrc
   ;; . Contents of that file should be like: { "parser": "babel-flow",
   ;; "tabWidth": 2 } And then the formatter config is simple:
 
   ;; 20260321-1544
   ;; Suddenly this is no longer working. It was prepending "sh" to the command for
-  ;; some reason. Apheleia is opaque.
+  ;; some reason, which failed on Windows of course. Apheleia is opaque.
+  ;;
+  ;; 20260324-1603
+  ;; I had enough trouble that I eventually resorted to hard-coding the path of the
+  ;; prettierd command. I am sure this is not right, but it worked in a pinch.
+  ;; I am revisiting it now.
+
+  ;; this works:
+  ;;  type ~\dev\apigeelint\cli.js | node C:\nvm4w\nodejs\node_modules\@fsouza\prettierd\bin\prettierd --stdin-filepath ~\dev\apigeelint\cli.js
 
   (if-let* ((prettier (executable-find "prettierd")))
       (setf (alist-get 'prettier-javascript apheleia-formatters)
@@ -743,13 +756,12 @@ dumb. This cstuom completing-read fn keeps the previous sort order.
 To use it:
 
   (setq magit-completing-read-function
-        #'dino/magit-completing-read)
+        #\\='dino/magit-completing-read)
 
 20251219-1514 - In magit-20251215.2222, baaed on code inspection of
 `magit-builtin-completing-read', it looks like the
-`magit--completion-table' uses 'identity for sort, which would make this
-workaround unnecessary. I haven't tested it.
-
+`magit--completion-table' uses \\='identity for sort, which would make this
+workaround unnecessary. I haven\\='t tested it.
 
 However, this function could be extended to use different sort order
 based on the prompt, should the need arise in the future."
@@ -2631,7 +2643,7 @@ compile: cl.exe /I uthash
 
 It's ok to have whitespace between the marker and the following
 colon."
-  (let (start search-limit found)
+  (let (start search-limit)
     ;; determine what lines to look in
     (save-excursion
       (save-restriction
@@ -2897,8 +2909,7 @@ colon."
                  "="
                  "[ \t\n\r\f\v]*"
                  "@?\""
-                 ))
-        tmp)
+                 )))
 
     (save-excursion
 
@@ -2933,9 +2944,9 @@ colon."
           (back-to-indentation)
           (c-backward-syntactic-ws)
           (back-to-indentation)
-          (setq tmp (or
-                     (looking-at string-decl-regex)
-                     (looking-at "@?\""))))
+          (or
+           (looking-at string-decl-regex)
+           (looking-at "@?\"")))
 
         (goto-char (if (eq (char-after (match-beginning 0)) ?@)
                        (match-beginning 0)
@@ -4104,6 +4115,14 @@ counteracts that. "
   ;;   (eglot-ensure))
 
   (apheleia-mode)
+  ;; For flycheck:
+  ;; npm install -g eslint
+  ;; npm install -g eslint_d
+  ;; C-c ! v - VERIFY - to check configuration in the buffer
+  ;; C-c ! l - LIST - to see the list of errors for the given buffer.
+  (flycheck-mode)
+  (flycheck-select-checker 'javascript-eslint)
+  (setq-default flycheck-javascript-eslint-executable "eslint_d")
   (electric-pair-mode)
   (electric-operator-mode)
 
