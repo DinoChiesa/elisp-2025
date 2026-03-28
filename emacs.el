@@ -384,14 +384,18 @@
   ;;  type ~\dev\apigeelint\cli.js | node C:\nvm4w\nodejs\node_modules\@fsouza\prettierd\bin\prettierd --stdin-filepath ~\dev\apigeelint\cli.js
 
   (if-let* ((prettier (executable-find "prettierd")))
-      (setf (alist-get 'prettier-javascript apheleia-formatters)
-            `(
-              ;;,prettier
-              "C:\\nvm4w\\nodejs\\node_modules\\@fsouza\\prettierd\\bin\\prettierd"
-              ;;"--stdin-filepath" filepath
-              "--parser=babel-flow"
-              (s-join "=" (apheleia-formatters-js-indent "--use-tabs" "--tab-width"))
-              file)))
+      (progn
+        (setf (alist-get 'prettier-javascript apheleia-formatters)
+              `(
+                ;;,prettier
+                ;; TODO: fix this hard-coded path
+                "C:\\nvm4w\\nodejs\\node_modules\\@fsouza\\prettierd\\bin\\prettierd"
+                ;;"--stdin-filepath" filepath
+                "--parser=babel-flow"
+                (s-join "=" (apheleia-formatters-js-indent "--use-tabs" "--tab-width"))
+                file))
+        (require 'dino-prettierd-cleanup)
+        ))
 
 
   ;; 20260321-1547
