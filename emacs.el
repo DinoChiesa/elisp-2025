@@ -4119,18 +4119,26 @@ counteracts that. "
   ;;   (eglot-ensure))
 
   (apheleia-mode)
-  ;; For flycheck:
-  ;; npm install -g eslint
-  ;; npm install -g eslint_d
-  ;; C-c ! v - VERIFY - to check configuration in the buffer
-  ;; C-c ! l - LIST - to see the list of errors for the given buffer.
-  (flycheck-mode)
-  (flycheck-select-checker 'javascript-eslint)
-  (setq-default flycheck-javascript-eslint-executable "eslint_d")
-  (electric-pair-mode)
-  (electric-operator-mode)
 
-  ;; Avoid the error seen with vtsls:
+  ;; 20260328-1815
+  ;; json-mode is derivative of js-mode, but flycheck is not
+  ;; needed there.
+  (unless (memq major-mode '(json-mode json-ts-mode))
+    ;; Preparatory steps for flycheck:
+    ;;   npm install -g eslint
+    ;;   npm install -g eslint_d
+    ;; Usage hints:
+    ;; C-c ! v - VERIFY - to check configuration in the buffer
+    ;; C-c ! l - LIST - to see the list of errors for the given buffer.
+
+    (flycheck-mode)
+    (flycheck-select-checker 'javascript-eslint)
+    (setq-default flycheck-javascript-eslint-executable "eslint_d")
+    ;; also the electric operator stuff, and maybe electric-pair too
+    (electric-operator-mode)
+    (electric-pair-mode))
+
+  ;; Obscure. Avoid the error seen with vtsls:
   ;; "Request textDocument/onTypeFormatting failed with message: Cannot find provider for onTypeFormatting, the feature is possibly not supported by the current TypeScript version or disabled by settings."
   ;; Will apply only to the current buffer and not affect other buffers.
   (setopt eglot-ignored-server-capabilities (list :documentOnTypeFormattingProvider))
