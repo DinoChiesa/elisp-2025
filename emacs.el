@@ -211,10 +211,18 @@
   :defer t
   :ensure t)
 
+;; not sure if this qualifies as "must have", but w.e.
 (use-package el-xeger
   :defer t
   :autoload (el-xeger-from-rx el-xeger-from-exp)
   )
+
+(use-package bm
+  ;; visual bookmarks.  bm-toggle to use them.
+  ;; bm-next to move, etc.
+  :defer 39
+  :ensure t)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; my own various unorganized utility functions
@@ -237,7 +245,7 @@
              dino/setup-shmode-for-apheleia
              dino/find-executable-in-paths)
   :config
-  (dino/cleanup-stale-elpa-packages) ;; try once on startup
+  (dino/cleanup-stale-elpa-packages) ;; clean old stuff on startup
   (add-hook 'before-save-hook 'dino/untabify-maybe))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -245,6 +253,7 @@
 ;;
 (use-package peggy-mode
   :load-path "~/elisp"
+  :if (file-exists-p "~/elisp/peggy-mode.el")
   :pin manual
   :commands (peggy-mode))
 
@@ -484,7 +493,6 @@
   ;; openssl utility. Untested on Windows as yet.
   :defer 36
   :ensure t)
-
 
 (use-package visible-auto-revert
   ;; A layer on top of auto-revert-mode, It reverts only those buffers that are
@@ -3747,6 +3755,7 @@ Does not consider word syntax tables.
               ("ESC #"   . dino/toggle-flymake-diagnostics)
               ("C-c p f" . dcpe/pyformat)
               ("C-c p l" . dcpe/gpylint)
+              ("C-c p r" . dcpe/refactor-multiline-imports)
               ;; TODO: add in "p4 edit FILENAME" as another command
               ("C-c C-c" . comment-region)
               ("C-c C-d" . delete-trailing-whitespace)
@@ -4880,6 +4889,7 @@ the local buffer."
 (define-key global-map (kbd "C-c j f")     #'json-pretty-print)
 (define-key global-map (kbd "C-c j m")     #'json-minify-region)
 (define-key global-map (kbd "C-x c")     #'multiple-cursors-mode)
+(define-key global-map (kbd "<f2> SPC")    #'bm-toggle)
 
 (define-key prog-mode-map (kbd "C-c g d")  #'chatgpt-shell-describe-code)
 (define-key prog-mode-map (kbd "C-c C-c")  #'comment-region)
@@ -4900,6 +4910,7 @@ the local buffer."
 (define-key key-translation-map (kbd "\C-x 8 p") (kbd "π")) ;; pi - 03C0
 (define-key key-translation-map (kbd "\C-x 8 >") (kbd "»")) ;; right double arrow - 0BB
 (define-key key-translation-map (kbd "\C-x 8 <") (kbd "«")) ;; left double arrow - 0AB
+(define-key key-translation-map (kbd "\C-x 8 t") (kbd "∴")) ;; therefore - &#x2234;
 
 (setq debug-on-error nil)
 
