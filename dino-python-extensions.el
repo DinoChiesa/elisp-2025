@@ -308,6 +308,40 @@ existence."
           basedpyright))
     "ruff check"))
 
+(defun dcpe/refactor-multiline-imports ()
+  "Refactor multiline imports \"from ... import (...)\" into multiple single-
+line imports.
+
+This handles indentation and preserves \"as\" aliases. It also attempts to
+strip comments within the import block."
+  (interactive)
+  (unless (derived-mode-p 'python-mode 'python-ts-mode)
+    (error "Current buffer is not in python-mode or python-ts-mode"))
+  (let ((count 0))
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "^\\([ \t]*\\)from \\([^ \t\n]+\\) import\\s-*(" nil t)
+        (let* ((indent (match-string 1))
+               (module (match-string 2))
+               (open-paren-pos (match-end 0))
+               (start-of-import (match-beginning 0)))
+          (backward-char) ;; move back to the '('
+          (condition-case nil
+              (let ((end-of-import (progn (forward-list) (point))))
+                (let* ((symbols-text (buffer-substring-no-properties open-paren-pos (1- end-of-import)))
+                       ;; Strip comments
+                       (clean-symbols-text (replace-regexp-in-string "#.*" "" symbols-text))
+                       ;; Split by comma, trim whitespace, and filter empty strings
+                       (symbols (delete "" (mapcar #'string-trim (split-string clean-symbols-text "," t))))
+                       (new-imports (mapconcat (lambda (s) (format "%sfrom %s import %s" indent module s))
+                                               symbols
+                                               "\n")))
+                  (delete-region start-of-import end-of-import)
+                  (insert new-imports)
+                  (setq count (1+ count))))
+            (error (goto-char (line-end-position)))))))
+    (message "Refactored %d multiline import(s)." count)))
+
 (defun dcpe/extract-python-imports ()
   "Scan the current buffer and extract Python import statements.
 Verifies that the buffer is in ='python-mode'= or ='python-ts-mode'=.
