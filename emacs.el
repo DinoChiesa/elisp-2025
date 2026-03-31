@@ -393,14 +393,18 @@
   ;;  type ~\dev\apigeelint\cli.js | node C:\nvm4w\nodejs\node_modules\@fsouza\prettierd\bin\prettierd --stdin-filepath ~\dev\apigeelint\cli.js
 
   (if-let* ((prettier (executable-find "prettierd")))
-      (setf (alist-get 'prettier-javascript apheleia-formatters)
-            `(
-              ;;,prettier
-              "C:\\nvm4w\\nodejs\\node_modules\\@fsouza\\prettierd\\bin\\prettierd"
-              ;;"--stdin-filepath" filepath
-              "--parser=babel-flow"
-              (s-join "=" (apheleia-formatters-js-indent "--use-tabs" "--tab-width"))
-              file)))
+      (progn
+        (setf (alist-get 'prettier-javascript apheleia-formatters)
+              `(
+                ;;,prettier
+                ;; TODO: fix this hard-coded path
+                "C:\\nvm4w\\nodejs\\node_modules\\@fsouza\\prettierd\\bin\\prettierd"
+                ;;"--stdin-filepath" filepath
+                "--parser=babel-flow"
+                (s-join "=" (apheleia-formatters-js-indent "--use-tabs" "--tab-width"))
+                file))
+        (require 'dino-prettierd-cleanup)
+        ))
 
 
   ;; 20260321-1547
@@ -4124,18 +4128,26 @@ counteracts that. "
   ;;   (eglot-ensure))
 
   (apheleia-mode)
-  ;; For flycheck:
-  ;; npm install -g eslint
-  ;; npm install -g eslint_d
-  ;; C-c ! v - VERIFY - to check configuration in the buffer
-  ;; C-c ! l - LIST - to see the list of errors for the given buffer.
-  (flycheck-mode)
-  (flycheck-select-checker 'javascript-eslint)
-  (setq-default flycheck-javascript-eslint-executable "eslint_d")
-  (electric-pair-mode)
-  (electric-operator-mode)
 
-  ;; Avoid the error seen with vtsls:
+  ;; 20260328-1815
+  ;; json-mode is derivative of js-mode, but flycheck is not
+  ;; needed there.
+  (unless (memq major-mode '(json-mode json-ts-mode))
+    ;; Preparatory steps for flycheck:
+    ;;   npm install -g eslint
+    ;;   npm install -g eslint_d
+    ;; Usage hints:
+    ;; C-c ! v - VERIFY - to check configuration in the buffer
+    ;; C-c ! l - LIST - to see the list of errors for the given buffer.
+
+    (flycheck-mode)
+    (flycheck-select-checker 'javascript-eslint)
+    (setq-default flycheck-javascript-eslint-executable "eslint_d")
+    ;; also the electric operator stuff, and maybe electric-pair too
+    (electric-operator-mode)
+    (electric-pair-mode))
+
+  ;; Obscure. Avoid the error seen with vtsls:
   ;; "Request textDocument/onTypeFormatting failed with message: Cannot find provider for onTypeFormatting, the feature is possibly not supported by the current TypeScript version or disabled by settings."
   ;; Will apply only to the current buffer and not affect other buffers.
   (setopt eglot-ignored-server-capabilities (list :documentOnTypeFormattingProvider))
