@@ -1697,6 +1697,7 @@ then switch to the markdown output buffer."
           (electric-pair-mode 1)
           (hs-minor-mode t)
           (display-line-numbers-mode) ;; powershell-mode is not derived from prog-mode
+          (apheleia-mode)
           (add-hook 'before-save-hook #'delete-trailing-whitespace nil t)
           (let ((local-map (current-local-map))) ;; powershell-mode-map / powershell-ts-mode-map
             (when local-map
@@ -1719,6 +1720,17 @@ then switch to the markdown output buffer."
   (add-to-list 'auto-mode-alist '("\\.psm1\\'" . powershell-mode))
   (eval-after-load "hideshow"
     '(progn
+       ;; The following requires:
+       ;;  Install-Module -Name PSScriptAnalyzer -Force
+       (setf (alist-get 'pwsh-format apheleia-formatters)
+        `("pwsh" "-NoProfile" "-Command"
+          ,(concat "Invoke-Formatter "
+            "-ScriptDefinition ($input | Out-String) "
+            "-Settings @{IncludeDefaultRules=$true; "
+            "Rules=@{PSUseConsistentIndentation=@{Enable=$true; IndentationSize=2}} }")))
+       (setf (alist-get 'powershell-mode apheleia-mode-alist) 'pwsh-format)
+       (setf (alist-get 'powershell-ts-mode apheleia-mode-alist) 'pwsh-format)
+
        ;; hideshow for powershell
        (setq dpc-hs-settings-for-powershell-mode
         '(powershell-mode
