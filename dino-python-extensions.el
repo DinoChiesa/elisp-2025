@@ -260,6 +260,79 @@ python-mode-hook before `eglot-ensure'."
     (executable-find "basedpyright")))
 
 
+(defun dcpe/find-pyformat ()
+  "Find pyformat on the current machine."
+  (executable-find "pyformat"))
+
+
+(defvar-local dcpe/flymake-gpylint-process nil)
+
+(defun dcpe/flymake-gpylint (report-fn &rest _args)
+  "Flymake backend for gpylint.
+This pipes the current buffer content to gpylint via stdin
+and parses the output into diagnostics. Using --from-stdin
+allows gpylint to report the correct filename in its output."
+  (let ((gpylint (executable-find "gpylint"))
+        (file-name (buffer-file-name)))
+    (unless gpylint
+      (error "Cannot find gpylint executable"))
+
+    (when (processp dcpe/flymake-gpylint-process)
+      (delete-process dcpe/flymake-gpylint-process))
+
+    (let ((source (current-buffer)))
+      (setq dcpe/flymake-gpylint-process
+            (make-process
+             :name "gpylint-flymake"
+             :noquery t
+             :connection-type 'pipe
+             :buffer (generate-new-buffer " *gpylint-flymake*")
+             :command (list gpylint
+                            "--mode=base"
+                            ;;"--output-format=msvs"
+                            "--from-stdin"
+                            "--msg-template={path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"
+                            (or file-name "stdin"))
+             :sentinel
+             (lambda (process _event)
+               (when (eq (process-status process) 'exit)
+                 (unwind-protect
+                     (when (buffer-live-p source)
+                       (with-current-buffer (process-buffer process)
+                         (goto-char (point-min))
+                         (let ((diags nil))
+                           ;; this regex corresponds to the --msg-template used above
+                           (while (re-search-forward "^.+:\\([0-9]+\\): \\[[[:space:]]*\\([CRWEF]\\)\\([0-9]+\\)(\\([^)]+\\)),[[:space:]]*\\([^]]*\\)\\] \\(.*\\)$" nil t)
+                             (let* ((line (string-to-number (match-string 1)))
+                                    (type-char (match-string 2))
+                                    (raw-msg (match-string 6))
+                                    ;; If it's a syntax error, Pylint strips the extension in the msg.
+                                    ;; We put it back for clarity.
+                                    (msg (if (and file-name (string-match (concat "(" (file-name-base file-name) ", line ") raw-msg))
+                                             (replace-regexp-in-string (concat "(" (file-name-base file-name) ", line ")
+                                                                       (concat "(" (file-name-nondirectory file-name) ", line ")
+                                                                       raw-msg)
+                                           raw-msg))
+                                    (severity (cond
+                                               ((member type-char '("E" "F")) :error)
+                                               ((string= type-char "W") :warning)
+                                               (t :note)))
+                                    (region (flymake-diag-region source line)))
+                               (push (flymake-make-diagnostic source
+                                                              (car region)
+                                                              (cdr region)
+                                                              severity
+                                                              msg)
+                                     diags)))
+                           (funcall report-fn diags))))
+                   (when (buffer-live-p (process-buffer process))
+                     (kill-buffer (process-buffer process))))))))
+
+      ;; Send the buffer content to gpylint's stdin
+      (process-send-region dcpe/flymake-gpylint-process (point-min) (point-max))
+      (process-send-eof dcpe/flymake-gpylint-process))))
+
+
 (defun dcpe/rename-python-check-buffer ()
   "Rename the Python check buffer to omit the full command. Without this,
 the name of the compilation buffer can be over 180 characters. Not helpful."

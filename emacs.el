@@ -108,7 +108,7 @@
 (setq python-shell-interpreter "python") ;; not python3
 (setq-default show-trailing-whitespace t)
 (setq-default fill-column 80)
-
+(setq project-vc-extra-root-markers '("pyproject.toml" "pyrightconfig.json" ".project"))
 
 (add-to-list 'load-path "~/elisp")
 
@@ -855,6 +855,10 @@ based on the prompt, should the need arise in the future."
                  (memq 'json-mode key)
                (eq 'json-mode key))))
          eglot-server-programs))
+
+  ;; 20260404-1422 - Use Basedpyright via uvx for full intelligence and M-. support.
+  (add-to-list 'eglot-server-programs
+               '((python-mode python-ts-mode) . ("uvx" "--from" "basedpyright" "basedpyright-langserver" "--stdio")))
 
   ;; NOTE: you still must invoke M-x eglot to start the server. or `eglot-ensure'
   ;; in the mode hook.
@@ -3767,10 +3771,10 @@ Does not consider word syntax tables.
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("ESC C-R" . indent-region) ;; not sure if useful in python
-              ("C-<tab>" . company-complete)
+              ("M-TAB" . company-complete)
               ("ESC #"   . dino/toggle-flymake-diagnostics)
-              ("C-c p f" . dcpe/pyformat)
-              ("C-c p l" . dcpe/gpylint)
+              ("C-c p f" . dcpe/pyformat) ;; should be unnecessary with apheleia
+              ("C-c p l" . dcpe/gpylint)  ;; should be unnecessary with flymake
               ("C-c p r" . dcpe/refactor-multiline-imports)
               ;; TODO: add in "p4 edit FILENAME" as another command
               ("C-c C-c" . comment-region)
@@ -3789,7 +3793,14 @@ Does not consider word syntax tables.
   (customize-set-variable 'apheleia-formatters-respect-fill-column t)
   (customize-set-variable 'apheleia-formatters-respect-indent-level t)
   (setq fill-column 80)
+
+  (cond
+   ((dcpe/find-pyformat)
+    (setq-local apheleia-formatter 'pyformat))
+   ((executable-find "ruff")
+    (setq-local apheleia-formatter 'ruff)))
   (apheleia-mode)
+
   (company-mode)
   (electric-pair-mode)
 
@@ -3801,21 +3812,26 @@ Does not consider word syntax tables.
   ;; never run anyway.
   ;;
   ;; Ordering is important. Set the  `flymake-diagnostic-functions', then enable flymake.
-  (setq-local python-flymake-command '("ruff" "check")) ;; failsafe
   (remove-hook 'flymake-diagnostic-functions #'python-flymake t)
-  (when (executable-find "ruff")
+
+  ;; 20260404-1234 - Tell eglot not to add diagnostics to flymake.
+  ;; This avoids duplicates with our custom flymake backend.
+  (setq-local eglot-stay-out-of '(flymake))
+
+  (cond
+   ((executable-find "gpylint")
+    (add-hook 'flymake-diagnostic-functions #'dcpe/flymake-gpylint nil t))
+   ((executable-find "ruff")
     (require 'flymake-ruff)
-    ;;(flymake-ruff-load) ;; this is equivalent to the following add-hook
-    (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t))
-  ;; But! the above gets wiped out by eglot. So I re-add it later, see
-  ;; `dino-repair-eglot-python-flymake-setup'.
+    (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t)))
+
   (flymake-mode)
 
-  (flycheck-mode)
-  (setq flycheck-python-pylint-executable "gpylint") ;; This isn't working.
-  (setq flycheck-pylintrc nil)
-  (setq flycheck-check-syntax-automatically '(save idle-change mode-enable)) ;; check on save, idle and mode-change
-  (setq flycheck-idle-change-delay 4)
+  ;; (flycheck-mode)
+  ;; (setq flycheck-python-pylint-executable "gpylint") ;; This isn't working.
+  ;; (setq flycheck-pylintrc nil)
+  ;; (setq flycheck-check-syntax-automatically '(save idle-change mode-enable)) ;; check on save, idle and mode-change
+  ;; (setq flycheck-idle-change-delay 4)
 
   (dcpe/setup-basedpyright-lsp-workspace-handling)
   (eglot-ensure) ;; eglot will use "pyright". Installing basedpyright satisfies this.
@@ -3851,53 +3867,54 @@ Does not consider word syntax tables.
   (when (executable-find "ruff")
     (setq-local compile-command "ruff check .")) ;; for M-x compile, checks the entire project
 
-  (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t) )
+  (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t)
 
 
-;; try to keep placement of flymake diags ... at the bottom, and smallish.
-(add-to-list 'display-buffer-alist
-             '("\\*Flymake diagnostics.*"
-               (display-buffer-reuse-window display-buffer-at-bottom)
-               (window-height . (lambda (window)
-                                  (fit-window-to-buffer window 9))) ;; max 9 lines
-               (preserve-size . (nil . t)))) ;; Try to keep it that size
+  ;; try to keep placement of flymake diags ... at the bottom, and smallish.
+  (add-to-list 'display-buffer-alist
+               '("\\*Flymake diagnostics.*"
+                 (display-buffer-reuse-window display-buffer-at-bottom)
+                 (window-height . (lambda (window)
+                                    (fit-window-to-buffer window 9))) ;; max 9 lines
+                 (preserve-size . (nil . t)))) ;; Try to keep it that size
 
-(defun dino-repair-eglot-python-flymake-setup ()
-  "Add ruff to flymake when eglot is managing a python buffer.
+  ;; (defun dino-repair-eglot-python-flymake-setup ()
+  ;;   "Add ruff to flymake when eglot is managing a python buffer.
+  ;;
+  ;; Upon startup, eglot overwrites the `flymake-diagnostic-functions' and
+  ;; removes `flymake-ruff', and anything else. The final value becomes
+  ;; `(eglot-flymake-backend)'.  The purpose of this function is to add ruff back.
+  ;;
+  ;; pyright (the LSP) is great at Type checking but ruff is much faster and
+  ;; better at linting.  By using eglot(pyright) and ruff, I get both checks
+  ;; in flymake."
+  ;;   (when (derived-mode-p 'python-base-mode)
+  ;;     (when (executable-find "ruff")
+  ;;       (require 'flymake-ruff)
+  ;;       (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t))))
+  ;;
+  ;; (add-hook 'eglot-managed-mode-hook #'dino-repair-eglot-python-flymake-setup)
 
-Upon startup, eglot overwrites the `flymake-diagnostic-functions' and
-removes `flymake-ruff', and anything else. The final value becomes
-`(eglot-flymake-backend)'.  The purpose of this function is to add ruff back.
 
-pyright (the LSP) is great at Type checking but ruff is much faster and
-better at linting.  By using eglot(pyright) and ruff, I get both checks
-in flymake."
-  (when (derived-mode-p 'python-base-mode)
-    (when (executable-find "ruff")
-      (require 'flymake-ruff)
-      (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t))))
+  ;; rass is an LSP Multiplexer.
 
-(add-hook 'eglot-managed-mode-hook #'dino-repair-eglot-python-flymake-setup)
-
-
-;; rass is an LSP Multiplexer.
-
-;; The reason to use it: each particular LSP does not give the complete set of
-;; desired features.
-;;
-;; see https://www.reddit.com/r/emacs/comments/1pkan2e/comment/ntwju3t/?context=1
-;;
-;; So with rassumfrassum, you can get the superset of features from multiple
-;; LSPs.
-;;
-;; (with-eval-after-load 'eglot
-;;   (add-to-list 'eglot-server-programs
-;;                ;; https://www.reddit.com/r/emacs/comments/1pkan2e/comment/ntwju3t/?context=1
-;;                ;; https://github.com/joaotavora/rassumfrassum
-;;                ;; see also ~/.config/rassumfrassum/PRESET.py
-;;                ;;
-;;                ;; due to https://github.com/python/cpython/issues/71019
-;;                '(python-base-mode . ("rass" "python") )))
+  ;; The reason to use it: each particular LSP does not give the complete set of
+  ;; desired features.
+  ;;
+  ;; see https://www.reddit.com/r/emacs/comments/1pkan2e/comment/ntwju3t/?context=1
+  ;;
+  ;; So with rassumfrassum, you can get the superset of features from multiple
+  ;; LSPs.
+  ;;
+  ;; (with-eval-after-load 'eglot
+  ;;   (add-to-list 'eglot-server-programs
+  ;;                ;; https://www.reddit.com/r/emacs/comments/1pkan2e/comment/ntwju3t/?context=1
+  ;;                ;; https://github.com/joaotavora/rassumfrassum
+  ;;                ;; see also ~/.config/rassumfrassum/PRESET.py
+  ;;                ;;
+  ;;                ;; due to https://github.com/python/cpython/issues/71019
+  ;;                '(python-base-mode . ("rass" "python") )))
+  )
 
 ;; Unfortunately it does not work on windows, I think because of
 ;; https://github.com/python/cpython/issues/71019 , which is a longstanding
@@ -3919,6 +3936,11 @@ in flymake."
 (add-hook 'python-base-mode-hook 'dino-python-mode-fn)
 
 (with-eval-after-load 'apheleia
+  ;; The pyformat binary may or may not exist.  Use this formatter only if
+  ;; (executable-find) returns non-nil.
+  (setf (alist-get 'pyformat apheleia-formatters)
+        '("pyformat" filepath))
+
   ;; 20251025-1309
   ;; ruff is a fast replacement for longtime formatter black.
   ;; On Windows: powershell -c "irm https://astral.sh/ruff/install.ps1 | iex" .
