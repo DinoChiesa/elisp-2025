@@ -1781,7 +1781,13 @@ then switch to the markdown output buffer."
         (push dpc-hs-settings-for-powershell-mode hs-special-modes-alist)))))
 
 
-(add-hook 'shell-mode-hook #'company-mode)
+;; shell-mode is different than powershell-mode. The latter is for editing ps1
+;; scripts, the former is for running a shell.
+(defun dino-shell-mode-fn ()
+  (company-mode)
+  (setq show-trailing-whitespace nil))
+
+(add-hook 'shell-mode-hook #'dino-shell-mode-fn)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Lua
@@ -3849,6 +3855,7 @@ Does not consider word syntax tables.
     (add-hook 'flymake-diagnostic-functions #'dcpe/flymake-gpylint nil t))
    ((executable-find "ruff")
     (require 'flymake-ruff)
+    ;; Insert settings into ruff.toml in the project root.
     (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t)))
 
   (flymake-mode)
@@ -3959,7 +3966,7 @@ Does not consider word syntax tables.
 ;;             eglot-server-programs))
 
 
-(add-hook 'python-base-mode-hook 'dino-python-mode-fn)
+(add-hook 'python-base-mode-hook #'dino-python-mode-fn)
 
 (with-eval-after-load 'apheleia
   ;; The pyformat binary may or may not exist.  Use this formatter only if
