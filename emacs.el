@@ -801,14 +801,33 @@ based on the prompt, should the need arise in the future."
 
 (use-package flymake
   :ensure t)
+
 (defun dino/toggle-flymake-diagnostics ()
-  "Toggle the flymake diagnostics buffer window."
+  "Toggle the flymake diagnostics buffer window.
+
+If there is just one window displayed, this fn will split the frame
+equally. It tries to optimally select top-over-bottom vs side-by-side
+depending on the frame width. If there is more than one Window
+displayed, it uses the default window-splitting behavior of
+`flymake-show-buffer-diagnostics'."
   (interactive)
   (let* ((buf-name (format "*Flymake diagnostics for `%s'*" (buffer-name)))
          (window (get-buffer-window buf-name)))
     (if window
         (delete-window window)
-      (flymake-show-buffer-diagnostics))))
+      (if (one-window-p t)
+          (let ((display-buffer-alist
+                 (cons (if (>= (frame-width) 176)
+                           (list (regexp-quote buf-name)
+                                 '(display-buffer-reuse-window display-buffer-in-direction)
+                                 '(direction . right)
+                                 '(window-width . 0.5))
+                         (list (regexp-quote buf-name)
+                               '(display-buffer-reuse-window display-buffer-at-bottom)
+                               '(window-height . 0.5)))
+                       display-buffer-alist)))
+            (flymake-show-buffer-diagnostics))
+        (flymake-show-buffer-diagnostics)))))
 
 (use-package flycheck
   :ensure t
@@ -3777,6 +3796,8 @@ Does not consider word syntax tables.
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("ESC C-R" . indent-region) ;; not sure if useful in python
               ("M-TAB" . company-complete)
+              ;; TODO: reconcile this key binding with all the other
+              ;; uses of "ESC #" that are bound to dino/indent-buffer.
               ("ESC #"   . dino/toggle-flymake-diagnostics)
               ("C-c p f" . dcpe/pyformat) ;; should be unnecessary with apheleia
               ("C-c p l" . dcpe/gpylint)  ;; should be unnecessary with flymake
