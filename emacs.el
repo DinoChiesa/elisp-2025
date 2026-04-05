@@ -607,9 +607,17 @@
   ;; This works for `set-variable', lots of other cases.
   (setq completion-extra-properties '(:category startswith)))
 
+
 (use-package icomplete
   ;; as of emacs 28, icomplete-vertical is a feature of the builtin icomplete-mode.
-  :demand t
+
+  ;; Not sure this is necessary, but I found on the bruschetta ,
+  ;; M-x find-file would HANG if icomplete-mode was invoked within :config.
+  :init
+  (icomplete-mode 1)
+  (icomplete-vertical-mode 1)
+
+
   :requires (dpc-sane-sorting dino-utility)
   ;; Gemini says the  order of evaluation is :custom, then :init, then :config.
   :custom
@@ -623,9 +631,6 @@
   (icomplete-show-matches-on-no-input t)
 
   :config
-  (icomplete-mode)
-  (icomplete-vertical-mode)
-
   ;; Fixup the categories for a few things.
   ;;
   ;; `completion-category-overrides' is a list of category-specific user overrides
