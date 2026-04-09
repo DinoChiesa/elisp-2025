@@ -1167,11 +1167,21 @@ server program."
   (setq sh-basic-offset 2)
   (sh-electric-here-document-mode)
   (apheleia-mode)
+  (flymake-mode) ;; for shellcheck
   (hs-minor-mode) ;; show: C-c @ C-s  hide: C-c @ C-h
   (dino/setup-shmode-for-apheleia)
-  ;; probably the keymap is sh-mode-map, but there might be a ts in there.
-  (define-key (current-local-map) (kbd "C-c C-g")  #'dino/shfmt-buffer)
-  (define-key (current-local-map) (kbd "C-c C-c")  #'comment-region))
+
+  (let ((local-map (current-local-map))) ;; one of {python-mode-map, python-ts-mode-map}
+    (when local-map
+      (mapc (lambda (binding)
+              (define-key local-map (kbd (car binding)) (cdr binding)))
+            '(("M-TAB" . company-complete)
+              ;; TODO: reconcile this key binding with all the other
+              ;; uses of "ESC #" that are bound to dino/indent-buffer.
+              ("ESC #"   . dino/toggle-flymake-diagnostics)
+              ("C-c C-g" . dino/shfmt-buffer) ;; theoretically unnecessary with apheleia
+              ("C-c C-c" . comment-region)
+              )))))
 
 (add-hook 'sh-mode-hook 'dino-sh-mode-fn)
 
@@ -3780,15 +3790,30 @@ Does not consider word syntax tables.
   ;;:defer t
   :config (eros-mode 1))
 
+(use-package flymake-shellcheck
+  :if (executable-find "shellcheck")
+  :defer 21
+  :ensure t
+  :hook (sh-mode . flymake-shellcheck-load))
+
+(use-package ibuffer-preview
+  :if (and (file-exists-p "~/elisp/ibuffer-preview.el")
+           (boundp 'ibuffer-mode-hook) )
+  :load-path "~/elisp"
+  :config (defun ibpm-set-map()
+            (keymap-set ibuffer-mode-map "v" #'ibuffer-preview-mode))
+  (add-hook 'ibuffer-mode-hook #'ibpm-set-map))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Python
 
-(when (executable-find "ruff")
-  (use-package flymake-ruff
-    :ensure t))
+(use-package flymake-ruff
+  :if (executable-find "ruff")
+  :ensure t)
 
 (customize-set-variable 'python-indent-offset 2)
 
@@ -4428,11 +4453,9 @@ counteracts that. "
          '("~/bin" "~/go/src/github.com/DinoChiesa/salted"))))
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Github GraphQL mode
 (autoload 'gh-graphql-mode "gh-graphql")
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -4795,7 +4818,6 @@ Enable `recentf-mode' if it isn't already."
       (funcall recentf-menu-action file)))
   )
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vterm
 
@@ -4893,15 +4915,6 @@ the local buffer."
                             (?\" . ?\")
                             (?\{ . ?\})
                             ) )
-
-(use-package ibuffer-preview
-  :if (and (file-exists-p "~/elisp/ibuffer-preview.el")
-           (boundp 'ibuffer-mode-hook) )
-  :load-path "~/elisp"
-  :config (defun ibpm-set-map()
-            (keymap-set ibuffer-mode-map "v" #'ibuffer-preview-mode))
-  (add-hook 'ibuffer-mode-hook #'ibpm-set-map))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Global key bindings
