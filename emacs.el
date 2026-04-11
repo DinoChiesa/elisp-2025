@@ -736,6 +736,18 @@
   :defer 13
   :ensure t)
 
+(use-package dumb-jump
+  ;; fast, no config jumping to definitions (M-.) or references (M-? ) via rg results.
+  :if (executable-find "rg")
+  :defer 17
+  :ensure t
+  :custom
+  (dumb-jump-prefer-searcher 'rg)
+  ;; Is the following is needed or desired? It works great without.
+  ;;(xref-show-definitions-function #'consult-xref)
+  :config
+  (add-hook 'xref-backend-functions #'dumb-jump-xref-activate))
+
 (use-package magit
   :ensure t
   :defer 24
