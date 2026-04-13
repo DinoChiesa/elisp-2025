@@ -389,31 +389,39 @@
   ;; prettierd command. I am sure this is not right, but it worked in a pinch.
   ;; I am revisiting it now.
 
-  ;; this works:
+  ;; This works:
   ;;  type ~\dev\apigeelint\cli.js | node C:\nvm4w\nodejs\node_modules\@fsouza\prettierd\bin\prettierd --stdin-filepath ~\dev\apigeelint\cli.js
 
-  (if-let* ((prettier (executable-find "prettierd")))
+  ;; Cannot use `(executable-find "prettierd")` because that finds the shell
+  ;; script, which my windows machine will not use.  Cannot use
+  ;; `(executable-find "prettierd.cmd|ps1")` b/c that retrieves the .cmd or .ps1
+  ;; and for some reason that will not work with apheleia's approach. But
+  ;; invoking the prettierd/bin/prettierd code directly, works. Its shebang
+  ;; specifies node.
+
+  (if-let* ((npm (executable-find "npm"))
+            (npm-prefix-path (shell-command-to-string (concat npm  " config get prefix")))
+            (fixedup-prefix-path (file-truename (string-trim npm-prefix-path)))
+            (prettierd-path
+             (file-name-concat fixedup-prefix-path "node_modules" "@fsouza" "prettierd"
+                               "bin" "prettierd"))
+            (_ (file-exists-p prettierd-path)))
       (progn
         (setf (alist-get 'prettier-javascript apheleia-formatters)
               `(
-                ;;,prettier
-                ;; TODO: fix this hard-coded path
-                "C:\\nvm4w\\nodejs\\node_modules\\@fsouza\\prettierd\\bin\\prettierd"
+                ;; Depending on the npm config, the path will resolve to something like:
+                ;; "c:/Users/dpchi/AppData/Roaming/npm/node_modules/@fsouza/prettierd/bin/prettierd"
+                ;; or
+                ;; "C:/nvm4w/nodejs/node_modules/@fsouza/prettierd/bin/prettierd"
+                ;;
+                ;; If for some reason this stops working, check (getenv "npm_config_prefix").
+                ,prettierd-path
                 ;;"--stdin-filepath" filepath
                 "--parser=babel-flow"
                 (s-join "=" (apheleia-formatters-js-indent "--use-tabs" "--tab-width"))
                 file))
         (require 'dino-prettierd-cleanup)
         ))
-
-
-  ;; 20260321-1547
-  ;; This also does not work.  RRRRrrrrrr.
-  ;;
-  ;; (if-let* ((prettier (executable-find "prettier")))
-  ;;     (setf (alist-get 'prettier-javascript apheleia-formatters)
-  ;;           `(,prettier filepath "--parser" "babel-flow"
-  ;;             (s-join " " (apheleia-formatters-js-indent "--use-tabs" "--tab-width")))))
 
   ;; 20251025-0909
   ;;
