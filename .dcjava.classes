@@ -736,3 +736,6 @@ io.swagger.v3.parser.OpenAPIV3Parser
 io.swagger.v3.parser.core.models.ParseOptions
 io.swagger.v3.parser.core.models.SwaggerParseResult
 com.apigee.test.FileUtility
+com.apigee.test.FileUtility
+com.apigee.entities.DebugInfo
+com.google.gson.JsonObject
