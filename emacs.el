@@ -93,7 +93,13 @@
 (setq messages-buffer-max-lines 2500)
 (setq completion-auto-help nil)
 (put 'eval-expression 'disabled nil)
-(setq xterm-max-cut-length 262144)
+(setq xterm-max-cut-length (* 256 1024)) ;; 256kb
+
+;; 20260414 TIL, C-u C-SPC to pop to previous mark, after
+;; navigating with M->, M-<, isearch, goto-line, etc.
+(setq set-mark-command-repeat-pop t)
+
+(setq save-interprogram-paste-before-kill t)
 
 ;; 20250610-0852 - split windows ??? sensibly?
 ;;
@@ -365,7 +371,7 @@
 
   ;; 20260203-1524
   ;;
-  ;; install prettierd with "npm install -g prettierd"
+  ;; install prettierd with "npm install -g  @fsouza/prettierd"
   ;;
   ;; prettierd is sort of a garage project that turns prettier into a daemon.
   ;; It wraps prettier, supplants it, but does not fully replace it.
@@ -933,6 +939,8 @@ displayed, it uses the default window-splitting behavior of
   (advice-add 'eglot--apply-text-edits :after #'dpc/strip-cr)
   )
 
+;; 1MB buffer, up from 64kb. For LSP and eglot
+(setq read-process-output-max (* 1 1024 1024))
 
 (use-package eglot-booster
   ;; not sure I still need this in emacs 30.1+?
@@ -1205,6 +1213,9 @@ server program."
 
 (add-hook 'sh-mode-hook 'dino-sh-mode-fn)
 
+(add-hook 'after-save-hook
+          #'executable-make-buffer-file-executable-if-script-p)
+
 (defun dino-conf-toml-mode-fn ()
   (display-line-numbers-mode)
   (add-hook 'before-save-hook 'delete-trailing-whitespace nil 'local) )
@@ -1417,6 +1428,24 @@ then switch to the markdown output buffer."
 (set-face-attribute 'fringe nil :background "black")
 
 (global-hl-line-mode)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Make C-x 1 a toggle
+;;
+(winner-mode +1)
+
+(defun toggle-delete-other-windows ()
+  "If multiple windows in frame, delete all but the current window.
+Otherwise restore previous window config."
+  (interactive)
+  (if (and winner-mode
+           (equal (selected-window) (next-window)))
+      (winner-undo)
+    (delete-other-windows)))
+
+(global-set-key (kbd "C-x 1") #'toggle-delete-other-windows)
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -4335,9 +4364,6 @@ counteracts that. "
         (c-set-style "myJavaStyle")
         (turn-on-font-lock)))
 
-  (keymap-local-set "ESC C-R" #'indent-region)
-  (keymap-local-set "ESC #"   #'dino/indent-buffer)
-
   (modify-syntax-entry ?_ "w")
 
   (set (make-local-variable 'indent-tabs-mode) nil)
@@ -4357,38 +4383,42 @@ counteracts that. "
   (if (not (eq system-type 'windows-nt))
       (apheleia-mode))
 
+  ;; some of my own java-mode helpers
+  (require 'dcjava)
+
+  (let ((local-map (current-local-map)))
+    (when local-map
+      (mapc (lambda (binding)
+              (define-key local-map (kbd (car binding)) (cdr binding)))
+            '(("M-TAB"     . company-complete)
+              ("C-c p"     . dcjava-insert-inferred-package-name)
+              ("C-c i"     . dcjava-auto-add-import)
+              ("C-c C-i"   . dcjava-auto-add-import)
+              ("C-c C-l"   . dcjava-learn-new-import)
+              ("C-c C-f"   . dcjava-find-wacapps-java-source-for-class-at-point)
+              ("C-c C-r"   . dcjava-reload-classlist)
+              ("ESC #"     . dino/toggle-flymake-diagnostics)
+              ("ESC C-R"   . indent-region)
+              ;;("C-c C-s" . dcjava-sort-import-statements) ;; obsolete with gformat+apheleia
+              ("C-c C-c"   . comment-region)
+              ("C-c C-s"   . dcjava-apiplatform-swap-tree)
+              ("C-c C-g f" . dcjava-gformat-buffer) ;; not C-c C-g ? also, unnecessary with apheleia
+              ))))
+
   (eval-after-load "smarter-compile"
     '(progn
        (add-to-list
         'smart-compile-compile-command-in-comments-extension-list
-        ".java")))
-
-  ;; some of my own java-mode helpers
-  (require 'dcjava)
-
-  (let ((local-map (current-local-map))) ;; python-mode-map or python-ts-mode-map
-    (when local-map
-      (mapc (lambda (binding)
-              (define-key local-map (kbd (car binding)) (cdr binding)))
-            '(("C-c i" . dcjava-auto-add-import)
-              ("C-c C-i" . dcjava-auto-add-import)
-              ("C-c p" . dcjava-insert-inferred-package-name)
-              ("C-c C-l" . dcjava-learn-new-import)
-              ("C-c C-f" . dcjava-find-wacapps-java-source-for-class-at-point)
-              ("C-c C-r" . dcjava-reload-classlist)
-              ("C-c C-s" . dcjava-sort-import-statements) ;; obsolete with gformat
-              ("C-c C-g f" . dcjava-gformat-buffer)
-              ))))
+        ".java"))))
 
 
-  ;; 20241230 With apheleia-mode, the manual google-java-format is unnecessary. Apheleia does
-  ;; the work every time the file is saved.  But it may be that Apheleia is turned off, so having
-  ;; the ability to manually invoke google-java-format is still a good idea.
+;; 20241230 With apheleia-mode, the manual google-java-format is unnecessary. Apheleia does
+;; the work every time the file is saved.  But it may be that Apheleia is turned off, so having
+;; the ability to manually invoke google-java-format is still a good idea.
 
-  ;; remove trailing whitespace in C files
-  ;; http://stackoverflow.com/questions/1931784
-  (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
-
+;; remove trailing whitespace in C files
+;; http://stackoverflow.com/questions/1931784
+(add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
 
 (add-hook 'java-mode-hook 'dino-java-mode-fn)
 ;;(remove-hook 'java-ts-mode-hook 'dino-java-mode-fn)
