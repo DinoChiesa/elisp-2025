@@ -13,7 +13,7 @@
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
-;; Last-saved : <2025-July-11 15:26:37>
+;; Last-saved : <2026-April-15 10:19:30>
 ;;
 ;;; Commentary:
 ;;
@@ -159,12 +159,12 @@ This functions like Python's os.path.join or Node's path.join."
   (concat dcjava-cache-dir dcjava-cache-basefilename))
 
 (defun dcjava--filter (condp lst)
-  "filters the list LST, removing each item for which condp returns nil"
+  "Filter the list LST, removing each item for which condp returns nil"
   (delq nil
         (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
 
 (defun dcjava--is-class-name (str)
-  "returns true if the string appears to be formed like a java class name"
+  "Return true if the string appears to be formed like a java class name"
   (let ((case-fold-search nil))
     (string-match dcjava--classname-regex str)))
 
@@ -182,7 +182,8 @@ This functions like Python's os.path.join or Node's path.join."
 
 
 (defun dcjava--list-from-fully-qualified-classname (classname)
-  "given a fully-qualified java CLASSNAME, returns a list of two strings: the unqualified classname followed by the package name"
+  "Given a fully-qualified java CLASSNAME, return a list of two strings:
+the unqualified classname followed by the package name"
   (let* ((parts (split-string classname "\\." t))
          (rlist (reverse parts))
          (last (car rlist)))
@@ -190,7 +191,7 @@ This functions like Python's os.path.join or Node's path.join."
 
 
 (defun dcjava--xform-alist (lst)
-  "transform the list of to combine items that share a common classname"
+  "Transform the list of to combine items that share a common classname"
   (let ((new-list ())
         item)
     (while (setq item (car lst))
@@ -205,7 +206,8 @@ This functions like Python's os.path.join or Node's path.join."
 
 
 (defun dcjava-get-helper-classname-alist ()
-  "returns the alist for the java class names. Computes it just-in-time if necessary."
+  "Return the alist for the java class names. Computes it just-in-time if
+necessary."
   (or dcjava-helper-classname-alist
       (setq dcjava-helper-classname-alist
             (dcjava--xform-alist
@@ -220,7 +222,7 @@ this at this point, because apheleia uses gformat which sorts
 imports."
   (interactive)
   (save-excursion
-    (beginning-of-buffer)
+    (goto-char (point-min))
     (if (re-search-forward dcjava--import-stmt-regex nil t)
         (let ((start nil))
           (beginning-of-line)
@@ -231,10 +233,12 @@ imports."
             (forward-line))
           (beginning-of-line)
           (sort-lines nil start (point)))
-      (mesage "cannot find import statements"))))
+      (message "cannot find import statements"))))
 
 (defun dcjava--gen-import-regex (package-name &optional symbol)
-  "returns a regex that matches an import for a given java class defined by a package name and a symbol.  If the symbol is null, then the package-name is treated as a fully-qualified classname."
+  "Return a regex that matches an import for a given java class defined by
+a package name and a symbol.  If the symbol is null, then the
+package-name is treated as a fully-qualified classname."
   (concat "^import[\t ]+"
           (regexp-quote
            (if symbol (concat package-name "." symbol)
@@ -242,8 +246,9 @@ imports."
           "[\t ]*;"))
 
 (defun dcjava-add-one-import-statement (package-name &optional symbol-name want-learn)
-  "add one import statement, append to the list of imports at or near beginning-of-buffer.
-If the symbol is null, then the package-name is treated as a fully-qualified classname."
+  "Add one import statement, append to the list of imports at or near
+beginning-of-buffer. If the symbol is null, then the package-name is
+treated as a fully-qualified classname."
   (let ((import-statement
          (concat "import "
                  (if symbol-name
@@ -257,7 +262,7 @@ If the symbol is null, then the package-name is treated as a fully-qualified cla
         (let ((want-extra-newline nil))
           (if (re-search-backward dcjava--import-stmt-regex nil t)
               (end-of-line)
-            (beginning-of-buffer)
+            (goto-char (point-min))
             (if (re-search-forward dcjava--package-stmt-regex nil t)
                 (progn (forward-line) (beginning-of-line)))
             ;; naively skip-comments. this breaks if you use /*
@@ -274,14 +279,15 @@ If the symbol is null, then the package-name is treated as a fully-qualified cla
 
 
 (defun dcjava--generate-menu (candidates &optional format heading)
+
   "Generate a menu suitable for use in `x-popup-menu' from the
-list of candidates. Each item in the list of CANDIDATES is a
-string. The FORMAT is a function that formats the displayable menu choice;
-it is called once for each candidate.  The HEADING is a string used in the
+list of candidates. Each item in the list of CANDIDATES is a string. The
+FORMAT is a function that formats the displayable menu choice; it is
+called once for each candidate.  The HEADING is a string used in the
 result, which will appear as a menu heading.
 
-For example, calling it with candidates ('(\"one\" \"two\")) and no additional
-areguments will return a structure like this:
+For example, calling it with candidates ('(\"one\" \"two\")) and no
+additional areguments will return a structure like this:
 
   (\"Select a Choice...\"
     (\"Ignored pane title\"
@@ -299,10 +305,8 @@ Calling it with ('(\"Class1\" \"Class2\")
       (\"import a.b.c.Class;\" \"a.b.c.Class\")
       (\"import x.y.z.Class;\" \"x.y.z.Class\")))
 
-The result of the choice is the cdr of the selected item. In this case, it
-will be something like (\"x.y.z.Class\") .
-
-"
+The result of the choice is the cdr of the selected item. In this case,
+it will be something like (\"x.y.z.Class\") ."
 
   (let ((items (mapcar #'(lambda (elt) (list (funcall (or format #'identity) elt) elt))
                        candidates)))
@@ -347,9 +351,10 @@ will be something like (\"x.y.z.Class\") .
 
 
 (defun dcjava-auto-add-import ()
-  "adds an import statement for the class or interface at point, if possible.
-If the class at point is fully-qualified, just adds an import for that. Otherwise,
-uses a cached list to lookup the package/class to import."
+  "Add an import statement for the class or interface at point, if
+possible. If the class at point is fully-qualified, just adds an import
+for that. Otherwise, uses a cached list to lookup the package/class to
+import."
   (interactive)
   (let ((thingname (dcjava--class-or-qualified-member-name-at-point))
         (case-fold-search nil))
@@ -403,7 +408,8 @@ uses a cached list to lookup the package/class to import."
      )))
 
 (defun dcjava-learn-new-import ()
-  "learns a new import statement for the import statement at point, if possible."
+  "Learn a new import statement for the import statement at point, if
+possible."
   (interactive)
   (let ((import-stmt
          (save-excursion
@@ -607,11 +613,43 @@ the shell find command. "
       (message "no file for class %s" classname))))
 
 
+(defun dcjava-apiplatform-swap-tree ()
+  "Toggle between the source file and its test file in api_platform."
+  (interactive)
+  (let* ((file-path (buffer-file-name))
+         (dir (and file-path (file-name-directory file-path)))
+         (filename (and file-path (file-name-nondirectory file-path)))
+         (basename (and filename (file-name-sans-extension filename)))
+         (extension (and filename (file-name-extension filename)))
+         target-path)
+
+    (unless file-path
+      (user-error "Buffer is not visiting a file"))
+
+    (cond
+     ((s-contains? "/main/java/" dir)
+      (let ((test-dir (s-replace "/main/java/" "/test/unittests/java/" dir))
+            (test-filename (format "%sTest.%s" basename extension)))
+        (setq target-path (concat test-dir test-filename))))
+
+     ((s-contains? "/test/unittests/java/" dir)
+      (let ((main-dir (s-replace "/test/unittests/java/" "/main/java/" dir))
+            (main-filename (format "%s.%s" (s-chop-suffix "Test" basename) extension)))
+        (setq target-path (concat main-dir main-filename))))
+
+     (t
+      (user-error "Current file is not in /main/java/ or /test/unittests/java/")))
+
+    (if (file-exists-p target-path)
+        (find-file target-path)
+      (message "Target file not found: %s" target-path))))
+
+
 (defun dcjava-wacapps-intelligently-open-file (partial-path)
-  "find a source file in the wacpps tree based on PARTIAL-PATH which
-will be a fragment like java/com/apigee/keymanagement/util/ApiProductMatcher.java .
+  "Find a source file in the wacpps tree based on PARTIAL-PATH which
+will be a fragment like java/com/apigee/keymanagement/util/ApiProduct.java .
 That happens to be in gateway/sw/services.  But this method will find it and
-open it. "
+open it."
   (interactive "P")
   ;; prompt if not specified
   (if (not partial-path)
