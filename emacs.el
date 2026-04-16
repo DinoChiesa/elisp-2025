@@ -1203,9 +1203,10 @@ server program."
     (when local-map
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
-            '(("M-TAB" . company-complete)
+            '(("M-TAB"   . company-complete)
               ;; TODO: reconcile this key binding with all the other
               ;; uses of "ESC #" that are bound to dino/indent-buffer.
+              ("C-c :"   . sh-set-shell)
               ("ESC #"   . dino/toggle-flymake-diagnostics)
               ("C-c C-g" . dino/shfmt-buffer) ;; theoretically unnecessary with apheleia
               ("C-c C-c" . comment-region)
@@ -2581,6 +2582,7 @@ just auto-corrects on common mis-spellings by me."
     '(
       ("teh" "the" nil 0)
       ("somehting" "something" nil 0)
+      ("shuold" "should" nil 0)
       ("deprectaed" "deprecated" nil 0)
       ("APigee" "Apigee" nil 0)
       ("Gmeini" "Gemini" nil 0)
