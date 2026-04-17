@@ -4411,16 +4411,16 @@ counteracts that. "
     '(progn
        (add-to-list
         'smart-compile-compile-command-in-comments-extension-list
-        ".java"))))
+        ".java")))
 
 
-;; 20241230 With apheleia-mode, the manual google-java-format is unnecessary. Apheleia does
-;; the work every time the file is saved.  But it may be that Apheleia is turned off, so having
-;; the ability to manually invoke google-java-format is still a good idea.
+  ;; 20241230 With apheleia-mode, the manual google-java-format is unnecessary. Apheleia does
+  ;; the work every time the file is saved.  But it may be that Apheleia is turned off, so having
+  ;; the ability to manually invoke google-java-format is still a good idea.
 
-;; remove trailing whitespace in C files
-;; http://stackoverflow.com/questions/1931784
-(add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
+  ;; remove trailing whitespace in C files
+  ;; http://stackoverflow.com/questions/1931784
+  (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
 
 (add-hook 'java-mode-hook 'dino-java-mode-fn)
 ;;(remove-hook 'java-ts-mode-hook 'dino-java-mode-fn)
