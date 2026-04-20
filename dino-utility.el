@@ -1364,10 +1364,13 @@ original drive letter casing (as provided by file-truename)."
   "Given PATHS, a list of strings representing directiory names,
 deduplicate the list, then add each item to `exec-path' and the PATH
 environment variable, if the item exists as a directory and is not
-already present. Report the number of dirs added and removed to each.
+already present.
 
-This is intended for use at startup. It is useful when the system or user
-path differs from what you want to use in emacs."
+Report the number of dirs added and removed to each.
+
+This is intended for use at startup. It is useful when the system or
+user path differs from what you want to use in emacs. For some tools,
+both exec-path AND/or environment PATH to be set."
   (let ((path-env-entries (split-string (getenv "PATH") path-separator)))
     (let ((exec-path-added-count 0)
           (path-env-added-count 0)
@@ -1432,15 +1435,17 @@ path differs from what you want to use in emacs."
                path-env-added-count path-env-removed-count))))
 
 
-(defun dino/fixup-exec-path (paths-file)
-  "Read lines from a PATHS-FILE and add them to the `exec-path'.
+(defun dino/fixup-dirs-for-exec-path (paths-file)
+  "Read lines from a PATHS-FILE and resolve them, so that they can be added
+to the `exec-path'.
+
 The PATHS-FILE should be a list of paths, one for each line, no
 separator. Empty lines or lines beginning with # are ignored.
 
-This to support various tools and packages - apheleia, csslint, magit,
-csharpier, shfmt, aider, basedpyright and more - need exec-path AND/or
-environment PATH to be set.  Any nodejs tool installed via «npm i -g»
-should be on the path already."
+Setting the exec-path is necessary to allow emacs to use various tools
+and packages - apheleia, csslint, magit, csharpier, shfmt, aider,
+basedpyright and more. Any nodejs tool installed via «npm i -g» should
+be on the path already."
   (if-let*
       ((file-contents (and (file-exists-p paths-file)
                            (with-temp-buffer
@@ -1456,7 +1461,7 @@ should be on the path already."
         (mapcar (lambda (s)
                   (replace-regexp-in-string "\$HOME" home-dir s t))
                 filtered-lines)))
-      (dino/maybe-add-to-exec-path mapped-lines)))
+      mapped-lines))
 
 (defun dino-reorder-list (list predicate)
   "Reorders LIST so that elements satisfying PREDICATE come first.
@@ -1516,53 +1521,92 @@ is likely to suffice, but on Linux that might not be the case."
           (dino-filename-if-exists
            (concat (getenv "HOME") "/.config/nvm/versions/node")))))))
 
-(defun dino/find-latest-nvm-version-bin-dir ()
-  "Finds the latest bin directory under management by nvm. This works
-under Windows and Linux.
+;; (defun dino/find-nvm-bin-dir ()
+;;   "Finds the latest bin directory under management by nvm. This works
+;; under Windows and Linux.
+;;
+;; There appears to be no easy way to determine where node is
+;; installed with nvm.  nvm is a shell _function_, so I cannot run
+;; it as a shell command. (Result: \"nvm: command not found\")
+;;
+;; There is a location for NVM.  It is either in $NVM_HOME (Windows) or
+;; $NVM_DIR (linux).  Why they used different environment variables, no
+;; one knows. On linux, NVM_DIR holds something like
+;;
+;;    /home/dchiesa/.config/nvm
+;;    /usr/local/google/home/dchiesa/.nvm
+;;
+;; ...and within there, a subdir versions/node
+;; ...and within there, directories named like vxx.yy.z for v22.11.0 , etc.
+;;
+;; On Windows, NVM_HOME holds something like
+;;   /ProgramData/nvm
+;;
+;; Or, unusually,
+;;   /Users/dpchi/AppData/Roaming/nvm
+;;
+;; and within there, directories named like vxx.yy.z for v22.11.0 , etc.
+;;
+;; This function searches those dirs, sorts those based on the name, and
+;; selects the last item found. It returns the fully qualified path of the
+;; bin directory of the latest version of node under management by nvm, or
+;; nil if none is found.
+;;
+;; This is probably wrong-headed because nvm allows setting a default, which
+;; this logic ignores."
+;;   (let ((starting-dir (dino--get-or-guess-nvm-dir))
+;;         (regex
+;;          (dino-escape-braces-in-regex "v[0-9]{2}\\.[0-9]{2}\\.[0-9]+"))
+;;         (map-fn
+;;          (cond
+;;           ((eq system-type 'windows-nt)
+;;            (lambda (dir) dir))
+;;           (t
+;;            (lambda (dir) (concat dir "/bin"))))))
+;;     (let* ((filter-fn
+;;             (lambda (dir) (string-match regex (file-name-nondirectory dir))))
+;;            (matching-dirs
+;;             (cl-remove-if-not 'file-exists-p
+;;                               (mapcar map-fn
+;;                                       (cl-remove-if-not filter-fn (directory-files starting-dir t))))))
+;;       (if (null matching-dirs)
+;;           nil
+;;         (let ((sorted-dirs (sort matching-dirs #'string<)))
+;;           (car (last sorted-dirs)))))))
 
-There appears to be no easy way to determine where node is
-installed with nvm.  nvm is a shell _function_, so I cannot run
-it as a shell command. (Result: \"nvm: command not found\")
 
-There is a location for NVM.  It is either in $NVM_HOME (Windows) or
-$NVM_DIR (linux).  Why they used different environment variables, no
-one knows. On linux, NVM_DIR holds something like
 
-   /home/dchiesa/.config/nvm
-   /usr/local/google/home/dchiesa/.nvm
+(defun dino/find-nvm-bin-dir ()
+  "Finds the NVM-managed nodejs bin directory by respecting the default
+or active version. Works on Windows (nvm4w) and Linux (nvm)."
+  (let ((nvm-dir (dino--get-or-guess-nvm-dir)))
+    (cond
+     ((eq system-type 'windows-nt)
+      (let ((symlink-path (or (getenv "NVM_SYMLINK")
+                              "C:\\nvm4w\\nodejs")))
+        (if (file-exists-p symlink-path)
+            (file-name-as-directory (expand-file-name symlink-path))
+          (message "NVM symlink not found at %s" symlink-path)
+          nil)))
+     (t
+      (let ((default-alias (expand-file-name "alias/default" nvm-dir)))
+        (if (file-exists-p default-alias)
+            ;; Read the alias file content (e.g., "v22.11.0")
+            (let* ((version (with-temp-buffer
+                              (insert-file-contents default-alias)
+                              (buffer-string)))
+                   (bin-path (expand-file-name
+                              (concat "versions/node/" version "/bin")
+                              nvm-dir)))
+              (if (file-exists-p bin-path)
+                  (file-name-as-directory bin-path)
+                nil))
+          ;; Fallback: if no alias/default, use the 'current' symlink if nvm created one
+          (let ((current-path (expand-file-name "current/bin" nvm-dir)))
+            (if (file-exists-p current-path)
+                (file-name-as-directory current-path)
+              nil))))))))
 
-...and within there, a subdir versions/node
-...and within there, directories named like vxx.yy.z for v22.11.0 , etc.
-
-On Windows, NVM_HOME holds something like
-  /ProgramData/nvm
-  /Users/dpchi/AppData/Roaming/nvm
-
-and within there, directories named like vxx.yy.z for v22.11.0 , etc.
-
-This function searches those dirs, sorts those based on the name, and
-selects the last item found. It returns the fully qualified path of the
-bin directory of the latest version of node under management by nvm, or
-nil if none is found."
-  (let ((starting-dir (dino--get-or-guess-nvm-dir))
-        (regex
-         (dino-escape-braces-in-regex "v[0-9]{2}\\.[0-9]{2}\\.[0-9]+"))
-        (map-fn
-         (cond
-          ((eq system-type 'windows-nt)
-           (lambda (dir) dir))
-          (t
-           (lambda (dir) (concat dir "/bin"))))))
-    (let* ((filter-fn
-            (lambda (dir) (string-match regex (file-name-nondirectory dir))))
-           (matching-dirs
-            (cl-remove-if-not 'file-exists-p
-                              (mapcar map-fn
-                                      (cl-remove-if-not filter-fn (directory-files starting-dir t))))))
-      (if (null matching-dirs)
-          nil
-        (let ((sorted-dirs (sort matching-dirs #'string<)))
-          (car (last sorted-dirs)))))))
 
 ;; ====================================================================
 
@@ -1924,6 +1968,76 @@ prompt for the directory. Otherwise, use the current `magit-toplevel`."
             (message "Successfully created and linked GitHub repo: %s/%s" user repo-name))
         (error (message "GitHub API Error: %s" (error-message-string err)))))))
 
+(defun dino/cleanup-stale-elpa-packages (&optional target-dir dry-run)
+  "Remove older versions of timestamped directories in TARGET-DIR.
+By default, operates on `package-user-dir`.
+If ACTIVE paths are removed from the disk, warns the user to restart Emacs."
+  (interactive
+   (if current-prefix-arg
+       (list (read-directory-name "Select directory: " package-user-dir)
+             (y-or-n-p "Perform a dry-run? "))
+     (list package-user-dir nil)))
+
+  ;; Set defaults for non-interactive calls
+  (setq target-dir (or target-dir package-user-dir))
+
+  (let ((dir-map (make-hash-table :test 'equal))
+        (regex "\\(.+\\)-\\([0-9]\\{8\\}\\.[0-9]+\\)$")
+        (deleted-count 0)
+        (removed-from-load-path nil))
+
+    ;; 1. Identify the latest version of every package
+    (if (not (file-exists-p target-dir))
+        (message "Target directory does not exist: %s" target-dir)
+
+      (dolist (file (directory-files target-dir nil regex t))
+        (let* ((full-path (expand-file-name file target-dir))
+               ;; Group 1: Name, Group 2: Timestamp
+               (module-name (progn (string-match regex file) (match-string 1 file)))
+               (timestamp   (match-string 2 file))
+               ;; Convert "20260310.1116" to 202603101116 for numeric comparison
+               (time-val    (string-to-number (replace-regexp-in-string "\\." "" timestamp)))
+               (existing    (gethash module-name dir-map)))
+
+          (when (file-directory-p full-path)
+            (if (or (null existing)
+                    (> time-val (cdr existing)))
+                (puthash module-name (cons file time-val) dir-map)))))
+
+      ;; 2. Identify and remove the stale ones
+      (let ((kept-files (let (acc)
+                          (maphash (lambda (_k v) (push (car v) acc)) dir-map)
+                          acc)))
+
+        (dolist (file (directory-files target-dir nil regex t))
+          (unless (member file kept-files)
+            (let* ((full-path (expand-file-name file target-dir))
+                   ;; Normalize path for load-path comparison
+                   (norm-path (directory-file-name full-path)))
+
+              ;; CHECK: Is this stale directory currently in the load-path?
+              (when (member norm-path load-path)
+                (push file removed-from-load-path))
+
+              (if dry-run
+                  (message "[Dry-run] Would delete: %s" file)
+                (delete-directory full-path t)
+                (setq deleted-count (1+ deleted-count)))))))
+
+      ;; 3. Final Report
+      (cond
+       (dry-run
+        (message "Dry-run complete. No files were actually deleted."))
+
+       ((> deleted-count 0)
+        (message "Cleanup complete: Removed %d stale directories." deleted-count)
+        (when removed-from-load-path
+          (warn "ACTIVE PATHS REMOVED: The following were in your load-path: %s. You should restart Emacs."
+                (mapconcat 'identity removed-from-load-path ", "))))
+
+       (t
+        (when (called-interactively-p 'interactive)
+          (message "No stale packages found. Everything is up to date.")))))))
 
 (defun dino/update-os-window-title ()
   "Using Xterm Control Sequences, aka OSC escape sequences, update the
@@ -1969,80 +2083,6 @@ disconnect + reconnect case it will make me happy."
 
 (add-hook 'window-configuration-change-hook #'dino/update-os-window-title)
 ;;(remove-hook 'window-configuration-change-hook #'dino-update-os-window-title)
-
-
-
-(defun dino/cleanup-stale-elpa-packages (&optional target-dir dry-run)
-  "Remove older versions of timestamped directories.
-By default, operates on ='package-user-dir'=.
-With a prefix argument (C-u), prompts for a directory and dry-run status."
-  (interactive
-   (if current-prefix-arg
-       (list (read-directory-name "Select directory: " package-user-dir)
-             (y-or-n-p "Perform a dry-run? "))
-     (list package-user-dir nil)))
-
-  (let ((dir-map (make-hash-table :test 'equal))
-        (regex "\\(.+\\)-\\([0-9]\\{8\\}\\.[0-9]+\\)$")
-        (deleted-count 0)
-        (removed-from-load-path nil))
-
-    ;; 20260310-1116
-    ;;
-    ;; I had to add this in case this fn was invoked non-interactively to set
-    ;; the default values. I suspect there is a better way to do this.
-    (if (not target-dir)
-        (setq target-dir package-user-dir
-              dry-run nil))
-
-    ;; 1. Identify the latest versions
-    (dolist (file (directory-files target-dir nil nil t))
-      (let ((full-path (expand-file-name file target-dir)))
-        (when (and (file-directory-p full-path)
-                   (not (member file '("." "..")))
-                   (string-match regex file))
-          (let* ((module-name (match-string 1 file))
-                 (timestamp (match-string 2 file))
-                 (time-val (string-to-number timestamp))
-                 (existing (gethash module-name dir-map)))
-
-            (if (or (null existing)
-                    (> time-val (cdr existing)))
-                (puthash module-name (cons file time-val) dir-map))))))
-
-    ;; 2. Identify and remove the stale ones
-    (let ((kept-files (let (acc)
-                        (maphash (lambda (_k v) (push (car v) acc)) dir-map)
-                        acc)))
-      (dolist (file (directory-files target-dir nil nil t))
-        (let ((full-path (expand-file-name file target-dir)))
-          (when (and (file-directory-p full-path)
-                     (not (member file '("." "..")))
-                     (string-match regex file)
-                     (not (member file kept-files)))
-
-            ;; Check if this path (with or without trailing slash) is in load-path
-            (let ((normalized-path (directory-file-name full-path)))
-              (when (cl-member normalized-path load-path :test 'string-equal)
-                (push file removed-from-load-path)))
-
-            (if dry-run
-                (message "[Dry-run] Would delete: %s" file)
-              (setq deleted-count (1+ deleted-count))
-              (delete-directory full-path t))))))
-
-    ;; 3. Final Report
-    (cond
-     (dry-run
-      (message "Dry-run complete. No files were actually deleted."))
-     ((> deleted-count 0)
-      (message "Cleanup complete: Removed %d stale directories." deleted-count)
-      (when removed-from-load-path
-        (warn "ACTIVE PATHS REMOVED: The following were in your load-path: %s. You must now restart Emacs."
-              (mapconcat 'identity removed-from-load-path ", "))))
-     (t
-      (message "No stale packages found. Everything is up to date.")))))
-
 
 
 (defun dino/find-g3-experimental-file ()

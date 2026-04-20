@@ -10,7 +10,31 @@
 (require 'cl-seq)
 (require 'json)
 (require 'seq)
-(require 's)
+;;(require 's) ;; not builtin; defer this until the load path is set.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; package manager
+;;
+
+(add-to-list 'load-path "~/elisp")
+;; Set the load-path for all packages installed by package. Some of the
+;; package-installed versions over builtin versions, if they are updated more
+;; recently.
+;;
+(let ((default-directory "~/.emacs.d/elpa"))
+  (normal-top-level-add-subdirs-to-load-path))
+;; remove any now-deleted folders from the load-path, and  de-dupe.
+(setq load-path (seq-uniq load-path))
+
+(require 'package)
+(dolist (item (list
+               '("MELPA"     . "https://melpa.org/packages/")
+               '("jcs-elpa"  . "https://jcs-emacs.github.io/jcs-elpa/packages/")))
+  (add-to-list 'package-archives item))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 
 (setq inhibit-splash-screen t)
@@ -91,7 +115,11 @@
 (setq default-directory "~/")
 ;; helpful for debugging lisp code:
 (setq messages-buffer-max-lines 2500)
+
+;; For the following, 'always, 'visible,  't, and nil are options.
+;; But I don't know the effect! They look the same to me.
 (setq completion-auto-help nil)
+
 (put 'eval-expression 'disabled nil)
 (setq xterm-max-cut-length (* 256 1024)) ;; 256kb
 
@@ -115,8 +143,6 @@
 (setq-default show-trailing-whitespace t)
 (setq-default fill-column 80)
 (setq project-vc-extra-root-markers '("pyproject.toml" "pyrightconfig.json" ".project"))
-
-(add-to-list 'load-path "~/elisp")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; setting up faces etc
@@ -165,45 +191,6 @@
 ;;                     :foreground "LightSteelBlue")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; for tetris
-(and (boundp 'tetris-score-file)
-     (setq tetris-score-file "~/elisp/tetris-scores")
-     ;; 20250223-1425
-     ;;     ;;  Turn off leaderboard prompt at end of game?
-     ;;      (defadvice tetris-end-game (around zap-scores activate)
-     ;;        (save-window-excursion ad-do-it))
-     )
-
-;; (use-package elcity
-;;   :ensure nil
-;;   :vc (:url "https://github.com/vkazanov/elcity"
-;;        :rev :newest
-;;        :main-file "elcity.el"
-;;        :branch "main")
-;;   :commands (elcity-start))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; package manager
-;;
-(require 'package)
-(dolist (item (list
-               ;; '("MELPA Stable"     . "https://stable.melpa.org/packages/")
-               '("MELPA"     . "https://melpa.org/packages/")
-               '("jcs-elpa"  . "https://jcs-emacs.github.io/jcs-elpa/packages/")
-               '("org"       . "http://orgmode.org/elpa/")))
-  (add-to-list 'package-archives item))
-
-;; Set the load-path for all packages installed by package. Some of the
-;; package-installed versions over builtin versions, if they are updated more
-;; recently.
-;;
-(let ((default-directory "~/.emacs.d/elpa"))
-  (normal-top-level-add-subdirs-to-load-path))
-
-;; de-duplicate entries in load-path
-(setq load-path (seq-uniq load-path))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; some must-have utility things
 ;;
 (use-package s
@@ -247,7 +234,7 @@
   :autoload (dino/insert-or-modify-alist-entry
              dino/maybe-add-to-exec-path
              dino/fixup-exec-path
-             dino/find-latest-nvm-version-bin-dir
+             dino/find-nvm-bin-dir
              dino/setup-shmode-for-apheleia
              dino/find-executable-in-paths)
   :config
@@ -321,11 +308,16 @@
 
 ;; 20260131-1235
 ;; Add paths to exec-path and PATH without duplication.
-(let* ((this-script-dir (file-name-directory load-file-name))
-       (paths-file (expand-file-name ".exec-paths" this-script-dir)))
-  (dino/fixup-exec-path paths-file))
-
-(dino/maybe-add-to-exec-path (list (dino/find-latest-nvm-version-bin-dir)))
+(if-let* ((this-script-dir (file-name-directory load-file-name))
+          (paths-file (expand-file-name ".exec-paths" this-script-dir)))
+    ;; TODO: eventually fix this.
+    ;; The cons doesn't quite work because its use does not insure ONLY ONE nvm
+    ;; bin dir on the path. Also, dino/find-nvm-bin-dir is not really necessary
+    ;; on Windows because I just put c:\nvm4w\nodejs in the .exec-paths file.  A
+    ;; similar symlinked path does not exist in Linux apparently.
+    (dino/maybe-add-to-exec-path (cons
+                                  (dino/find-nvm-bin-dir)
+                                  (dino/fixup-dirs-for-exec-path paths-file))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -4245,18 +4237,6 @@ counteracts that. "
   (when (memq major-mode '(js-mode javascript-mode json-mode))
     (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
 
-  ;;
-  ;; eglot by default uses typescript-language-server as the server.
-  ;; Examine `eglot-server-programs' to discover this.
-  ;; To get this program:
-  ;;   npm install -g typescript-language-server typescript
-  ;;
-  ;; As of July 2025, people say vtsls is a better alternative:
-  ;;    npm install -g @vtsls/language-server
-  ;;
-  ;; ...and then modify the `eglot-server-programs' entry appropriately to
-  ;; run vtsls --stdio
-  ;;
   ;; Completions via Company from Eglot just work. Enable both company-mode and
   ;; eglot in the buffer, and completions should work automatically.
 
@@ -4311,7 +4291,7 @@ counteracts that. "
 (add-hook 'js-mode-hook   'dino-js-mode-fn)
 (add-hook 'js-ts-mode-hook   'dino-js-mode-fn)
 
-;; supplant the default typescript-language-server
+;; supplant the default typescript-language-server with @vtsls/language-server
 (if (boundp 'eglot-server-programs)
     (add-to-list 'eglot-server-programs
                  `(((js-mode :language-id "javascript")
@@ -4950,6 +4930,25 @@ the local buffer."
 ;; ;; (load-file
 ;; ;;  "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs/google.el")
 ;; (require 'google-java-format)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; for tetris
+(and (boundp 'tetris-score-file)
+     (setq tetris-score-file "~/elisp/tetris-scores")
+     ;; 20250223-1425
+     ;;     ;;  Turn off leaderboard prompt at end of game?
+     ;;      (defadvice tetris-end-game (around zap-scores activate)
+     ;;        (save-window-excursion ad-do-it))
+     )
+
+;; (use-package elcity
+;;   :ensure nil
+;;   :vc (:url "https://github.com/vkazanov/elcity"
+;;        :rev :newest
+;;        :main-file "elcity.el"
+;;        :branch "main")
+;;   :commands (elcity-start))
 
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

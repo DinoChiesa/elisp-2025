@@ -2,14 +2,16 @@
 #
 # See dino/fixup-exec-path
 
-c:/Program Files/Eclipse Adoptium/jdk-11/bin
+# on Windows I use vfox to manage java versions
+C:/Users/dpchi/.vfox/sdks/java/bin
 c:/gcloud-sdk/google-cloud-sdk/bin
 
 #  lots of unix utilities here for various purposes
 c:/Program Files/Git/usr/bin
 
-# prettier, csslint, etc. (on Windows obvs)
-c:/Users/dpchi/AppData/Roaming/npm
+# node, prettier, csslint, eslint, etc. (on Windows obvs)
+# c:/Users/dpchi/AppData/Roaming/npm
+C:/nvm4w/nodejs
 
 c:/Python314
 
@@ -23,6 +25,7 @@ $HOME/.fzf/bin
 # shfmt, jsonnetfmt
 $HOME/go/bin
 
+# Linux specific paths
 /usr/local/bin
 /usr/bin
 /usr/lib/google-golang/bin
