@@ -18,7 +18,7 @@
   "Open current folder in Finder. Works on Mac, in dired mode."
   (interactive)
   (shell-command "open ."))
-(keymap-global-set "<f8>" #'open-in-finder)))
+(keymap-global-set "<f8>" #'open-in-finder)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -196,6 +196,9 @@
 (use-package s
   :ensure t)
 
+(use-package dash
+  :ensure t)
+
 (use-package memoize
   :defer t
   :ensure t)
@@ -469,7 +472,8 @@
 
 (use-package company
   ;; COMPlete-ANYthing.
-  :defer 11
+  ;;:defer 11
+  :ensure t
   :config
   ;; company by default sets up a bunch of "legacy" backends... bbdb, oddmuse,
   ;; etc.  which I do not want. This sets a clean, fast global default. I can
@@ -490,6 +494,7 @@
   ;; different completion candidates, better color highlighting, and the ability
   ;; to display documentation for functions and variables.
   :defer t
+  :ensure t
   :after (company)
   :hook (company-mode . company-box-mode))
 
@@ -1060,11 +1065,14 @@ server program."
 
 (use-package jsonnet-mode
   ;; NB: the requires keyword is the same as :if - it does not load dependencies!
-  :init (progn (require 'flycheck) (require 'eglot) (require 'dpc-jsonnet-mode-fixups))
+  :init (progn (require 'flycheck) (require 'eglot) )
   ;;:ensure t
   :defer t
   :commands (jsonnet-eval-buffer jsonnet-mode jsonnet-reformat-buffer)
-  :config (dino-jsonnet-package-config)
+  :config
+  (when  (file-exists-p "~/elisp/dpc-jsonnet-mode-fixups.el")
+    (require 'dpc-jsonnet-mode-fixups)
+    (dino-jsonnet-package-config))
   :mode (
          ("\\.libjsonnet\\'" . jsonnet-mode)
          ("\\.jsonnet\\'" . jsonnet-mode)
@@ -1072,11 +1080,11 @@ server program."
          )
   :hook (jsonnet-mode . dino-jsonnet-mode-fn))
 
-(use-package dpc-jsonnet-mode-fixups
-  :defer t
-  :if (file-exists-p "~/elisp/dpc-jsonnet-mode-fixups.el")
-  :load-path "~/elisp"
-  :pin manual)
+;; (use-package dpc-jsonnet-mode-fixups
+;;   :defer t
+;;   :if (file-exists-p "~/elisp/dpc-jsonnet-mode-fixups.el")
+;;   :load-path "~/elisp"
+;;   :pin manual)
 
 (use-package expand-region
   ;; Tips from https://www.youtube.com/watch?v=p3Te_a-AGqM
@@ -1493,22 +1501,22 @@ Otherwise restore previous window config."
 ;; But there are quirks. In my experience,
 ;; - on Windows NT, setting `initial-frame-alist' here works just fine.
 ;; - on gLinux chromebook, setting `initial-frame-alist' in either place was ineffectual.
-(if (eq system-type 'windows-nt)
-    (progn
-      (setq initial-frame-alist
-            '( (top . 80) (left . 400)
-               (height . 54) (width . 212)
-               ))
-      (set-frame-font "Consolas 14" nil t))
-  (progn
-    ;; glinux
-    (setq initial-frame-alist
-          '( (top . 10) (left . 10)
-             (height . 42) (width . 148)
-             )
-          )
-    (set-frame-font "Noto Mono 11" nil t))
-  )
+(cond
+ ((eq system-type 'windows-nt)
+  (setq initial-frame-alist
+        '( (top . 80) (left . 400)
+           (height . 54) (width . 212)
+           ))
+  (set-frame-font "Consolas 14" nil t))
+ (t
+  (setq initial-frame-alist
+        '( (top . 10) (left . 10)
+           (height . 42) (width . 148)))
+  (cond
+   ((eq system-type 'darwin)
+    (set-frame-font "Andale Mono 11" nil t))
+   (t
+    (set-frame-font "Noto Mono 11" nil t))  )))
 
 ;; what should a frame look like
 (setq frame-title-format '("%f [mode: %m]" )    ; "filename [mode]" in title bar
@@ -2416,21 +2424,26 @@ more information."
   (setq acp-logging-enabled t) ;; helpful while it's new / evolving
 
   ;; Auth via API key
-  (setq agent-shell-google-authentication
-        (agent-shell-google-make-authentication :api-key
-                                                (dpc-gemini/get-config-property "apikey")))
+  (let ((api-key (dpc-gemini/get-config-property "apikey")))
+    (if api-key
+        (setq agent-shell-google-authentication
+              (agent-shell-google-make-authentication :api-key api-key))
+      (message "No APIKey found for Google Gemini")))
+
   (setq agent-shell-google-gemini-command
-        (if (eq system-type 'windows-nt)
-            ;; 20251011-1613 - patched version of gemini-cli
-            (let ((patched-geminicli "c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js"))
-              (if (file-exists-p patched-geminicli)
-                  '("node" patched-geminicli "--experimental-acp")
-                '("gemini" "--experimental-acp")))
+        (cond
+         ((eq system-type 'windows-nt)
+          ;; 20251011-1613 - patched version of gemini-cli
+          (let ((patched-geminicli "c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js"))
+            (if (file-exists-p patched-geminicli)
+                '("node" patched-geminicli "--experimental-acp")
+              '("gemini" "--experimental-acp"))))
+         (t
           ;; There is a gcli bug (#7549) that flushes cached creds when --experimental-acp
           ;; is enabled. As a result the user must ALWAYS re-authenticate. On a text
           ;; terminal that causes a hang.  This forcibly unsets the project, and uses API
           ;; key, to allow prompt-free startup.
-          `("env" "GOOGLE_CLOUD_PROJECT=\"\"" "gemini" "--experimental-acp")))
+          `("env" "GOOGLE_CLOUD_PROJECT=\"\"" "gemini" "--experimental-acp"))))
 
   ;; re-define this to trim the noise...
   (defun agent-shell-google--gemini-welcome-message (_config)
@@ -3811,7 +3824,8 @@ Does not consider word syntax tables.
   ;;(hl-line-mode 1)
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
-  (company-mode)
+  (if (fboundp 'company-mode)
+      (company-mode))
   (apheleia-mode)
   (flycheck-mode)
   (setq flycheck-emacs-lisp-load-path 'inherit) ;;flycheck should use my load path
@@ -3831,6 +3845,7 @@ Does not consider word syntax tables.
 ;; instantly display results of `eval-last-sexp' in an overlay.
 (use-package eros
   ;;:defer t
+  :ensure t
   :config (eros-mode 1))
 
 (use-package flymake-shellcheck
