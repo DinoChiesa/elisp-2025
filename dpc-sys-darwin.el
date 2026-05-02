@@ -32,4 +32,12 @@
   (path-helper-setenv "PATH"))
 
 
+;; The builtin ls on macos does not support --group-directories-first flag,
+;; which apparently can cause "Listing directory failed but ‘access-file’" when
+;; using dired.  This supposedly fixes it. But requires a Santa exception.
+;;(setq insert-directory-program "/opt/homebrew/bin/gls")
+(require 'ls-lisp)
+(setq ls-lisp-use-insert-directory-program nil)
+
+
 (provide 'dpc-sys-darwin)
