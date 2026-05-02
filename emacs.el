@@ -601,6 +601,21 @@
                    (prin1-to-string
                     (treesit-language-available-p 'c-sharp)))))
 
+;; automatic loading of grammars for bash, lua, whatever.
+;; emacs 30.2 has the modes builtin, but not the grammars. Says gemini.
+(use-package treesit-auto
+  :ensure t
+  :config
+  (setq treesit-auto-install 'prompt)
+  (global-treesit-auto-mode))
+
+;; ;; manual approach in case necessary
+;; (require 'treesit)
+;; (add-to-list 'treesit-language-source-alist
+;;              '(bash "git@github.com:tree-sitter/tree-sitter-bash.git"))
+;; (add-to-list 'treesit-language-source-alist
+;;              '(lua "git@github.com:tree-sitter-grammars/tree-sitter-lua.git"))
+
 (use-package hl-line
   ;;:defer 9
   :config
@@ -1851,16 +1866,16 @@ Otherwise restore previous window config."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Lua
-;; 20250224-0130 - it's rare that I use lua-mode.
+;; 20250224-0130 - used in wezterm configs
 
-(use-package lua-mode
+(use-package lua-ts-mode
   :defer 36
   :config
   ;; (if (eq system-type 'windows-nt)
   ;;     (setq lua-default-application "c:\\tools\\lua\\lua52.exe")
   ;;   )
-  (add-to-list 'auto-mode-alist '("\\.lua\\'" . lua-mode))
-  (add-to-list 'interpreter-mode-alist '("lua" . lua-mode)))
+  (add-to-list 'auto-mode-alist '("\\.lua\\'" . lua-ts-mode))
+  (add-to-list 'interpreter-mode-alist '("lua" . lua-ts-mode)))
 
 ;;
 ;; (eval-after-load "lua-mode"
