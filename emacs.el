@@ -57,8 +57,27 @@
                                        (replace-regexp-in-string "\\\\" "/" (getenv "HOME")))
              "/.emacs.d/elpa/gnupg")))
 
-(defvar dpc/hostname (system-name)
-  "The hostname of the machine Emacs is running on.")
+;;(defvar dpc/hostname (system-name)
+;;  "The hostname of the machine Emacs is running on.")
+
+;; 20260509-1105
+;; Using ghostty with ssh and `emacs -nw` , Without this, apparently, OSC52 does not happen.
+;; Or, I needed this:
+;;     infocmp xterm-ghostty | ssh remote_user@remote_host "tic -x -o ~/.terminfo /dev/stdin"
+;;
+;; Not sure. I did both, and now copy/paste is working again. Also make sure on the client
+;; machine in ~/.config/ghostty/config you have:
+;;
+;;  ...
+;; clipboard-read = allow
+;; clipboard-write = allow
+;; copy-on-select = clipboard
+;;  ...
+(cond
+ ((string= (system-name) "dpchiesa.c.googlers.com")
+  (setq xterm-extra-capabilities '(getSelection setSelection modifyOtherKeys))))
+
+
 
 ;; (concat
 ;;  (replace-regexp-in-string "\\\\" "/" (getenv "HOME")) "/.emacs.d/elpa/gnupg")
