@@ -739,3 +739,8 @@ com.apigee.test.FileUtility
 com.apigee.test.FileUtility
 com.apigee.entities.DebugInfo
 com.google.gson.JsonObject
+com.apigee.protocol.http.msg.RequestURI
+com.apigee.protocol.http.msg.HTTPStatus
+io.restassured.response.Response
+java.nio.charset.Standardsets
+com.google.common.io.Resources
