@@ -13,7 +13,7 @@
 ;; Requires   : s.el dash.el
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
-;; Last-saved : <2026-April-15 10:19:30>
+;; Last-saved : <2026-April-21 15:40:33>
 ;;
 ;;; Commentary:
 ;;
@@ -642,7 +642,10 @@ the shell find command. "
 
     (if (file-exists-p target-path)
         (find-file target-path)
-      (message "Target file not found: %s" target-path))))
+      (let ((new-dir (directory-file-name (file-name-directory target-path))))
+        (if (file-directory-p new-dir)
+            (find-file new-dir)
+          (message "Target file not found: %s" target-path))))))
 
 
 (defun dcjava-wacapps-intelligently-open-file (partial-path)
@@ -784,23 +787,33 @@ delete the old jar (or not), and everything will keep working.
               (car (last sorted-candidates))))))))
 
 
-(defun dcjava-gformat-command (&optional explicitly-provided-dir-to-search)
+(defun dcjava-gformat-command-x (&optional explicitly-provided-dir-to-search)
   "returns the command in string form to run gformat. Searches the
 specified directory for the jar file."
   (let ((jar-file (dcjava-latest-gformat-jar explicitly-provided-dir-to-search)))
     (if jar-file
         (concat "java -jar " (dcjava-latest-gformat-jar) " -"))))
 
+(defun dcjava-gformat-command (&optional explicitly-provided-dir-to-search)
+  "returns the command in string form to run gformat. Searches the
+specified directory for the jar file."
+  (let ((exe (executable-find "google-java-format")))
+    (if exe
+        (concat exe " -")
+      (let ((jar-file (dcjava-latest-gformat-jar explicitly-provided-dir-to-search)))
+        (if jar-file
+            (concat "java -jar " (dcjava-latest-gformat-jar) " -"))))))
+
 
 (defun dcjava-gformat-buffer ()
   "runs google-java-format on the current buffer"
   (interactive)
-  (let ((command (dcjava-gformat-command)))
-    (if command
-        (let ((savedpoint (point)))
-          (dcjava-shell-command-on-buffer command)
-          (goto-char savedpoint))
-      (message "no google-java-format jar found in %s" (or dcjava-location-of-gformat-jar "-unset-")))))
+  (if-let* ((command (dcjava-gformat-command))
+            (savedpoint (point)))
+      (progn
+        (dcjava-shell-command-on-buffer command)
+        (goto-char savedpoint))
+    (message "no google-java-format jar found in %s" (or dcjava-location-of-gformat-jar "-unset-"))))
 
 
 (provide 'dcjava)
