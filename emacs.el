@@ -10,7 +10,31 @@
 (require 'cl-seq)
 (require 'json)
 (require 'seq)
-(require 's)
+;;(require 's) ;; not builtin; defer this until the load path is set.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; package manager
+;;
+
+(add-to-list 'load-path "~/elisp")
+;; Set the load-path for all packages installed by package. Some of the
+;; package-installed versions over builtin versions, if they are updated more
+;; recently.
+;;
+(let ((default-directory "~/.emacs.d/elpa"))
+  (normal-top-level-add-subdirs-to-load-path))
+;; remove any now-deleted folders from the load-path, and  de-dupe.
+(setq load-path (seq-uniq load-path))
+
+(require 'package)
+(dolist (item (list
+               '("MELPA"     . "https://melpa.org/packages/")
+               '("jcs-elpa"  . "https://jcs-emacs.github.io/jcs-elpa/packages/")))
+  (add-to-list 'package-archives item))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 
 (setq inhibit-splash-screen t)
@@ -110,7 +134,11 @@
 (setq default-directory "~/")
 ;; helpful for debugging lisp code:
 (setq messages-buffer-max-lines 2500)
+
+;; For the following, 'always, 'visible,  't, and nil are options.
+;; But I don't know the effect! They look the same to me.
 (setq completion-auto-help nil)
+
 (put 'eval-expression 'disabled nil)
 (setq xterm-max-cut-length (* 256 1024)) ;; 256kb
 
@@ -134,8 +162,6 @@
 (setq-default show-trailing-whitespace t)
 (setq-default fill-column 80)
 (setq project-vc-extra-root-markers '("pyproject.toml" "pyrightconfig.json" ".project"))
-
-(add-to-list 'load-path "~/elisp")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; setting up faces etc
@@ -184,48 +210,12 @@
 ;;                     :foreground "LightSteelBlue")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; for tetris
-(and (boundp 'tetris-score-file)
-     (setq tetris-score-file "~/elisp/tetris-scores")
-     ;; 20250223-1425
-     ;;     ;;  Turn off leaderboard prompt at end of game?
-     ;;      (defadvice tetris-end-game (around zap-scores activate)
-     ;;        (save-window-excursion ad-do-it))
-     )
-
-;; (use-package elcity
-;;   :ensure nil
-;;   :vc (:url "https://github.com/vkazanov/elcity"
-;;        :rev :newest
-;;        :main-file "elcity.el"
-;;        :branch "main")
-;;   :commands (elcity-start))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; package manager
-;;
-(require 'package)
-(dolist (item (list
-               ;; '("MELPA Stable"     . "https://stable.melpa.org/packages/")
-               '("MELPA"     . "https://melpa.org/packages/")
-               '("jcs-elpa"  . "https://jcs-emacs.github.io/jcs-elpa/packages/")
-               '("org"       . "http://orgmode.org/elpa/")))
-  (add-to-list 'package-archives item))
-
-;; Set the load-path for all packages installed by package. Some of the
-;; package-installed versions over builtin versions, if they are updated more
-;; recently.
-;;
-(let ((default-directory "~/.emacs.d/elpa"))
-  (normal-top-level-add-subdirs-to-load-path))
-
-;; de-duplicate entries in load-path
-(setq load-path (seq-uniq load-path))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; some must-have utility things
 ;;
 (use-package s
+  :ensure t)
+
+(use-package dash
   :ensure t)
 
 (use-package memoize
@@ -266,7 +256,7 @@
   :autoload (dino/insert-or-modify-alist-entry
              dino/maybe-add-to-exec-path
              dino/fixup-exec-path
-             dino/find-latest-nvm-version-bin-dir
+             dino/find-nvm-bin-dir
              dino/setup-shmode-for-apheleia
              dino/find-executable-in-paths)
   :config
@@ -340,11 +330,16 @@
 
 ;; 20260131-1235
 ;; Add paths to exec-path and PATH without duplication.
-(let* ((this-script-dir (file-name-directory load-file-name))
-       (paths-file (expand-file-name ".exec-paths" this-script-dir)))
-  (dino/fixup-exec-path paths-file))
-
-(dino/maybe-add-to-exec-path (list (dino/find-latest-nvm-version-bin-dir)))
+(if-let* ((this-script-dir (file-name-directory load-file-name))
+          (paths-file (expand-file-name ".exec-paths" this-script-dir)))
+    ;; TODO: eventually fix this.
+    ;; The cons doesn't quite work because its use does not insure ONLY ONE nvm
+    ;; bin dir on the path. Also, dino/find-nvm-bin-dir is not really necessary
+    ;; on Windows because I just put c:\nvm4w\nodejs in the .exec-paths file.  A
+    ;; similar symlinked path does not exist in Linux apparently.
+    (dino/maybe-add-to-exec-path (cons
+                                  (dino/find-nvm-bin-dir)
+                                  (dino/fixup-dirs-for-exec-path paths-file))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -496,7 +491,8 @@
 
 (use-package company
   ;; COMPlete-ANYthing.
-  :defer 11
+  ;;:defer 11
+  :ensure t
   :config
   ;; company by default sets up a bunch of "legacy" backends... bbdb, oddmuse,
   ;; etc.  which I do not want. This sets a clean, fast global default. I can
@@ -517,6 +513,7 @@
   ;; different completion candidates, better color highlighting, and the ability
   ;; to display documentation for functions and variables.
   :defer t
+  :ensure t
   :after (company)
   :hook (company-mode . company-box-mode))
 
@@ -622,6 +619,21 @@
   (message (concat "csharp TS lang available ?: "
                    (prin1-to-string
                     (treesit-language-available-p 'c-sharp)))))
+
+;; automatic loading of grammars for bash, lua, whatever.
+;; emacs 30.2 has the modes builtin, but not the grammars. Says gemini.
+(use-package treesit-auto
+  :ensure t
+  :config
+  (setq treesit-auto-install 'prompt)
+  (global-treesit-auto-mode))
+
+;; ;; manual approach in case necessary
+;; (require 'treesit)
+;; (add-to-list 'treesit-language-source-alist
+;;              '(bash "git@github.com:tree-sitter/tree-sitter-bash.git"))
+;; (add-to-list 'treesit-language-source-alist
+;;              '(lua "git@github.com:tree-sitter-grammars/tree-sitter-lua.git"))
 
 (use-package hl-line
   ;;:defer 9
@@ -1087,11 +1099,14 @@ server program."
 
 (use-package jsonnet-mode
   ;; NB: the requires keyword is the same as :if - it does not load dependencies!
-  :init (progn (require 'flycheck) (require 'eglot) (require 'dpc-jsonnet-mode-fixups))
+  :init (progn (require 'flycheck) (require 'eglot) )
   ;;:ensure t
   :defer t
   :commands (jsonnet-eval-buffer jsonnet-mode jsonnet-reformat-buffer)
-  :config (dino-jsonnet-package-config)
+  :config
+  (when  (file-exists-p "~/elisp/dpc-jsonnet-mode-fixups.el")
+    (require 'dpc-jsonnet-mode-fixups)
+    (dino-jsonnet-package-config))
   :mode (
          ("\\.libjsonnet\\'" . jsonnet-mode)
          ("\\.jsonnet\\'" . jsonnet-mode)
@@ -1099,11 +1114,11 @@ server program."
          )
   :hook (jsonnet-mode . dino-jsonnet-mode-fn))
 
-(use-package dpc-jsonnet-mode-fixups
-  :defer t
-  :if (file-exists-p "~/elisp/dpc-jsonnet-mode-fixups.el")
-  :load-path "~/elisp"
-  :pin manual)
+;; (use-package dpc-jsonnet-mode-fixups
+;;   :defer t
+;;   :if (file-exists-p "~/elisp/dpc-jsonnet-mode-fixups.el")
+;;   :load-path "~/elisp"
+;;   :pin manual)
 
 (use-package expand-region
   ;; Tips from https://www.youtube.com/watch?v=p3Te_a-AGqM
@@ -1520,22 +1535,22 @@ Otherwise restore previous window config."
 ;; But there are quirks. In my experience,
 ;; - on Windows NT, setting `initial-frame-alist' here works just fine.
 ;; - on gLinux chromebook, setting `initial-frame-alist' in either place was ineffectual.
-(if (eq system-type 'windows-nt)
-    (progn
-      (setq initial-frame-alist
-            '( (top . 80) (left . 400)
-               (height . 54) (width . 212)
-               ))
-      (set-frame-font "Consolas 14" nil t))
-  (progn
-    ;; glinux
-    (setq initial-frame-alist
-          '( (top . 10) (left . 10)
-             (height . 42) (width . 148)
-             )
-          )
-    (set-frame-font "Noto Mono 11" nil t))
-  )
+(cond
+ ((eq system-type 'windows-nt)
+  (setq initial-frame-alist
+        '( (top . 80) (left . 400)
+           (height . 54) (width . 212)
+           ))
+  (set-frame-font "Consolas 14" nil t))
+ (t
+  (setq initial-frame-alist
+        '( (top . 10) (left . 10)
+           (height . 42) (width . 148)))
+  (cond
+   ((eq system-type 'darwin)
+    (set-frame-font "Andale Mono 11" nil t))
+   (t
+    (set-frame-font "Noto Mono 11" nil t))  )))
 
 ;; what should a frame look like
 (setq frame-title-format '("%f [mode: %m]" )    ; "filename [mode]" in title bar
@@ -1870,16 +1885,16 @@ Otherwise restore previous window config."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Lua
-;; 20250224-0130 - it's rare that I use lua-mode.
+;; 20250224-0130 - used in wezterm configs
 
-(use-package lua-mode
+(use-package lua-ts-mode
   :defer 36
   :config
   ;; (if (eq system-type 'windows-nt)
   ;;     (setq lua-default-application "c:\\tools\\lua\\lua52.exe")
   ;;   )
-  (add-to-list 'auto-mode-alist '("\\.lua\\'" . lua-mode))
-  (add-to-list 'interpreter-mode-alist '("lua" . lua-mode)))
+  (add-to-list 'auto-mode-alist '("\\.lua\\'" . lua-ts-mode))
+  (add-to-list 'interpreter-mode-alist '("lua" . lua-ts-mode)))
 
 ;;
 ;; (eval-after-load "lua-mode"
@@ -2443,21 +2458,26 @@ more information."
   (setq acp-logging-enabled t) ;; helpful while it's new / evolving
 
   ;; Auth via API key
-  (setq agent-shell-google-authentication
-        (agent-shell-google-make-authentication :api-key
-                                                (dpc-gemini/get-config-property "apikey")))
+  (let ((api-key (dpc-gemini/get-config-property "apikey")))
+    (if api-key
+        (setq agent-shell-google-authentication
+              (agent-shell-google-make-authentication :api-key api-key))
+      (message "No APIKey found for Google Gemini")))
+
   (setq agent-shell-google-gemini-command
-        (if (eq system-type 'windows-nt)
-            ;; 20251011-1613 - patched version of gemini-cli
-            (let ((patched-geminicli "c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js"))
-              (if (file-exists-p patched-geminicli)
-                  '("node" patched-geminicli "--experimental-acp")
-                '("gemini" "--experimental-acp")))
+        (cond
+         ((eq system-type 'windows-nt)
+          ;; 20251011-1613 - patched version of gemini-cli
+          (let ((patched-geminicli "c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js"))
+            (if (file-exists-p patched-geminicli)
+                '("node" patched-geminicli "--experimental-acp")
+              '("gemini" "--experimental-acp"))))
+         (t
           ;; There is a gcli bug (#7549) that flushes cached creds when --experimental-acp
           ;; is enabled. As a result the user must ALWAYS re-authenticate. On a text
           ;; terminal that causes a hang.  This forcibly unsets the project, and uses API
           ;; key, to allow prompt-free startup.
-          `("env" "GOOGLE_CLOUD_PROJECT=\"\"" "gemini" "--experimental-acp")))
+          `("env" "GOOGLE_CLOUD_PROJECT=\"\"" "gemini" "--experimental-acp"))))
 
   ;; re-define this to trim the noise...
   (defun agent-shell-google--gemini-welcome-message (_config)
@@ -3839,7 +3859,8 @@ Does not consider word syntax tables.
   ;;(hl-line-mode 1)
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
-  (company-mode)
+  (if (fboundp 'company-mode)
+      (company-mode))
   (apheleia-mode)
   (flycheck-mode)
   (setq flycheck-emacs-lisp-load-path 'inherit) ;;flycheck should use my load path
@@ -3859,6 +3880,7 @@ Does not consider word syntax tables.
 ;; instantly display results of `eval-last-sexp' in an overlay.
 (use-package eros
   ;;:defer t
+  :ensure t
   :config (eros-mode 1))
 
 (use-package flymake-shellcheck
@@ -4266,18 +4288,6 @@ counteracts that. "
   (when (memq major-mode '(js-mode javascript-mode json-mode))
     (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
 
-  ;;
-  ;; eglot by default uses typescript-language-server as the server.
-  ;; Examine `eglot-server-programs' to discover this.
-  ;; To get this program:
-  ;;   npm install -g typescript-language-server typescript
-  ;;
-  ;; As of July 2025, people say vtsls is a better alternative:
-  ;;    npm install -g @vtsls/language-server
-  ;;
-  ;; ...and then modify the `eglot-server-programs' entry appropriately to
-  ;; run vtsls --stdio
-  ;;
   ;; Completions via Company from Eglot just work. Enable both company-mode and
   ;; eglot in the buffer, and completions should work automatically.
 
@@ -4332,7 +4342,7 @@ counteracts that. "
 (add-hook 'js-mode-hook   'dino-js-mode-fn)
 (add-hook 'js-ts-mode-hook   'dino-js-mode-fn)
 
-;; supplant the default typescript-language-server
+;; supplant the default typescript-language-server with @vtsls/language-server
 (if (boundp 'eglot-server-programs)
     (add-to-list 'eglot-server-programs
                  `(((js-mode :language-id "javascript")
@@ -4973,6 +4983,25 @@ the local buffer."
 ;; ;; (load-file
 ;; ;;  "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs/google.el")
 ;; (require 'google-java-format)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; for tetris
+(and (boundp 'tetris-score-file)
+     (setq tetris-score-file "~/elisp/tetris-scores")
+     ;; 20250223-1425
+     ;;     ;;  Turn off leaderboard prompt at end of game?
+     ;;      (defadvice tetris-end-game (around zap-scores activate)
+     ;;        (save-window-excursion ad-do-it))
+     )
+
+;; (use-package elcity
+;;   :ensure nil
+;;   :vc (:url "https://github.com/vkazanov/elcity"
+;;        :rev :newest
+;;        :main-file "elcity.el"
+;;        :branch "main")
+;;   :commands (elcity-start))
 
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
