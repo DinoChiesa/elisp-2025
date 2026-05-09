@@ -3732,6 +3732,7 @@ Does not consider word syntax tables.
   (keymap-local-set "C-<"     #'nxml-backward-element)
   (keymap-local-set "C->"     #'nxml-forward-element)
   (keymap-local-set "C-c C-c" #'dino-xml-comment-region)
+  (keymap-local-set "C-c C-f" #'fix-dependency-xml-formatting)
 
   (setq nxml-sexp-element-flag t
         nxml-child-indent 2
@@ -3896,7 +3897,8 @@ Does not consider word syntax tables.
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("ESC C-R" . indent-region) ;; not sure if useful in python
-              ("M-TAB" . company-complete)
+              ("M-TAB"   . company-complete)
+              ("C-c i"   .  dino/indent-line-to-current-column)
               ;; TODO: reconcile this key binding with all the other
               ;; uses of "ESC #" that are bound to dino/indent-buffer.
               ("ESC #"   . dino/toggle-flymake-diagnostics)
@@ -4416,12 +4418,14 @@ counteracts that. "
               ("C-c i"     . dcjava-auto-add-import)
               ("C-c C-i"   . dcjava-auto-add-import)
               ("C-c C-l"   . dcjava-learn-new-import)
+              ("C-c i"     . dino/indent-line-to-current-column)
               ("C-c C-f"   . dcjava-find-wacapps-java-source-for-class-at-point)
               ("C-c C-r"   . dcjava-reload-classlist)
               ("ESC #"     . dino/toggle-flymake-diagnostics)
               ("ESC C-R"   . indent-region)
               ;;("C-c C-s" . dcjava-sort-import-statements) ;; obsolete with gformat+apheleia
               ("C-c C-c"   . comment-region)
+              ("C-c m"     . magit-status)
               ("C-c C-s"   . dcjava-apiplatform-swap-tree)
               ("C-c C-g f" . dcjava-gformat-buffer) ;; not C-c C-g ? also, unnecessary with apheleia
               ))))
