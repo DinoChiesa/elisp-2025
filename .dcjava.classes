@@ -744,3 +744,4 @@ com.apigee.protocol.http.msg.HTTPStatus
 io.restassured.response.Response
 java.nio.charset.Standardsets
 com.google.common.io.Resources
+org.slf4j.Marker
