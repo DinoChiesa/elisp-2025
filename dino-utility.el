@@ -1752,6 +1752,16 @@ shfmt is the command that will be run."
         (push '(bash-ts-mode . shfmt) apheleia-mode-alist))
       )))
 
+(defun dino/shell-command-on-buffer (command)
+  (save-excursion
+    (let ((output-goes-to-current-buffer t)
+          (output-replaces-current-content t))
+      (shell-command-on-region (point-min)
+                               (point-max)
+                               command
+                               output-goes-to-current-buffer
+                               output-replaces-current-content))))
+
 (defun dino/shfmt-buffer ()
   "run shfmt on the current buffer."
   (interactive)
@@ -1774,22 +1784,48 @@ shfmt is the command that will be run."
                                sh-basic-offset)
                               (t 4)))
                            "-")
-                        " "))
-            (output-goes-to-current-buffer t)
-            (output-replaces-current-content t))
+                        " ")))
 
         (message "shfmt-buffer command: %s" command)
-        (save-excursion
-          (shell-command-on-region (point-min)
-                                   (point-max)
-                                   command
-                                   output-goes-to-current-buffer
-                                   output-replaces-current-content))
+        (dino/shell-command-on-buffer command)
         (goto-char orig-point)))))
+
+(defun dino/nclfmt-buffer ()
+  "Run nclfmt on the current buffer."
+  (interactive)
+  (if-let* ((fname (buffer-file-name))
+            (_ (or
+                (s-ends-with? ".ncl" fname)
+                (s-ends-with? ".blueprint" fname))))
+      (if-let* ((nclfmt-cmd (executable-find "nclfmt"))
+                (_  (file-exists-p nclfmt-cmd)))
+          (let* ((command (format "%s --in_place %s" nclfmt-cmd fname))
+                 (saved-point (point)))
+            (message "nclfmt-buffer command: %s" command)
+            (dino/shell-command-on-buffer command)
+            (goto-char saved-point))
+        (message "cannot find nclfmt"))
+    (message "not a .ncl file")))
+
+(defun dino/gclfmt-buffer ()
+  "Run gclfmt on the current buffer. GCL is a configuration language used
+by many tools, including Borg, Sandman, PatchPanel, and Mendel."
+  (interactive)
+  (if-let* ((fname (buffer-file-name))
+            (_  (s-ends-with? ".pp" fname)))
+      (if-let* ((nclfmt-cmd (executable-find "gclfmt"))
+                (_  (file-exists-p nclfmt-cmd)))
+          (let* ((command (format "%s -w %s" nclfmt-cmd fname))
+                 (saved-point (point)))
+            (message "gclfmt-buffer command: %s" command)
+            (dino/shell-command-on-buffer command)
+            (goto-char saved-point))
+        (message "cannot find gclfmt"))
+    (message "not a .pp file")))
 
 
 (defun dino/get-env-setting (env-filename keyname)
-  "read a properties or .env file and return a value"
+  "Read a properties or .env file and return a value"
   (let ((expanded-fname (expand-file-name env-filename)))
     (if (file-exists-p expanded-fname)
         (with-temp-buffer
@@ -2090,6 +2126,10 @@ disconnect + reconnect case it will make me happy."
   (interactive)
   (let ((default-directory "/google/src/files/head/depot/google3/experimental/users"))
     (call-interactively 'find-file)))
+
+
+
+
 
 (provide 'dino-utility)
 
