@@ -294,7 +294,8 @@ filename."
 (defun dino--gcloud-auth-print-token (tokentype)
   "return output of $(gcloud auth print-{identity,access}-token)"
   (let* ((gcloud-pgm "gcloud")
-         (command-string (concat gcloud-pgm " auth print-" tokentype "-token"))
+         (app-default "application-default ")
+         (command-string (format  "%s auth %s print-%s-token" gcloud-pgm app-default tokentype))
          (output (replace-regexp-in-string "\n$" "" (shell-command-to-string command-string)))
          (lines (split-string output "\n")))
     (car (last lines))))
