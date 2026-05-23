@@ -1232,6 +1232,7 @@ server program."
   (flymake-mode) ;; for shellcheck
   (hs-minor-mode) ;; show: C-c @ C-s  hide: C-c @ C-h
   (dino/setup-shmode-for-apheleia)
+  (modify-syntax-entry ?_ "w")
 
   (let ((local-map (current-local-map))) ;; one of {python-mode-map, python-ts-mode-map}
     (when local-map
@@ -1247,6 +1248,7 @@ server program."
               )))))
 
 (add-hook 'sh-mode-hook 'dino-sh-mode-fn)
+(add-hook 'bash-ts-mode-hook 'dino-sh-mode-fn)
 
 (add-hook 'after-save-hook
           #'executable-make-buffer-file-executable-if-script-p)
@@ -1436,8 +1438,33 @@ then switch to the markdown output buffer."
   :config
   :hook (markdown-mode . dino-markdown-mode-fn))
 
+(use-package terraform-mode
+  :when (dino-is-work-system)
+  :ensure t
+  :defer t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 20260521-1246
+;;
+;; Opening a file called Dockerfile.zip was using dockerfile-mode (or
+;; dockerfile-ts-mode, not sure) which is wrong.
+;;
+;; 1. Remove the default built-in "broken" Dockerfile entries, there are two.
+(setq auto-mode-alist
+      (assoc-delete-all "\\(?:Dockerfile\\(?:\\..*\\)?\\|\\.[Dd]ockerfile\\)\\'"
+                        auto-mode-alist))
+(setq auto-mode-alist
+      (assoc-delete-all "[/\\]\\(?:Containerfile\\|Dockerfile\\)\\(?:\\.[^/\\]*\\)?\\'"
+                        auto-mode-alist))
+
+;; 2. Add a new rule that matches Dockerfile, .Dockerfile, and Dockerfile.foo
+;; (any suffix), while specifically excluding Dockerfile.zip. The existing rule
+;; for archive-mode will take precedence.
+(add-to-list 'auto-mode-alist
+             '("\\(?:Dockerfile\\(?:\\.(?!zip\\b)[^./\\]+\\)?\\|\\.[Dd]ockerfile\\)\\'" . dockerfile-ts-mode))
+
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; httpget
@@ -1595,6 +1622,7 @@ Otherwise restore previous window config."
          ("\\.html\\'"                          . html-ts-mode)
          ("\\.htm\\'"                           . html-ts-mode)
          ("\\.md\\'"                            . markdown-mode)
+         ("\\.tf\\'"                            . terraform-mode)
          ("\\.py\\'"                            . python-ts-mode)
          ;;("\\.dart\\'"                          . dart-mode)
          ("\\.el\\'"                            . emacs-lisp-mode)
@@ -2570,8 +2598,8 @@ more information."
         '(( "C-c C-g" . dino-dired-kill-new-file-contents)
           ( "C-c C-c" . dino-dired-copy-file-to-dir-in-other-window)
           ( "C-c C-m" . dino-dired-move-file-to-dir-in-other-window)
-          ( "C-c m" . magit-status)
-          ( "C-x m" . magit-status)
+          ( "C-c C-s" . magit-status)
+          ;;( "C-x m" . magit-status)
           ;; converse of i (dired-maybe-insert-subdir)
           ( "K" . dired-kill-subdir)
           ( "L" . ffap-literally) ;; no coding conversion (see "enriched mode")
@@ -4085,6 +4113,10 @@ Does not consider word syntax tables.
 ;;             eglot-server-programs))
 
 
+(defun dino-is-work-system ()
+  "returns non-nil if the system is a work system"
+  (member (system-name) '("dpchiesa.c.googlers.com" "dchiesa35")))
+
 (add-hook 'python-base-mode-hook #'dino-python-mode-fn)
 
 (with-eval-after-load 'apheleia
@@ -4134,7 +4166,7 @@ Does not consider word syntax tables.
 
   ;; make pyformat for work machine, ruff for others
   (let ((python-formatters
-         (if (member (system-name) '("dpchiesa.c.googlers.com" "dchiesa35"))
+         (if (dino-is-work-system)
              '(pyformat)
            '(ruff-custom ruff))))
     (dolist (mode '(python-mode python-ts-mode))
@@ -4435,8 +4467,8 @@ counteracts that. "
               ("ESC C-R"   . indent-region)
               ;;("C-c C-s" . dcjava-sort-import-statements) ;; obsolete with gformat+apheleia
               ("C-c C-c"   . comment-region)
-              ("C-c m"     . magit-status)
-              ("C-c C-s"   . dcjava-apiplatform-swap-tree)
+              ("C-c C-s"   . magit-status)
+              ("C-c C-t"   . dcjava-apiplatform-swap-tree)
               ("C-c C-g f" . dcjava-gformat-buffer) ;; not C-c C-g ? also, unnecessary with apheleia
               ))))
 
@@ -4906,15 +4938,10 @@ Enable `recentf-mode' if it isn't already."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vterm
 
-(defun dino-dont-show-trailing-ws ()
-  "turn off highlights of trailing whitespace for
-the local buffer."
-  (setq show-trailing-whitespace nil))
-
-(when (eq system-type 'gnu/linux)
-  (use-package vterm
-    :defer t
-    :hook (vterm-mode . dino-dont-show-trailing-ws)))
+(use-package vterm
+  :when (dino-is-work-system)
+  :defer t
+  :hook (vterm-mode . (lambda () (setq show-trailing-whitespace nil))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timestamp
@@ -5048,6 +5075,7 @@ the local buffer."
 (define-key global-map (kbd "C-c b")       #'dino-base64-insert-file)
 (define-key global-map (kbd "C-c 1")       #'just-one-space)
 (define-key global-map (kbd "C-c s")       #'search-forward-regexp)
+(define-key global-map (kbd "C-c C-s")     #'magit-status)
 (define-key global-map (kbd "C-c y")       #'display-line-numbers-mode)
 (define-key global-map (kbd "C-c q")       #'query-replace)
 (define-key global-map (kbd "C-c c")       #'goto-char)
@@ -5107,6 +5135,7 @@ the local buffer."
 (define-key key-translation-map (kbd "\C-x 8 >") (kbd "»")) ;; right double arrow - 0BB
 (define-key key-translation-map (kbd "\C-x 8 <") (kbd "«")) ;; left double arrow - 0AB
 (define-key key-translation-map (kbd "\C-x 8 t") (kbd "∴")) ;; therefore - &#x2234;
+(define-key key-translation-map (kbd "\C-x 8 r") (kbd "→")) ;; right arrow - ??
 
 (setq debug-on-error nil)
 
