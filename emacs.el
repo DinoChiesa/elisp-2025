@@ -74,6 +74,11 @@
 ;; subsequent to that, shows that I still need this, so for now it's staying.
 ;;
 ;; TODO: (maybe) consolidate all the Windows-specific stuff into one section.
+(defun dino-is-work-system ()
+  "returns non-nil if the system is a work system"
+  (member (system-name) '("dpchiesa.c.googlers.com" "dchiesa35")))
+
+
 (if (eq system-type 'windows-nt)
     (setopt package-gnupghome-dir
             (concat
@@ -4112,10 +4117,6 @@ Does not consider word syntax tables.
 ;;       (delq (assoc '(python-mode python-ts-mode) eglot-server-programs)
 ;;             eglot-server-programs))
 
-
-(defun dino-is-work-system ()
-  "returns non-nil if the system is a work system"
-  (member (system-name) '("dpchiesa.c.googlers.com" "dchiesa35")))
 
 (add-hook 'python-base-mode-hook #'dino-python-mode-fn)
 
