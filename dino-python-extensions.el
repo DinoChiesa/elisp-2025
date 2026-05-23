@@ -520,32 +520,46 @@ Returns the inferred list of modules as a string like \"[ \"mod1\", \"mod2\" ]\"
                   (error "Could not find a dependency list in Gemini's response: %s" text))
               (error "Unexpected response format from Gemini"))))))))
 
+
 (defun dcpe/gpylint ()
   "Run gpylint on the file in the currently visited buffer."
   (interactive)
   (if (and buffer-file-name
            (derived-mode-p 'python-base-mode))
-      (let ((gpylint (executable-find "gpylint")))
-        (unless gpylint
-          (error "Could not find 'gpylint' executable"))
-        (let* ((command
-                (concat
-                 gpylint " --mode=base --output-format=text --msg-template='{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}' "
-                 buffer-file-name)))
-          (compilation-start command )))))
+      (let ((gpylint (executable-find "gpylint"))
+            (ruff (executable-find "ruff"))
+            (file-name (shell-quote-argument buffer-file-name)))
+        (cond
+         (gpylint
+          (compilation-start
+           (concat
+            gpylint " --mode=base --output-format=text --msg-template='{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}' "
+            buffer-file-name)))
+         (ruff
+          (compilation-start
+           (concat ruff " check " file-name)))
+         (t
+          (error "Could not find 'gpylint' or 'ruff' executable"))))))
+
 
 (defun dcpe/pyformat ()
-  "Run pyformat on the file in the currently visited buffer."
+  "Run either pyformat or ruff format on the file in the currently visited buffer.
+
+Explicitly running a format command is often unnecessary if apheleia-mode
+is enabled."
   (interactive)
   (if (and buffer-file-name
            (derived-mode-p 'python-base-mode))
-      (let ((pyformat (executable-find "pyformat")))
-        (unless pyformat
-          (error "Could not find 'pyformat' executable"))
-        (let* ((command (concat pyformat " -i " buffer-file-name)))
-          (compilation-start command )))))
-
-
+      (let ((pyformat (executable-find "pyformat"))
+            (ruff (executable-find "ruff"))
+            (file-name (shell-quote-argument buffer-file-name)))
+        (cond
+         (pyformat
+          (compilation-start (concat pyformat " -i " file-name)))
+         (ruff
+          (compilation-start (concat ruff " format --silent --line-length 86 " file-name)))
+         (t
+          (error "Could not find 'pyformat' or 'ruff' executable"))))))
 
 (provide 'dino-python-extensions)
 
