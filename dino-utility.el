@@ -2032,14 +2032,13 @@ If ACTIVE paths are removed from the disk, warns the user to restart Emacs."
                ;; Group 1: Name, Group 2: Timestamp
                (module-name (progn (string-match regex file) (match-string 1 file)))
                (timestamp   (match-string 2 file))
-               ;; Convert "20260310.1116" to 202603101116 for numeric comparison
-               (time-val    (string-to-number (replace-regexp-in-string "\\." "" timestamp)))
+               ;; Compare timestamps as version strings
                (existing    (gethash module-name dir-map)))
 
           (when (file-directory-p full-path)
             (if (or (null existing)
-                    (> time-val (cdr existing)))
-                (puthash module-name (cons file time-val) dir-map)))))
+                    (version< (cdr existing) timestamp))
+                (puthash module-name (cons file timestamp) dir-map)))))
 
       ;; 2. Identify and remove the stale ones
       (let ((kept-files (let (acc)
