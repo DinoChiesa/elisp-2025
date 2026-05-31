@@ -667,7 +667,6 @@
   (icomplete-mode 1)
   (icomplete-vertical-mode 1)
 
-
   :requires (dpc-sane-sorting dino-utility)
   ;; Gemini says the  order of evaluation is :custom, then :init, then :config.
   :custom
@@ -705,14 +704,14 @@
 
   (dolist (entry
            `(
-             (buffer           . ((styles  . (initials flex)) (cycle . 10)
-                                  ;; Sorting buffers alphabetically is not a good
-                                  ;; idea. The default (based on recency) is a more
-                                  ;; usable approach.
-                                  ;;
-                                  ;; (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)
+             (buffer           . ((styles  . (basic initials substring)) (cycle . 10)  ;;  flex
+                                  ;; Force Emacs to preserve the original buffer-list recency order
+                                  (display-sort-function . identity)
+                                  (cycle-sort-function . identity)
+                                  ;; using flex makes icomplete discard the recency. no bueno for
+                                  ;; buffers.
                                   ))
-             (command          . ((styles . (substring))
+             (command          . ((styles . (basic substring))
                                   (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
              (consult-location . ((styles . (substring)))) ;; also not sure about this
              (symbol-help      . ((styles . (substring))
