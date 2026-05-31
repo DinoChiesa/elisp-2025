@@ -2019,7 +2019,7 @@ If ACTIVE paths are removed from the disk, warns the user to restart Emacs."
   (setq target-dir (or target-dir package-user-dir))
 
   (let ((dir-map (make-hash-table :test 'equal))
-        (regex "\\(.+\\)-\\([0-9]\\{8\\}\\.[0-9]+\\)$")
+        (regex "\\(.+\\)-\\([0-9]+\\(?:\\.[0-9]+\\)*\\)$")
         (deleted-count 0)
         (removed-from-load-path nil))
 
