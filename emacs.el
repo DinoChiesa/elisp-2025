@@ -223,9 +223,9 @@
 (use-package dash
   :ensure t)
 
-(use-package memoize
-  :defer t
-  :ensure t)
+;; (use-package memoize
+;;   :defer t
+;;   :ensure t)
 
 (use-package xr
   :defer t

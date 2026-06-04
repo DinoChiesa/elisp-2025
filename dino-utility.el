@@ -57,7 +57,7 @@
 (require 'cl-seq) ;; for cl-remove-if-not
 (require 'cl-lib) ;; For assoc-if, etc
 (require 'json)
-(require 'memoize)
+;;(require 'memoize)
 (require 'ansi-color)
 
 
@@ -291,29 +291,77 @@ filename."
    (file-exists-p json-keyfile)
    (cdr (assoc 'project_id (json-read-file json-keyfile)))))
 
+(defvar dino-gcloud-auth-cache-ttl (* 8 60)
+  "Number of seconds to cache a valid gcloud token. Defaults to 480 (8 minutes).")
+
+(defvar dino--gcloud-token-cache (make-hash-table :test 'equal)
+  "Hash table to store gcloud tokens.
+Key is tokentype, value is (timestamp . token-string).")
+
 (defun dino--gcloud-auth-print-token (tokentype)
-  "return output of $(gcloud auth print-{identity,access}-token)"
-  (let* ((gcloud-pgm "gcloud")
-         (app-default "application-default ")
-         (command-string (format  "%s auth %s print-%s-token" gcloud-pgm app-default tokentype))
-         (output (replace-regexp-in-string "\n$" "" (shell-command-to-string command-string)))
-         (lines (split-string output "\n")))
-    (car (last lines))))
+  "Return output of $(gcloud auth print-{identity,access}-token).
+Memoizes the result for a period of `dino-gcloud-auth-cache-ttl' ONLY if
+the token starts with \"ya29.\" (for access tokens) or \"ey\" (for
+identity tokens)."
+  (let* ((now (float-time))
+         (cache-entry (gethash tokentype dino--gcloud-token-cache))
+         (cache-age (if cache-entry (- now (car cache-entry)) 1.0e+INF)))
+
+    (if (and cache-entry (< cache-age dino-gcloud-auth-cache-ttl))
+        ;; Cache Hit: Return the stored string
+        (cdr cache-entry)
+
+      ;; Cache Miss (or expired): Run the expensive shell command
+      (let* ((gcloud-pgm "gcloud")
+             (app-default "application-default ")
+             (command-string (format "%s auth %s print-%s-token"
+                                     gcloud-pgm app-default tokentype))
+             (output (replace-regexp-in-string "\n$" "" (shell-command-to-string command-string)))
+             (lines (split-string output "\n"))
+             (token (car (last lines))))
+
+        ;; Conditional Memoization: Only store in hash table if valid
+        (when (and (stringp token)
+                   (or (string-prefix-p "ya29." token)
+                       (string-prefix-p "ey" token))) ;; Check for JWTs too
+          (puthash tokentype (cons now token) dino--gcloud-token-cache))
+
+        token))))
+
+
+;; ;; Clear only the "access" token
+;; (remhash "access" dino--gcloud-token-cache)
+;;
+;; ;; Clear only the "identity" token
+;; (remhash "identity" dino--gcloud-token-cache)
+
+
+;; (defun dino--gcloud-auth-print-token (tokentype)
+;;   "return output of $(gcloud auth print-{identity,access}-token)"
+;;   (let* ((gcloud-pgm "gcloud")
+;;          (app-default "application-default ")
+;;          (command-string (format  "%s auth %s print-%s-token" gcloud-pgm app-default tokentype))
+;;          (output (replace-regexp-in-string "\n$" "" (shell-command-to-string command-string)))
+;;          (lines (split-string output "\n")))
+;;     (car (last lines))))
 
 (defun dino-gcloud-auth-print-access-token ()
   "return output of $(gcloud auth print-access-token)"
   (dino--gcloud-auth-print-token "access"))
 
-;; ====================================================================
-;; Replace the function value of `dino-gcloud-auth-print-access-token'
-;; with a memoized version. This makes restclient.el faster, for example.
-;; To restore the original:
-;;  (memoize-restore 'dino-gcloud-auth-print-access-token)
-(memoize 'dino-gcloud-auth-print-access-token "8 minutes")
-
 (defun dino-gcloud-auth-print-identity-token ()
   "return output of $(gcloud auth print-access-token)"
   (dino--gcloud-auth-print-token "identity"))
+
+
+
+;; ;; ====================================================================
+;; ;; Replace the function value of `dino-gcloud-auth-print-access-token'
+;; ;; with a memoized version. This makes restclient.el faster, for example.
+;; ;; To restore the original:
+;; ;; (memoize-restore 'dino-gcloud-auth-print-access-token)
+;; (memoize 'dino-gcloud-auth-print-access-token "8 minutes")
+
 
 (defun dino-googleapis-token-for-sa (json-keyfile)
   "generate and return a new OAuth token for googleapis.com for a service
@@ -321,7 +369,7 @@ account, given a JSON-KEYFILE that contains a downloaded JSON Key. This
 method of authenticating is a Bad Idea in general."
   ;; There is some problem with emacs and TLS v1.3
   ;; So we try turning it off.
-  ;; XODO 20250424-1831
+  ;; TODO 20250424-1831
   ;; investigate whether this is still a problem in emacs v30+
   (setq gnutls-algorithm-priority "NORMAL:-VERS-TLS1.3")
   (let ((project-id (dino-googleapis-project-id json-keyfile)))
@@ -2127,9 +2175,53 @@ disconnect + reconnect case it will make me happy."
   (let ((default-directory "/google/src/files/head/depot/google3/experimental/users"))
     (call-interactively 'find-file)))
 
+(defun dino/g4d-get-workspaces (base-dir)
+  "Get list of existing workspaces in BASE-DIR."
+  (if (file-directory-p base-dir)
+      (let ((all-files (directory-files base-dir nil nil t))
+            (dirs '()))
+        (dolist (file all-files)
+          (unless (member file '("." ".."))
+            (when (file-directory-p (expand-file-name file base-dir))
+              (push file dirs))))
+        (sort dirs 'string<))
+    (message "Base directory %s does not exist" base-dir)
+    nil))
 
+(defun dino/g4d-open (workspace)
+  "Open WORKSPACE in dired."
+  (let ((dir (format "/google/src/cloud/dchiesa/%s/google3" workspace)))
+    (if (file-directory-p dir)
+        (dired dir)
+      (message "Directory %s does not exist" dir))))
 
+(defun dino/g4d-create-and-open (workspace)
+  "Create WORKSPACE using g4d and open it."
+  (message "Creating workspace %s..." workspace)
+  (let ((exit-code (call-process "g4d" nil nil nil "-f" workspace)))
+    (if (= exit-code 0)
+        (progn
+          (message "Workspace %s created successfully." workspace)
+          (dino/g4d-open workspace))
+      (error "Failed to create workspace %s (exit code %d)" workspace exit-code))))
 
+(defun dino/g4d ()
+  "Choose or create a g4d workspace and open it in dired."
+  (interactive)
+  (let* ((base-dir "/google/src/cloud/dchiesa")
+         (workspaces (dino/g4d-get-workspaces base-dir))
+         (candidates (cons "New workspace" workspaces))
+         (selection (completing-read "Workspace: " candidates nil nil)))
+    (cond
+     ((string= selection "New workspace")
+      (let ((new-ws (read-string "New workspace name: ")))
+        (when (and new-ws (not (string= new-ws "")))
+          (dino/g4d-create-and-open new-ws))))
+     ((member selection workspaces)
+      (dino/g4d-open selection))
+     ((and selection (not (string= selection "")))
+      ;; User typed a new workspace name directly
+      (dino/g4d-create-and-open selection)))))
 
 (provide 'dino-utility)
 
