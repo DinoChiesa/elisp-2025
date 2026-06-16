@@ -746,3 +746,4 @@ java.nio.charset.Standardsets
 com.google.common.io.Resources
 org.slf4j.Marker
 org.testng.annotations.BeforeClass
+java.util.HashMap
