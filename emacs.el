@@ -859,6 +859,39 @@ based on the prompt, should the need arise in the future."
   (setq magit-completing-read-function #'dino/magit-completing-read)
   )
 
+(defun dino-git-commit-mode-fn ()
+  "Setup logic for the git commit message buffer.
+
+`magit' implicitly uses `git-commit'. There are two relevant hooks:
+`git-commit-mode-hook' runs first (when the minor mode is enabled), and
+`git-commit-setup-hook' runs last.
+
+Attach this fn to the latter to ensure settings do not get stomped."
+  (setq-local fill-column 72)
+  (display-fill-column-indicator-mode 1)
+  (turn-on-auto-fill))
+
+(with-eval-after-load 'git-commit
+  ;; `git-commit-setup-changelog-support' futzes up the hanging indent, so I
+  ;; disable it.  Details from Gemini: it sets fill-indent-according-to-mode to
+  ;; t . When this is t , emacs ignores the adaptive fill prefix and instead
+  ;; attempts to indent filled lines using the major mode's indentation
+  ;; function. In text-mode , this is `indent-relative', which aligns subsequent
+  ;; lines with the first non-blank character of the first line. When the first
+  ;; line of a graph starts at column 0 (with the - bullet), all subsequent
+  ;; lines are pulled back to column 0, breaking the hanging indent.
+  ;;
+  ;; This explanation is not complete. If I open a text-mode buffer,
+  ;; hanging-indent works. But anyway, it is true that removing this changelog
+  ;; fn from the setup hook, allows hanging indent to work again. I dont use
+  ;; "changelog style" commit messages, so I don't mind.
+
+  (remove-hook 'git-commit-setup-hook #'git-commit-setup-changelog-support)
+  ;; text-mode by default changelog support futzes up the hanging indent, so I disable it.
+  (add-hook 'git-commit-setup-hook #'dino-git-commit-mode-fn)
+  )
+
+
 
 (use-package flymake
   :ensure t)
@@ -1256,6 +1289,13 @@ server program."
 
 (add-hook 'after-save-hook
           #'executable-make-buffer-file-executable-if-script-p)
+
+(with-eval-after-load 'apheleia
+  ;; always use 2-spaces for shfmt
+  (setf (alist-get 'shfmt apheleia-formatters)
+        `("shfmt" "-i" "2"
+          "-filename"
+          file "-")))
 
 (defun dino-conf-toml-mode-fn ()
   (display-line-numbers-mode)
