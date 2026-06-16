@@ -2175,6 +2175,12 @@ disconnect + reconnect case it will make me happy."
   (let ((default-directory "/google/src/files/head/depot/google3/experimental/users"))
     (call-interactively 'find-file)))
 
+(defun dino/find-g3-edge-internal-file ()
+  "Open find-file starting at a specific long project directory."
+  (interactive)
+  (let ((default-directory "/google/src/files/head/depot/google3/devtools/kokoro/config/prod/edge-internal/featureplatform/edge-hybrid-e2etests"))
+    (call-interactively 'find-file)))
+
 (defun dino/g4d-get-workspaces (base-dir)
   "Get list of existing workspaces in BASE-DIR."
   (if (file-directory-p base-dir)
