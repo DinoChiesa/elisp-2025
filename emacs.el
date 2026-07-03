@@ -893,6 +893,16 @@ Attach this fn to the latter to ensure settings do not get stomped."
 
 
 
+(use-package g4-status
+  :when (dino-is-work-system)
+  :load-path "~/elisp"
+  :commands (g4-status g4-status-or-magit))
+
+(use-package dino-g3
+  :when (dino-is-work-system)
+  :load-path "~/elisp"
+  :commands (dino/find-g3-workspace dino/g4d dino/find-g3-experimental-file))
+
 (use-package flymake
   :ensure t)
 
@@ -1571,6 +1581,16 @@ Otherwise restore previous window config."
 
 (set-variable 'backup-by-copying t)
 
+(when (dino-is-work-system)
+  (defun dino/disable-backups-for-citc ()
+    "Disable backup files for buffers under /google/src (CitC workspaces).
+CitC tracks every version, so Emacs backup files just litter the workspace."
+    (when (and buffer-file-name
+               (string-prefix-p "/google/src/" buffer-file-name))
+      (setq-local make-backup-files nil)))
+
+  (add-hook 'find-file-hook #'dino/disable-backups-for-citc)
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frames preferences: initial and default frames
@@ -2636,22 +2656,26 @@ more information."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Dired mode
 ;;
+
 (defun dino-dired-mode-hook-fn ()
   (mapc (lambda (binding)
           (define-key dired-mode-map (kbd (car binding)) (cdr binding)))
         '(( "C-c C-g" . dino-dired-kill-new-file-contents)
           ( "C-c C-c" . dino-dired-copy-file-to-dir-in-other-window)
           ( "C-c C-m" . dino-dired-move-file-to-dir-in-other-window)
-          ( "C-c C-s" . magit-status)
+          ;;( "C-c C-s" . g4-status-or-magit)
           ;;( "C-x m" . magit-status)
           ;; converse of i (dired-maybe-insert-subdir)
           ( "K" . dired-kill-subdir)
           ( "L" . ffap-literally) ;; no coding conversion (see "enriched mode")
           ( "F" . dino-dired-do-find)
           ( "s" . dino-dired-sort-cycle)))
-  (dino-dired-sort-cycle "t") ;; by default, sort by time
-  (auto-revert-mode 1)
-  )
+
+  (if (dino-is-work-system)
+      (define-key dired-mode-map  (kbd "C-c C-s") #'g4-status-or-magit)
+    (define-key dired-mode-map  (kbd "C-c C-s") #'magit-status))
+  (dino-dired-sort-cycle "t") ;; on init, sort by time
+  (auto-revert-mode 1))
 
 (use-package dired
   :ensure nil
