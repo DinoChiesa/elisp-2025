@@ -40,7 +40,7 @@
 (setq inhibit-splash-screen t)
 (setq initial-scratch-message ";;;  -*- lexical-binding: t; -*-\n;; scratch buffer\n")
 
-(setq debug-on-error t)
+;;(setq debug-on-error t) ;; why?
 
 ;; 20251011-1123
 ;; On Windows
@@ -166,7 +166,7 @@
 (setq python-shell-interpreter "python") ;; not python3
 (setq-default show-trailing-whitespace t)
 (setq-default fill-column 80)
-(setq project-vc-extra-root-markers '("pyproject.toml" "pyrightconfig.json" ".project"))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; setting up faces etc
@@ -946,6 +946,43 @@ displayed, it uses the default window-splitting behavior of
   (unless (file-remote-p default-directory)
     (eglot-ensure)))
 
+
+(defcustom dinos-project-root-markers
+  '("pyproject.toml" "package.json" "pyrightconfig.json" ".project" ".git")
+  "Files or directories that indicate the root of a project. Supports
+eglot, especially with python files."
+  :type '(repeat string)
+  :group 'project)
+
+(defun dino/project-root-p (dirpath)
+  "Check if the current DIRPATH has any of the project root markers."
+  (catch 'found
+    (dolist (marker dinos-project-root-markers)
+      (when (file-exists-p (file-name-concat dirpath marker))
+        (throw 'found marker)))))
+
+(defun dino/filesystem-root-p (dirpath)
+  "Return t if DIRPATH is a root directory."
+  (let ((expanded (expand-file-name dirpath)))
+    (or (equal "/" expanded) ;; linux
+        (equal expanded (file-name-directory (directory-file-name expanded))) ;;win
+        )))
+
+(defun dino/project-find-nested-root-bottom-up (dir)
+  "Find the closest parent directory containing a custom root marker file."
+  (let ((path (expand-file-name dir))
+        (loopcount 0)
+        (maxdepth-for-safety 22))
+    (catch 'found
+      (while (and
+              (not (dino/filesystem-root-p path))
+              (< loopcount maxdepth-for-safety))
+        (if (not (dino/project-root-p path))
+            (setq path (file-name-directory (directory-file-name path))
+                  loopcount (1+ loopcount))
+          (throw 'found (cons 'transient path)))))))
+
+
 (use-package eglot
   :defer t
   :demand t
@@ -962,7 +999,12 @@ displayed, it uses the default window-splitting behavior of
          )
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
   :config
-  (setq flymake-show-diagnostics-at-end-of-line t)
+  (setq flymake-show-diagnostics-at-end-of-line t
+        eglot-autoshutdown t
+        eglot-code-action-indications '(eldoc-hint margin))
+
+  ;; Add this hook to the absolute front of the project-find-functions list
+  (add-hook 'project-find-functions #'dino/project-find-nested-root-bottom-up -10)
 
   ;; disable eglot for json-mode
   (setq eglot-server-programs
@@ -974,7 +1016,13 @@ displayed, it uses the default window-splitting behavior of
                (eq 'json-mode key))))
          eglot-server-programs))
 
-  ;; 20260404-1422 - Use Basedpyright via uvx for full intelligence and M-. support.
+  ;; 20260404 - python: use Basedpyright via uvx for full intelligence and M-. support.
+  ;;
+  ;; 20260704 - this seems to be correct, but on first startup of a new version it can
+  ;; take longer than 30s to install on my meager personal PC.  So one might need to
+  ;; "pre-run" the command  'uvx --from basedpyright basedpyright-langserver --stdio'
+  ;; in the working directory, before using eglot in emacs with a python buffer.
+  ;; If not, the symptom in emacs is an apparent hang on opening the python buffer.
   (add-to-list 'eglot-server-programs
                '((python-mode python-ts-mode) . ("uvx" "--from" "basedpyright" "basedpyright-langserver" "--stdio")))
 
