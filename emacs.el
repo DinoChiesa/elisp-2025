@@ -533,24 +533,37 @@
   :defer 36
   :ensure t)
 
-(use-package visible-auto-revert
-  ;; A layer on top of auto-revert-mode, It reverts only those buffers that are
-  ;; currently _displayed_. For diagnostics:
-  ;; M-x visible-auto-revert-status  - Show current monitoring status
-  :vc (:url "https://github.com/kn66/visible-auto-revert.el.git"
-       :rev :newest
-       :main-file "visible-auto-revert.el"
-       :branch "main")
-  :config
-  ;; It is a global minor mode. You do not need to enable it for each buffer.
-  ;; It intelligently manages which buffers get auto-revert-mode.
-  (visible-auto-revert-mode +1)
-  (setq auto-revert-verbose t ; let us know when it happens
-        ;;auto-revert-use-notify nil ; nil=use polling, not inotify (why?)
-        auto-revert-stop-on-user-input nil
-        ;; Only prompts for confirmation when buffer is unsaved.
-        revert-without-query (list "."))
-  )
+
+;; 20260704-1538
+;; This supposedly supplants visible-auto-revert:
+(setq auto-revert-buffer-list-filter #'get-buffer-window)
+;; Optional: Ensure instant refresh when switching back to a Dired buffer
+(defun dino/autorevert-immediately-on-switch-to-dired ()
+  (when (eq major-mode 'dired-mode)
+    (auto-revert-handler)))
+
+(add-hook 'buffer-list-update-hook #'dino/autorevert-immediately-on-switch-to-dired)
+
+;; 20260704-1540
+;; Removed in favor of a built-in configuration
+;; (use-package visible-auto-revert
+;;   ;; A layer on top of auto-revert-mode, It reverts only those buffers that are
+;;   ;; currently _displayed_. For diagnostics:
+;;   ;; M-x visible-auto-revert-status  - Show current monitoring status
+;;   :vc (:url "https://github.com/kn66/visible-auto-revert.el.git"
+;;        :rev :newest
+;;        :main-file "visible-auto-revert.el"
+;;        :branch "main")
+;;   :config
+;;   ;; It is a global minor mode. You do not need to enable it for each buffer.
+;;   ;; It intelligently manages which buffers get auto-revert-mode.
+;;   (visible-auto-revert-mode +1)
+;;   (setq auto-revert-verbose t ; let us know when it happens
+;;         ;;auto-revert-use-notify nil ; nil=use polling, not inotify (why?)
+;;         auto-revert-stop-on-user-input nil
+;;         ;; Only prompts for confirmation when buffer is unsaved.
+;;         revert-without-query (list "."))
+;;   )
 
 ;; 20260226-1345 - TODO: Delete this eventually. I do not need this
 ;; if visible-auto-revert works as expected.
@@ -4060,16 +4073,23 @@ Does not consider word syntax tables.
   (modify-syntax-entry ?_ "w")
   (set (make-local-variable 'indent-tabs-mode) nil)
   (display-line-numbers-mode)
-  ;; the following two are relevant to ruff as a formatter
+  ;; The following two are relevant to ruff or black as re-formatters
   (customize-set-variable 'apheleia-formatters-respect-fill-column t)
   (customize-set-variable 'apheleia-formatters-respect-indent-level t)
-  (setq fill-column 80)
+  (setq fill-column 86)
 
+  ;; explicitly select a single specific formatter in priority order.
   (cond
-   ((dcpe/find-pyformat)
+   ((executable-find "pyformat")
     (setq-local apheleia-formatter 'pyformat))
+   ;; for now, 20260704, black splits long strings, while
+   ;; "ruff format" does not. So even though black is slower,
+   ;; prefer it for this reason.
+   ((executable-find "black")
+    (setq-local apheleia-formatter 'black-custom))
    ((executable-find "ruff")
     (setq-local apheleia-formatter 'ruff)))
+
   (apheleia-mode)
 
   (company-mode)
@@ -4208,11 +4228,6 @@ Does not consider word syntax tables.
 (add-hook 'python-base-mode-hook #'dino-python-mode-fn)
 
 (with-eval-after-load 'apheleia
-  ;; The pyformat binary may or may not exist.  Use this formatter only if
-  ;; (executable-find) returns non-nil.
-  (setf (alist-get 'pyformat apheleia-formatters)
-        '("pyformat" filepath))
-
   ;; 20251025-1309
   ;; ruff is a fast replacement for longtime formatter black.
   ;; On Windows: powershell -c "irm https://astral.sh/ruff/install.ps1 | iex" .
@@ -4234,6 +4249,10 @@ Does not consider word syntax tables.
           "--select" "I,D200,D207,D208,D209,D210,D213,D403,D415"
           "--stdin-filename" filepath "-"))
 
+  ;; Unfortunately "ruff format" does not split long strings, for some reason
+  ;; (August 2023: https://github.com/astral-sh/ruff/issues/6936). For that you
+  ;; need black, the slow thing that "ruff format" was supposed to
+  ;; replace. *Sigh*.
   (setf (alist-get 'ruff apheleia-formatters)
         `("ruff" "format"
           "--silent"
@@ -4242,6 +4261,21 @@ Does not consider word syntax tables.
           ;;(apheleia-formatters-indent "--indent-style" "--indent-width" 'python-indent-offset)
           "--stdin-filename" filepath
           "-"))
+
+  ;; black reformats long f-strings. There is a black daemon,
+  ;; https://github.com/psf/black/blob/main/docs/usage_and_configuration/black_as_a_server.md
+  ;; but there's no auto-shutdown (like eslint_d) and no auto-startup or
+  ;; integration for emacs.  Also there is no testimony from users within emacs
+  ;; that show how blackd is so much faster.
+
+  ;; I would have to manually start and stop the daemon, and send it HTTP requests.
+  ;; I'd have to create my own apheleia-formatter, and I'd have to sort all of this out.
+  ;; So I think it is not worth the effort to explore it.
+  (setf (alist-get 'black-custom apheleia-formatters)
+        `("black"
+          (apheleia-formatters-fill-column "--line-length")
+          "--preview" "--enable-unstable-feature" "string_processing"
+          "--stdin-filename" filepath "-"))
 
   ;; 20260312-1044 - this is working, and should be used on work machine only.
   (setf (alist-get 'pyformat apheleia-formatters)
@@ -4252,16 +4286,16 @@ Does not consider word syntax tables.
 
   ;;(setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-isort ruff))
 
-  ;; make pyformat for work machine, ruff for others
+  ;; make pyformat for work machine, ruff for others.
+  ;; Be careful; when there are multiple formatters, ALL of them run in sequence.
+  ;; But the use of multiple formatters is overridden in dino-python-mode-fn .
   (let ((python-formatters
          (if (dino-is-work-system)
              '(pyformat)
-           '(ruff-custom ruff))))
+           '(black-custom ruff-custom ruff)
+           )))
     (dolist (mode '(python-mode python-ts-mode))
       (setf (alist-get mode apheleia-mode-alist) python-formatters)))
-
-  ;;(setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-custom ruff pyformat))
-  ;;(setf (alist-get 'python-ts-mode apheleia-mode-alist) '(ruff-custom ruff pyformat))
 
   )
 
