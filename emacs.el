@@ -4060,6 +4060,7 @@ Does not consider word syntax tables.
               ("C-c p f" . dcpe/pyformat) ;; should be unnecessary with apheleia
               ("C-c p l" . dcpe/gpylint)  ;; should be unnecessary with flymake
               ("C-c p r" . dcpe/refactor-multiline-imports)
+              ("C-c p u" . dcpe/uv-run)
               ;; TODO: add in "p4 edit FILENAME" as another command
               ("C-c C-c" . comment-region)
               ("C-c C-d" . delete-trailing-whitespace)

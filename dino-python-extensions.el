@@ -37,7 +37,7 @@
 ;;
 ;;
 ;; Future enhancement would include allowing the user to specify the use of
-;; poetry vs uv, etc for thevenv manager.
+;; poetry vs uv, etc for the venv manager.
 ;;
 ;;
 ;; To use it, invoke this within the python-mode-hook
@@ -521,25 +521,48 @@ Returns the inferred list of modules as a string like \"[ \"mod1\", \"mod2\" ]\"
 buffer max line length."
   (if (bound-and-true-p fill-column) fill-column 86))
 
-(defun dcpe/gpylint ()
-  "Run gpylint on the file in the currently visited buffer."
-  (interactive)
+(defun dcpe/_determine-tool-choice (action available prompt-prefix)
+  "Determine which tool to use from AVAILABLE options.
+ACTION is a string like \"Format\" or \"Lint\" used in the prompt.
+AVAILABLE is an alist mapping character keys to tool name strings.
+PROMPT-PREFIX is non-nil if we should prompt the user for the choice."
+  (if prompt-prefix
+      (let* ((prompt-parts (mapcar (lambda (item)
+                                     (format "[%c]%s" (car item) (substring (cdr item) 1)))
+                                   available))
+             (prompt (concat action " with " (mapconcat 'identity prompt-parts ", ") "? "))
+             (allowed (apply 'append
+                             (mapcar (lambda (item)
+                                       (list (car item) (upcase (car item))))
+                                     available))))
+        (downcase (read-char-choice prompt allowed)))
+    (car (car available))))
+
+(defun dcpe/gpylint (&optional arg)
+  "Run gpylint or ruff check on the file in the currently visited buffer.
+
+With a prefix ARG, prompt the user to select which linter to use."
+  (interactive "P")
   (if (and buffer-file-name
            (derived-mode-p 'python-base-mode))
-      (let ((gpylint (executable-find "gpylint"))
-            (ruff (executable-find "ruff"))
-            (file-name (shell-quote-argument buffer-file-name)))
-        (cond
-         (gpylint
-          (compilation-start
-           (concat
-            gpylint " --mode=base --output-format=text --msg-template='{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}' "
-            buffer-file-name)))
-         (ruff
-          (compilation-start
-           (concat ruff " check " file-name)))
-         (t
-          (error "Could not find 'gpylint' or 'ruff' executable"))))))
+      (let* ((gpylint (executable-find "gpylint"))
+             (ruff (executable-find "ruff"))
+             (file-name (shell-quote-argument buffer-file-name))
+             (available (delq nil
+                              (list (when gpylint '(?g . "gpylint"))
+                                    (when ruff    '(?r . "ruff"))))))
+        (if (not available)
+            (error "Could not find 'gpylint' or 'ruff' executable")
+          (let ((choice (dcpe/_determine-tool-choice "Lint" available arg)))
+            (cond
+             ((eq choice ?g)
+              (compilation-start
+               (concat
+                gpylint " --mode=base --output-format=text --msg-template='{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}' "
+                buffer-file-name)))
+             ((eq choice ?r)
+              (compilation-start
+               (concat ruff " check " file-name)))))))))
 
 
 (defun dcpe/pyformat (&optional arg)
@@ -563,19 +586,7 @@ With a prefix ARG, prompt the user to select which formatter to use."
                                     (when ruff     '(?r . "ruff"))))))
         (if (not available)
             (error "Could not find any of 'pyformat', 'black', or 'ruff' executables")
-          (let ((choice
-                 (if arg
-                     (let* ((prompt-parts (mapcar
-                                           (lambda (item)
-                                             (format "[%c]%s" (car item) (substring (cdr item) 1)))
-                                           available))
-                            (prompt (concat "Format with " (mapconcat 'identity prompt-parts ", ") "? "))
-                            (allowed (apply 'append
-                                            (mapcar (lambda (item)
-                                                      (list (car item) (upcase (car item))))
-                                                    available))))
-                       (downcase (read-char-choice prompt allowed)))
-                   (car (car available)))))
+          (let ((choice (dcpe/_determine-tool-choice "Format" available arg)))
             (cond
              ((eq choice ?p)
               (compilation-start (concat pyformat " -i " file-name)))
@@ -593,6 +604,18 @@ With a prefix ARG, prompt the user to select which formatter to use."
                 ruff
                 (dcpe/py-column-width)
                 file-name)))))))))
+
+(defun dcpe/uv-run ()
+  "Run the current buffer's file using `uv run` in a compilation buffer."
+  (interactive)
+  (if (and buffer-file-name
+           (derived-mode-p 'python-base-mode))
+      (let ((uv (executable-find "uv"))
+            (file-name (shell-quote-argument buffer-file-name)))
+        (if uv
+            (compilation-start (concat uv " run " file-name))
+          (error "Could not find 'uv' executable")))
+    (error "Buffer is not visiting a file, or not in a Python mode")))
 
 (provide 'dino-python-extensions)
 
