@@ -872,6 +872,16 @@ based on the prompt, should the need arise in the future."
   (setq magit-completing-read-function #'dino/magit-completing-read)
   )
 
+(defun dino/magit-push-to-gerrit-master ()
+  "Push the current HEAD to Gerrit's master review queue."
+  (interactive)
+  (magit-git-command-topdir "git push origin HEAD:refs/for/master"))
+
+;; Inject the custom push command into the existing Magit Push ('P') transient menu
+(with-eval-after-load 'magit
+  (transient-append-suffix 'magit-push "p"
+    '("g" "Push to Gerrit (master)" dino/magit-push-to-gerrit-master)))
+
 (defun dino-git-commit-mode-fn ()
   "Setup logic for the git commit message buffer.
 
@@ -4101,7 +4111,7 @@ Does not consider word syntax tables.
   ;; The following two are relevant to ruff or black as re-formatters
   (customize-set-variable 'apheleia-formatters-respect-fill-column t)
   (customize-set-variable 'apheleia-formatters-respect-indent-level t)
-  (setq fill-column 86)
+  (setq fill-column 80)
 
   ;; explicitly select a single specific formatter in priority order.
   (cond
