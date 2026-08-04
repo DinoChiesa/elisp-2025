@@ -589,7 +589,7 @@ With a prefix ARG, prompt the user to select which formatter to use."
           (let ((choice (dcpe/_determine-tool-choice "Format" available arg)))
             (cond
              ((eq choice ?p)
-              (compilation-start (concat pyformat " -i " file-name)))
+              (compilation-start (concat pyformat " -s 2 -i " file-name)))
              ((eq choice ?b)
               (compilation-start
                (format
