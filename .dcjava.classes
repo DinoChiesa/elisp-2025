@@ -750,3 +750,5 @@ java.util.HashMap
 com.google.api.client.http.HttpResponseException
 java.util.logging.Logger
 java.util.logging.Level
+com.apigee.test.utilities.DapperTraceCookie
+io.restassured.specification.RequestSpecification
