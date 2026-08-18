@@ -1352,6 +1352,8 @@ server program."
   (dino/setup-shmode-for-apheleia)
   (modify-syntax-entry ?_ "w")
 
+  (setq flymake-shellcheck-allow-external-files t) ;; pass -x to shellcheck
+
   (let ((local-map (current-local-map))) ;; one of {python-mode-map, python-ts-mode-map}
     (when local-map
       (mapc (lambda (binding)
@@ -2757,6 +2759,14 @@ more information."
   (setq ls-lisp-verbosity '(links uid))
   (when (require 'w32-browser nil 'noerror) ;; Windows only
     (define-key dired-mode-map (kbd "W")  #'dired-w32-browser)))
+
+(use-package dired-narrow
+  :ensure t
+  :after dired
+  :bind (:map dired-mode-map
+         ("/" . dired-narrow)))
+
+
 
 (defun dino-toggle-enriched-view ()
   "Toggle between rendered enriched text and raw markup in the current buffer."
@@ -4587,6 +4597,7 @@ counteracts that. "
         (turn-on-font-lock)))
 
   (modify-syntax-entry ?_ "w")
+  (setq fill-column 100)
 
   (set (make-local-variable 'indent-tabs-mode) nil)
   (set (make-local-variable 'c-basic-offset) 2)
