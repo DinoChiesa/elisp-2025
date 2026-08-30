@@ -1,4 +1,4 @@
-;;; dtrt-indent.el --- Adapt to foreign indentation offsets
+;;; dtrt-indent.el --- Adapt to foreign indentation offsets  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2003, 2007, 2008 Julian Scheid
 ;; Copyright (C) 2014-2022 Reuben Thomas
@@ -115,7 +115,7 @@
 ;;
 ;; Configuration settings used at this stage:
 ;; `dtrt-indent-max-merge-deviation'
-;
+                                        ;
 ;; Final Evaluation
 ;;
 ;; Finally, dtrt-indent looks at the highest probability of all
@@ -201,8 +201,8 @@ adjusted transparently."
             (when dtrt-indent-run-after-smie
               (dtrt-indent-try-set-offset)))
         (dtrt-indent-try-set-offset))
-        ;; (unless (and (featurep 'editorconfig) editorconfig-mode)
-        ;;   (dtrt-indent-try-set-offset)))
+    ;; (unless (and (featurep 'editorconfig) editorconfig-mode)
+    ;;   (dtrt-indent-try-set-offset)))
     (dtrt-indent-undo)))
 
 ;;;###autoload
@@ -216,48 +216,48 @@ adjusted transparently."
 
 (defvar dtrt-indent-language-syntax-table
   '((c/c++/java ("\""                    0   "\""       nil "\\\\.")
-                ("'"                     0   "'"        nil "\\\\.")
-                ("/\\*"                  0   "\\*/"     nil)
-                ("//"                    0   "$"        nil)
-                ("("                     0   ")"        t)
-                ("\\["                   0   "\\]"      t))
+     ("'"                     0   "'"        nil "\\\\.")
+     ("/\\*"                  0   "\\*/"     nil)
+     ("//"                    0   "$"        nil)
+     ("("                     0   ")"        t)
+     ("\\["                   0   "\\]"      t))
 
     ;; Same as c/c++/java but ignore function call arguments, to cope with
     ;; modules defined entirely within a function call, e.g. AMD style
     (javascript ("\""                    0   "\""       nil "\\\\.")
-                ("'"                     0   "'"        nil "\\\\.")
-                ("/\\*"                  0   "\\*/"     nil)
-                ("//"                    0   "$"        nil)
-                ("/\\(.*\\)"             1   "\\1/"     nil)
-                ("\\["                   0   "\\]"      t))
+     ("'"                     0   "'"        nil "\\\\.")
+     ("/\\*"                  0   "\\*/"     nil)
+     ("//"                    0   "$"        nil)
+     ("/\\(.*\\)"             1   "\\1/"     nil)
+     ("\\["                   0   "\\]"      t))
 
     (perl       ("\""                    0   "\""       nil "\\\\.")
-                ("'"                     0   "'"        nil "\\\\.")
-                ("/"                     0   "/"        nil "\\\\.")
-                ("#"                     0   "$"        nil)
-                ("("                     0   ")"        t)
-                ("\\["                   0   "\\]"      t))
+     ("'"                     0   "'"        nil "\\\\.")
+     ("/"                     0   "/"        nil "\\\\.")
+     ("#"                     0   "$"        nil)
+     ("("                     0   ")"        t)
+     ("\\["                   0   "\\]"      t))
 
     (lua        ("\""                    0   "\""       nil "\\\\.")
-                ("'"                     0   "'"        nil "\\\\.")
-                ("--"                    0   "$"        nil)
-                ("("                     0   ")"        t)
-                ("\\[\\(=+\\)\\["        1   "\\]\\1\\]"     nil)
-                ("{"                     0   "}"        t))
+     ("'"                     0   "'"        nil "\\\\.")
+     ("--"                    0   "$"        nil)
+     ("("                     0   ")"        t)
+     ("\\[\\(=+\\)\\["        1   "\\]\\1\\]"     nil)
+     ("{"                     0   "}"        t))
 
     (ruby       ("\""                    0   "\""       nil "\\\\.")
-                ("'"                     0   "'"        nil "\\\\.")
-                ("/"                     0   "/"        nil "\\\\.")
-                ("#"                     0   "$"        nil)
-                ("("                     0   ")"        t)
-                ("\\["                   0   "\\]"      t)
-                ("{"                     0   "}"        t))
+     ("'"                     0   "'"        nil "\\\\.")
+     ("/"                     0   "/"        nil "\\\\.")
+     ("#"                     0   "$"        nil)
+     ("("                     0   ")"        t)
+     ("\\["                   0   "\\]"      t)
+     ("{"                     0   "}"        t))
 
     (ada        ("\""                    0   "\""       nil "\\\\.")
-                ("--"                    0   "$"        nil)
-                ("("                     0   ")"        t)
-                ("\\["                   0   "\\]"      t)
-                ("{"                     0   "}"        t))
+     ("--"                    0   "$"        nil)
+     ("("                     0   ")"        t)
+     ("\\["                   0   "\\]"      t)
+     ("{"                     0   "}"        t))
 
     ;; The standard Erlang style is to indent code inside a block
     ;; relative to the token that opened the block.  For example:
@@ -272,28 +272,28 @@ adjusted transparently."
     ;; Thus it is best to ignore the code inside these block
     ;; constructs when determining the indent offset.
     (erlang     ("\""                    0   "\""       nil "\\\\.")
-                ;; next pattern avoids error on git merge conflict lines
-                ("[<][<][<]"             0   "$"        nil)
-                ("[<][<]"                0   "[>][>]"   nil)
-                ("%"                     0   "$"        nil)
-                ("^-"                    0   "\\."      nil)
-                ("{"                     0   "}"        t)
-                ("\\["                   0   "\\]"      t)
-                ("("                     0   ")"        t)
-                ("\\_<\\(?:begin\\|case\\|fun\\|if\\|receive\\|try\\)\\_>"
-                                         0   "\\_<end\\_>" t))
+     ;; next pattern avoids error on git merge conflict lines
+     ("[<][<][<]"             0   "$"        nil)
+     ("[<][<]"                0   "[>][>]"   nil)
+     ("%"                     0   "$"        nil)
+     ("^-"                    0   "\\."      nil)
+     ("{"                     0   "}"        t)
+     ("\\["                   0   "\\]"      t)
+     ("("                     0   ")"        t)
+     ("\\_<\\(?:begin\\|case\\|fun\\|if\\|receive\\|try\\)\\_>"
+      0   "\\_<end\\_>" t))
 
     (css        ("\""                    0   "\""       nil "\\\\.")
-                ("'"                     0   "'"        nil "\\\\.")
-                ("/\\*"                  0   "\\*/"   nil))
+     ("'"                     0   "'"        nil "\\\\.")
+     ("/\\*"                  0   "\\*/"   nil))
 
     (sgml       ("[<]!\\[(CDATA|IGNORE|RCDATA)\\["
-                                         0   "\\]\\][>]"     nil)
-                ("[<]!--"                0   "[^-]--[>]"  nil))
+                 0   "\\]\\][>]"     nil)
+     ("[<]!--"                0   "[^-]--[>]"  nil))
 
     (cmake      ("\""                    0   "\""        nil "\\\\.")
-                ("#\\[\\(=*\\)\\["       1   "\\]\\1\\]" nil)
-                ("#"                     0   "$"         nil))
+     ("#\\[\\(=*\\)\\["       1   "\\]\\1\\]" nil)
+     ("#"                     0   "$"         nil))
 
     (default    ("\""                    0   "\""       nil "\\\\.")))
 
@@ -328,7 +328,7 @@ prevent an escaped quote from being interpreted as the closing
 quote, for example.")
 
 (defvar dtrt-indent-hook-mapping-list
-;;   Mode            Syntax        Variable
+  ;;   Mode            Syntax        Variable
   '((c-mode          c/c++/java    c-basic-offset)       ; C
     (c++-mode        c/c++/java    c-basic-offset)       ; C++
     (d-mode          c/c++/java    c-basic-offset)       ; D
@@ -372,7 +372,7 @@ quote, for example.")
     (scala-mode      c/c++/java    scala-indent:step)    ; Scala
 
     (default         default       standard-indent))     ; default fallback
-   "A mapping from hook variables to language types.")
+  "A mapping from hook variables to language types.")
 
 ;;-----------------------------------------------------------------
 ;; Customization Definitions:
@@ -407,9 +407,9 @@ you're unhappy with dtrt-indent's actions.  A setting of 3 will
 output lots of diagnostic information.  Finally, a setting of 0
 keeps dtrt-indent of ever outputting anything."
   :type '(choice (const :tag "Silent" 0)
-                 (const :tag "Normal" 1)
-                 (const :tag "Verbose" 2)
-                 (const :tag "Diagnostics" 3))
+          (const :tag "Normal" 1)
+          (const :tag "Verbose" 2)
+          (const :tag "Diagnostics" 3))
   :tag "Verbosity"
   :group 'dtrt-indent)
 
@@ -428,7 +428,7 @@ you should enable this setting."
   :group 'dtrt-indent)
 
 (defcustom dtrt-indent-hook-generic-mapping-list
-;;   Key variable    Value variable
+  ;;   Key variable    Value variable
   '((evil-mode       evil-shift-width))  ; evil
   "A mapping from hook variables to indentation variables.
 For each true key variable, its value variable is set to the same
@@ -443,7 +443,7 @@ functionality (e.g. `evil-mode' using `evil-shift-width'), so the
 value variable must updated in addition to the syntax indentation
 variable."
   :type '(alist :key-type variable
-                :value-type (group variable))
+          :value-type (group variable))
   :group 'dtrt-indent)
 
 (defcustom dtrt-indent-run-after-smie nil
@@ -614,8 +614,8 @@ using more than 8 spaces per indentation level are very rare."
  'dtrt-indent-explicit-tab-mode)
 
 (defun dtrt-indent--replace-in-string (haystack
-                                        needle-regexp
-                                        replacement)
+                                       needle-regexp
+                                       replacement)
   "Replace every match in string by constant replacement.
 Returns HAYSTACK with every match of NEEDLE-REGEXP replaced by
 REPLACEMENT."
@@ -627,9 +627,9 @@ REPLACEMENT."
 
 
 (defun dtrt-indent--skip-to-end-of-match (end-regex
-                                           skip-regex
-                                           syntax-regex-pairs
-                                           multi-line)
+                                          skip-regex
+                                          syntax-regex-pairs
+                                          multi-line)
   "Place point at the end of the current match.
 END-REGEX is a regular expression matching the end.  If
 SKIP-REGEX matches though, END-REGEX is ignored.
@@ -683,8 +683,8 @@ constrains the search to the current line."
                     (dtrt-indent--replace-in-string
                      (nth 2 matching-syntax-entry)
                      "[\\][1]" (regexp-quote
-				(match-string-no-properties
-				 (1+ match-index))))
+                                (match-string-no-properties
+                                 (1+ match-index))))
                   (nth 2 matching-syntax-entry))
                 (nth 4 matching-syntax-entry)
                 (when (nth 3 matching-syntax-entry) syntax-regex-pairs)
@@ -758,8 +758,8 @@ to determine which lines to exclude from the histogram."
             soft-tab-line-count))))
 
 (defun dtrt-indent--analyze-histogram-try-offset (try-offset
-                                                   histogram
-                                                   total-lines)
+                                                  histogram
+                                                  total-lines)
   "Return match information for the given offset.
 TRY-OFFSET is the offset to try, HISTOGRAM is the previously
 calculated indentation histogram, TOTAL-LINES is the total number
@@ -869,14 +869,14 @@ merged with offset %s (%.2f%% deviation, limit %.2f%%)"
              (change-indent-tabs-mode)
              (indent-tabs-mode-setting)
              (rejected
-             (cond
-              ((null best-guess)
-               "no best guess")
-              ((< (* 100.0 (nth 1 best-guess))
-                  dtrt-indent-min-quality)
-               (format "best guess below minimum quality (%f < %f)"
-                       (* 100.0 (nth 1 best-guess))
-                       dtrt-indent-min-quality)))))
+              (cond
+               ((null best-guess)
+                "no best guess")
+               ((< (* 100.0 (nth 1 best-guess))
+                   dtrt-indent-min-quality)
+                (format "best guess below minimum quality (%f < %f)"
+                        (* 100.0 (nth 1 best-guess))
+                        dtrt-indent-min-quality)))))
 
         (cond
          (rejected)
@@ -884,15 +884,15 @@ merged with offset %s (%.2f%% deviation, limit %.2f%%)"
               (>= (/ soft-tab-percentage
                      hard-tab-percentage)
                   (+ 1.0 (/ dtrt-indent-min-soft-tab-superiority 100.0))))
-         (setq change-indent-tabs-mode t)
-         (setq indent-tabs-mode-setting nil))
+          (setq change-indent-tabs-mode t)
+          (setq indent-tabs-mode-setting nil))
 
          ((or (= 0 soft-tab-percentage)
               (>= (/ hard-tab-percentage
                      soft-tab-percentage)
                   (+ 1.0 (/ dtrt-indent-min-hard-tab-superiority 100.0))))
-         (setq change-indent-tabs-mode t)
-         (setq indent-tabs-mode-setting t)))
+          (setq change-indent-tabs-mode t)
+          (setq indent-tabs-mode-setting t)))
 
         (list (cons :histogram (car histogram-and-total-lines))
               (cons :total-lines total-lines)
@@ -946,7 +946,7 @@ merged with offset %s (%.2f%% deviation, limit %.2f%%)"
               (mapconcat (lambda (x) (format "%s" x))
                          indent-offset-variables ", ")))
 
-        ; update indent-offset-variable?
+                                        ; update indent-offset-variable?
         (cond
          ((and best-guess
                (not rejected))
@@ -986,7 +986,7 @@ Indentation offset set with file variable; not adjusted")
                          (format ": %s" rejected) "")))
           nil))
 
-        ; update indent-tabs-mode?
+                                        ; update indent-tabs-mode?
         (cond
          ((and change-indent-tabs-mode
                (not (eq indent-tabs-mode indent-tabs-mode-setting)))
@@ -998,13 +998,13 @@ Indentation offset set with file variable; not adjusted")
                      (format "indent-tabs-mode adjusted to %s"
                              indent-tabs-mode-setting))))
               (message (concat "Note: " tabs-mode-info))))
-          ; backup indent-tabs-mode setting
+                                        ; backup indent-tabs-mode setting
           (setq dtrt-indent-original-indent
                 (cons
                  (let ((x 'indent-tabs-mode))
                    (list x (symbol-value x) (local-variable-p x)))
                  dtrt-indent-original-indent))
-          ; actually adapt indent-tabs-mode
+                                        ; actually adapt indent-tabs-mode
           (set (make-local-variable 'indent-tabs-mode)
                indent-tabs-mode-setting))
          (t
@@ -1053,7 +1053,7 @@ Indentation offset set with file variable; not adjusted")
 ;; Installation
 
 (defadvice hack-one-local-variable
-  (before dtrt-indent-advise-hack-one-local-variable activate)
+    (before dtrt-indent-advise-hack-one-local-variable activate)
   "Adviced by dtrt-indent.
 
 Disable dtrt-indent if offset explicitly set."
