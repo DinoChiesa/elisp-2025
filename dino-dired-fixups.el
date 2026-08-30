@@ -345,6 +345,50 @@ for a given file or set of files. This function makes an intelligent guess."
       (read-shell-command prompt))))
 
 
+(defun dino-dired-do-symlink (&optional arg)
+  "Create a symlink or junction for marked files or file at point.
+On Windows, creates a Junction if target is a directory, or a
+SymbolicLink if target is a file using `pwsh` or `powershell`. On other
+OSes, calls `dired-do-symlink`."
+  (interactive "P")
+  (if (eq system-type 'windows-nt)
+      (let* ((pwsh (or (executable-find "pwsh")
+                       (executable-find "powershell")
+                       "powershell"))
+             (files (dired-get-marked-files nil arg))
+             (other-dired-dir
+              (car (delq nil (mapcar (lambda (w)
+                                       (let ((b (window-buffer w)))
+                                         (when (and (not (eq b (current-buffer)))
+                                                    (with-current-buffer b (eq major-mode 'dired-mode)))
+                                           (with-current-buffer b default-directory))))
+                                     (window-list)))))
+             (target-dir (or other-dired-dir default-directory)))
+        (dolist (file files)
+          (let* ((file-is-dir (file-directory-p file))
+                 (default-link-path (expand-file-name (file-name-nondirectory file) target-dir))
+                 (prompt (format "Name for new %s pointing to %s: "
+                                 (if file-is-dir "Junction" "SymbolicLink")
+                                 (file-name-nondirectory file)))
+                 (link-path (read-file-name prompt target-dir default-link-path nil nil #'file-directory-p))
+                 (existing-file (expand-file-name file))
+                 (abs-link (expand-file-name link-path))
+                 (cmd (format
+                       (if file-is-dir
+                           "New-Item -ItemType Junction -Path '%s' -Value '%s'"
+                         "New-Item -ItemType SymbolicLink -Path '%s' -Target '%s'")
+                       abs-link existing-file)))
+            (message "Running PowerShell: %s" cmd)
+            (call-process pwsh nil nil nil "-NoProfile" "-Command" cmd)))
+        (revert-buffer)
+        (when other-dired-dir
+          (mapc (lambda (w)
+                  (with-selected-window w
+                    (when (eq major-mode 'dired-mode)
+                      (revert-buffer))))
+                (window-list))))
+    (dired-do-symlink arg)))
+
 (defun dino-dired-kill-new-file-contents (&optional arg)
   "Copies the contents of the marked file into the kill-ring"
   (interactive "P")

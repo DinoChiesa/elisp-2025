@@ -2752,7 +2752,8 @@ more information."
           ( "K" . dired-kill-subdir)
           ( "L" . ffap-literally) ;; no coding conversion (see "enriched mode")
           ( "F" . dino-dired-do-find)
-          ( "s" . dino-dired-sort-cycle)))
+          ( "s" . dino-dired-sort-cycle)
+          ( "S" . dino-dired-do-symlink)))
 
   (if (dino-is-work-system)
       (define-key dired-mode-map  (kbd "C-c C-s") #'g4-status-or-magit)
