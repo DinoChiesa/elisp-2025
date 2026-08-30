@@ -494,33 +494,22 @@
   (setf (alist-get 'csharp-ts-mode apheleia-mode-alist) 'csharpier)
   )
 
-(use-package company
-  ;; COMPlete-ANYthing.
-  ;;:defer 11
+
+;; 20260830-0948
+;; in place of company-mode which is apparently out of date.
+(use-package corfu
   :ensure t
+  :custom
+  (corfu-auto t)
+  (corfu-auto-delay 0.4)
+  (corfu-auto-prefix 2)
+  (corfu-cycle t)
+  :init
+  (global-corfu-mode 1)
   :config
-  ;; company by default sets up a bunch of "legacy" backends... bbdb, oddmuse,
-  ;; etc.  which I do not want. This sets a clean, fast global default. I can
-  ;; adjust within Individual modes as appropriate.
-
-  (setq company-backends '(company-files
-                           (company-capf :with company-yasnippet)
-                           company-dabbrev-code company-dabbrev))
-
-  (setq company-idle-delay 0.4)
-  ;; Not sure why, or if, we need both "TAB" and "<tab>".
-  (define-key company-active-map (kbd "TAB") #'company-complete-common-or-cycle)
-  (define-key company-active-map (kbd "<tab>") #'company-complete-common-or-cycle)
-  (define-key company-active-map (kbd "S-TAB") (lambda () (interactive) (company-complete-common-or-cycle -1))))
-
-(use-package company-box
-  ;; front-end for company, for presentation. Adds features like icons for
-  ;; different completion candidates, better color highlighting, and the ability
-  ;; to display documentation for functions and variables.
-  :defer t
-  :ensure t
-  :after (company)
-  :hook (company-mode . company-box-mode))
+  ;; Built-in documentation popup (replaces company-box doc)
+  (corfu-popupinfo-mode 1)
+  (setq corfu-popupinfo-delay '(0.5 . 0.2)))
 
 (use-package indent-bars
   ;; helpful for yaml and json and etc.
@@ -1052,7 +1041,7 @@ eglot, especially with python files."
          ("C-c e s" . eglot-shutdown)
          ("C-c e C-s" . eglot-shutdown-all)
          ("C-c e r" . eglot-reconnect)
-         ("C-c e c" . company-complete)
+         ("C-c e c" . completion-at-point)
          )
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
   :config
@@ -1147,8 +1136,7 @@ eglot, especially with python files."
   (when (not (file-remote-p default-directory))
     ;;  (flycheck-mode 1)
     (eglot-ensure)
-    (company-mode)
-    (define-key jsonnet-mode-map (kbd "C-<tab>") #'company-complete)
+    (define-key jsonnet-mode-map (kbd "C-<tab>") #'completion-at-point)
 
     (when (boundp 'apheleia-formatters)
       (apheleia-mode))
@@ -1382,7 +1370,7 @@ server program."
     (when local-map
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
-            '(("M-TAB"   . company-complete)
+            '(("M-TAB"   . completion-at-point)
               ;; TODO: reconcile this key binding with all the other
               ;; uses of "ESC #" that are bound to dino/indent-buffer.
               ("C-c :"   . sh-set-shell)
@@ -2016,11 +2004,11 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
                       (define-key local-map (kbd (car binding)) (cdr binding)))
                     '(("ESC C-R" . indent-region)
                       ("ESC #"   . dino/indent-buffer)
-                      ("ESC ."   . company-complete)
+                      ("ESC ."   . completion-at-point)
                       ("C-c C-c" . comment-region)
                       ("C-c C-d" . delete-trailing-whitespace)
                       ("C-c C-w" . compare-windows)
-                      ("ESC C-i" . company-complete)
+                      ("ESC C-i" . completion-at-point)
                       ("C-c C-g" . powershell-format-buffer)
                       ))))
           )
@@ -2067,7 +2055,6 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
 ;; shell-mode is different than powershell-mode. The latter is for editing ps1
 ;; scripts, the former is for running a shell.
 (defun dino-shell-mode-fn ()
-  (company-mode)
   (setq show-trailing-whitespace nil))
 
 (add-hook 'shell-mode-hook #'dino-shell-mode-fn)
@@ -2262,13 +2249,12 @@ more information."
                       ("C-c C-c" . comment-region)
                       ("C-c C-d" . delete-trailing-whitespace)
                       ("C-c C-w" . compare-windows)
-                      ("ESC ."   . company-complete)
-                      ("ESC C-i" . company-complete)
+                      ("ESC ."   . completion-at-point)
+                      ("ESC C-i" . completion-at-point)
                       ))))
 
           (turn-on-auto-revert-mode)
           (electric-pair-mode)
-          (company-mode)
           (apheleia-mode)
           (display-line-numbers-mode)
 
@@ -3605,8 +3591,7 @@ colon."
   ;; I am pretty sure eglot will work only locally.
   (when (not (file-remote-p default-directory))
     (eglot-ensure)
-    (company-mode)
-    (keymap-local-set "C-<tab>"  #'company-complete)
+    (keymap-local-set "C-<tab>"  #'completion-at-point)
     )
 
   (message "setting local key bindings....")
@@ -3628,7 +3613,6 @@ colon."
   (yas-minor-mode)
   (show-paren-mode 1)
   ;;(hl-line-mode 1)
-  (company-mode)
 
   ;; 20241228-0619
   ;; Like all TS modes, csharp-ts-mode relies on flyMAKE, not flycheck.
@@ -3942,14 +3926,13 @@ Does not consider word syntax tables.
     (eglot-ensure))
 
   ;; M-C-i to get completion popups, whether from nxml or eglot
-  (company-mode)
   (display-line-numbers-mode)
   (setq yas-indent-line 'nil)
   (keymap-local-set "ESC C-R" #'indent-region)
   (keymap-local-set "C-c n"   #'sgml-name-char) ;; inserts entity ref of pressed char
   (keymap-local-set "M-#"     #'dino-xml-pretty-print-buffer)
   (keymap-local-set "C-c f"   #'dino-replace-filename-no-extension)
-  (keymap-local-set "ESC C-i" #'company-complete)
+  (keymap-local-set "ESC C-i" #'completion-at-point)
   (keymap-local-set "C-<"     #'nxml-backward-element)
   (keymap-local-set "C->"     #'nxml-forward-element)
   (keymap-local-set "C-c C-c" #'dino-xml-comment-region)
@@ -4060,8 +4043,6 @@ Does not consider word syntax tables.
   ;;(hl-line-mode 1)
   (if (fboundp 'indent-bars-mode) ;; sometimes it's not pre-installed
       (indent-bars-mode))
-  (if (fboundp 'company-mode)
-      (company-mode))
   (apheleia-mode)
   (flycheck-mode)
   (setq flycheck-emacs-lisp-load-path 'inherit) ;;flycheck should use my load path
@@ -4120,7 +4101,7 @@ Does not consider word syntax tables.
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("ESC C-R" . indent-region) ;; not sure if useful in python
-              ("M-TAB"   . company-complete)
+              ("M-TAB"   . completion-at-point)
               ("C-c i"   .  dino/indent-line-to-current-column)
               ;; TODO: reconcile this key binding with all the other
               ;; uses of "ESC #" that are bound to dino/indent-buffer.
@@ -4161,7 +4142,6 @@ Does not consider word syntax tables.
 
   (apheleia-mode)
 
-  (company-mode)
   (electric-pair-mode)
 
   ;; `python-flymake' is the default flymake checker. It checks for
@@ -4511,11 +4491,10 @@ counteracts that. "
   (when (memq major-mode '(js-mode javascript-mode json-mode))
     (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
 
-  ;; Completions via Company from Eglot just work. Enable both company-mode and
+  ;; Completions via corfu from Eglot just work. Enable both corfu and
   ;; eglot in the buffer, and completions should work automatically.
 
   (yas-minor-mode)
-  (company-mode)
 
   ;; 20250718-1351
   ;; when running eglot in json-mode, I get all sorts of unhelpful
@@ -4647,7 +4626,7 @@ counteracts that. "
     (when local-map
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
-            '(("M-TAB"     . company-complete)
+            '(("M-TAB"     . completion-at-point)
               ("C-c p"     . dcjava-insert-inferred-package-name)
               ("C-c i"     . dcjava-auto-add-import)
               ("C-c C-i"   . dcjava-auto-add-import)
