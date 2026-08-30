@@ -659,6 +659,30 @@
   (set-face-attribute 'hl-line nil :background "gray20" :inherit nil)
   (global-hl-line-mode))
 
+
+;; 20260829-2253
+;; The following fn , coupled with recursive minibuffer, allows us to
+;; view the completion category. To use, open the minibuffer, then M-: (eval-expression)
+;; and use (prot-common-completion-category), and it will tell you "buffer" or "file" etc.
+(defun prot-common-completion-category ()
+  "Return completion category."
+  (when-let* ((window (active-minibuffer-window)))
+    (with-current-buffer (window-buffer window)
+      (completion-metadata-get
+       (completion-metadata (buffer-substring-no-properties
+                             (minibuffer-prompt-end)
+                             (max (minibuffer-prompt-end) (point)))
+                            minibuffer-completion-table
+                            minibuffer-completion-predicate)
+       'category))))
+
+(use-package minibuffer
+  :ensure nil
+  :config
+  (setq read-minibuffer-restore-windows nil)
+  (setq enable-recursive-minibuffers t)
+  (minibuffer-depth-indicate-mode 1))
+
 (use-package dpc-sane-sorting
   ;; helpers that make icomplete-vertical sort sanely
   :load-path "~/elisp"
