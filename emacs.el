@@ -2746,6 +2746,7 @@ more information."
         '(( "C-c C-g" . dino-dired-kill-new-file-contents)
           ( "C-c C-c" . dino-dired-copy-file-to-dir-in-other-window)
           ( "C-c C-m" . dino-dired-move-file-to-dir-in-other-window)
+          ( "C-c s"   . dino-dired-scp-to-cloudtop)
           ;;( "C-c C-s" . g4-status-or-magit)
           ;;( "C-x m" . magit-status)
           ;; converse of i (dired-maybe-insert-subdir)

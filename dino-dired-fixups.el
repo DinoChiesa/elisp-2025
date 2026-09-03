@@ -420,6 +420,55 @@ typing M-n ."
 (setq dired-listing-switches (concat "-la " dino-dired-time-format-switch))
 ;; (setq dired-actual-switches "--time-style=long-iso -laS")
 
+
+(defvar dino-dired-cloudtop-base "/ssh:cloudtop:/usr/local/google/home/dchiesa/"
+  "Base TRAMP path for Cloudtop.")
+
+(defvar dino-dired-cloudtop-history nil
+  "History list of recent Cloudtop destination paths (max 5).")
+
+
+(defvar dino-dired-cloudtop-base "/ssh:cloudtop:/usr/local/google/home/dchiesa/"
+  "Base TRAMP path for Cloudtop.")
+
+(defvar dino-dired-cloudtop-history nil
+  "History list of recent Cloudtop destination paths (max 5).")
+
+(defun dino-dired-scp-to-cloudtop ()
+  "Copy the current file (or marked files) to a directory on Cloudtop via TRAMP."
+  (interactive)
+  (let* ((files (dired-get-marked-files nil current-prefix-arg))
+         (default-dest (or (car dino-dired-cloudtop-history) dino-dired-cloudtop-base))
+         (target-dir
+          (let ((file-name-history dino-dired-cloudtop-history)
+                (default-directory default-dest))
+            (read-directory-name
+             (format "SCP %d file(s) to Cloudtop: " (length files))
+             ;;dino-dired-cloudtop-base
+             default-dest
+             default-dest
+             t)))
+         (expanded-target (file-name-as-directory (expand-file-name target-dir dino-dired-cloudtop-base)))
+         copied-paths)
+
+    ;; Cache destination: deduplicate and keep only the 5 most recent
+    (setq dino-dired-cloudtop-history
+          (seq-take (cons expanded-target (delete expanded-target dino-dired-cloudtop-history)) 5))
+
+    ;; Perform copy and construct remote paths
+    (dolist (file files)
+      (let* ((filename (file-name-nondirectory file))
+             (dest (expand-file-name filename expanded-target))
+             ;; Strip "/ssh:cloudtop:/usr/local/google/home/dchiesa/" and prepend "~/"
+             (rel-path (concat "~/" (file-relative-name dest dino-dired-cloudtop-base))))
+        (message "Copying %s to %s..." filename expanded-target)
+        (copy-file file dest 1) ;; 1 = ask confirmation if destination exists
+        (push rel-path copied-paths)))
+
+    ;; Copy to kill-ring and system clipboard
+    (let ((clipboard-string (string-join (nreverse copied-paths) "\n")))
+      (kill-new clipboard-string))))
+
 (provide 'dino-dired-fixups)
 
 ;;; dino-dired-fixups.el ends here
