@@ -1365,8 +1365,8 @@ not yet exist."
 
 (defun dino/normalize-path (path for-exec-path)
   "Canonicalize a path for comparison, handling Windows specifics.
-  Ensures lowercase drive letter and consistent backslashes on Windows."
-  (let ((canonical-path (file-truename path))) ; Emacs-preferred canonical form (often forward slashes)
+Ensures lowercase drive letter, consistent slashes, and no trailing slash."
+  (let ((canonical-path (directory-file-name (file-truename path))))
     (if (eq system-type 'windows-nt)
         (let* ((p (dino/maybe-convert-path-slashes canonical-path for-exec-path))
                (drive-match (string-match "^\\([a-zA-Z]\\):" p)))
@@ -1375,6 +1375,19 @@ not yet exist."
                       (substring p (match-end 1)))
             p))
       canonical-path)))
+
+;; (defun dino/normalize-path (path for-exec-path)
+;;   "Canonicalize a path for comparison, handling Windows specifics.
+;;   Ensures lowercase drive letter and consistent backslashes on Windows."
+;;   (let ((canonical-path (file-truename path))) ; Emacs-preferred canonical form (often forward slashes)
+;;     (if (eq system-type 'windows-nt)
+;;         (let* ((p (dino/maybe-convert-path-slashes canonical-path for-exec-path))
+;;                (drive-match (string-match "^\\([a-zA-Z]\\):" p)))
+;;           (if drive-match
+;;               (concat (downcase (substring p (match-beginning 1) (match-end 1)))
+;;                       (substring p (match-end 1)))
+;;             p))
+;;       canonical-path)))
 
 (defun dino/maybe-convert-path-slashes (path for-exec-path)
   "On Windows, convert a PATH to the preferred display format, either
@@ -1398,7 +1411,7 @@ original drive letter casing (as provided by file-truename)."
   (let ((seen-normalized-paths (make-hash-table :test 'equal))
         (result-paths '())
         ;; Process in reverse order so `push` builds the result in correct first-occurrence order
-        (reversed-input (nreverse path-list)))
+        (reversed-input (reverse path-list)))
     (dolist (path reversed-input)
       (when (stringp path)
         (let* ((truename-path (file-truename path)))
@@ -1452,7 +1465,7 @@ both exec-path AND/or environment PATH to be set."
       ;; --- Process new paths from the input list ---
       (dolist (path paths)
         (when (and path (file-directory-p path))
-          (let* ((truename-path (file-truename path))
+          (let* ((truename-path (directory-file-name (file-truename path)))
                  (normalized-for-exec-path (dino/normalize-path truename-path t)) ;; fwd slash
                  (normalized-for-env-var (dino/normalize-path truename-path nil)) ;; back slash
                  (current-item-added nil)) ; Flag to track if this specific path was added
@@ -1643,7 +1656,7 @@ or active version. Works on Windows (nvm4w) and Linux (nvm)."
             ;; Read the alias file content (e.g., "v22.11.0")
             (let* ((version (with-temp-buffer
                               (insert-file-contents default-alias)
-                              (buffer-string)))
+                              (string-trim (buffer-string))))
                    (bin-path (expand-file-name
                               (concat "versions/node/" version "/bin")
                               nvm-dir)))

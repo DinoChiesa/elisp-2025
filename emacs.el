@@ -137,6 +137,7 @@
 (setq edebug-print-length nil)
 (setq read-file-name-completion-ignore-case t)
 (setq default-directory "~/")
+(setopt text-mode-ispell-word-completion nil)
 ;; helpful for debugging lisp code:
 (setq messages-buffer-max-lines 2500)
 
@@ -337,14 +338,16 @@
 ;; Add paths to exec-path and PATH without duplication.
 (if-let* ((this-script-dir (file-name-directory load-file-name))
           (paths-file (expand-file-name ".exec-paths" this-script-dir)))
-    ;; TODO: eventually fix this.
-    ;; The cons doesn't quite work because its use does not insure ONLY ONE nvm
-    ;; bin dir on the path. Also, dino/find-nvm-bin-dir is not really necessary
-    ;; on Windows because I just put c:\nvm4w\nodejs in the .exec-paths file.  A
-    ;; similar symlinked path does not exist in Linux apparently.
-    (dino/maybe-add-to-exec-path (cons
-                                  (dino/find-nvm-bin-dir)
-                                  (dino/fixup-dirs-for-exec-path paths-file))))
+    ;; NB: This does not insure ONLY ONE nvm bin dir on the path; if the path
+    ;; contains multiple NVM dirs, this logic does not catch it. Also, for
+    ;; Windows I put c:\nvm4w\nodejs in the .exec-paths file, and that works
+    ;; even as I switch nvm versions.  A similar symlinked path does not exist
+    ;; in Linux apparently. So I need to use dino/find-nvm-bin-dir, along with
+    ;; delete-dups.
+    (dino/maybe-add-to-exec-path
+     `(,invocation-directory ;; c:\emacs\bin, so git commit hooks can find emacsclient
+       ,(dino/find-nvm-bin-dir)
+       ,@(dino/fixup-dirs-for-exec-path paths-file))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
