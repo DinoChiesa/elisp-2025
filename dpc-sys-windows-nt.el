@@ -1,4 +1,4 @@
-;;; dpc-sys-windows-nt.el --- functions for windows, for Dino.
+;;; dpc-sys-windows-nt.el --- functions for windows, for Dino.  -*- lexical-binding: t; -*-
 ;;
 ;; Author: Dino Chiesa
 ;; Created: Saturday,  8 March 2025, 19:52

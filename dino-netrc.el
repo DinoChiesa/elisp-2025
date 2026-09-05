@@ -1,4 +1,4 @@
-;;; dino-netrc.el --- fixed netrc parsing.
+;;; dino-netrc.el --- fixed netrc parsing.  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 1989-1996, 1998, 2000-2013 Free Software Foundation,
 ;; Inc.
@@ -131,13 +131,13 @@ or
 A typical use might be:
   (dino-netrc-basic-auth \"api.enterprise.apigee.com\")
 "
-        (cdr (dino-netrc-find machine-name)))
+  (cdr (dino-netrc-find machine-name)))
 
 
 (defun dino-netrc-find (machine)
   "parse .netrc for the given machine, return cons of (username . login)"
   (let ((tuples (dino-netrc-parse)))
-      (assoc machine tuples)))
+    (assoc machine tuples)))
 
 (provide 'dino-netrc)
 

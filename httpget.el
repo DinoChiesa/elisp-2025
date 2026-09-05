@@ -1,4 +1,4 @@
-;;; httpget.el  - small utility interactive fn to perform an HTTP GET
+;;; httpget.el  - small utility interactive fn to perform an HTTP GET  -*- lexical-binding: t; -*-
 
 ;; Author     : Dino Chiesa <dpchiesa@hotmail.com>
 ;; Created    : May 2011
@@ -6,7 +6,7 @@
 ;; Version    : 0.2
 ;; Keywords   : http url get
 ;; X-URL      : http://cheeso.members.winisp.net/srcview.aspx?dir=emacs&file=httpget.el
-;; Last-saved : <2025-December-18 19:34:32>
+;; Last-saved : <2026-August-31 14:39:15>
 
 ;;
 ;; This module defines one interactive function, `httpget', along with
