@@ -2739,6 +2739,15 @@ more information."
   :load-path "~/elisp"
   :ensure nil)
 
+;; xenodium's winpulse for pulsed visual indication of the active window
+(use-package winpulse
+  :ensure t
+  :defer 13
+  :config
+  (setq winpulse-duration 0.92)
+  (winpulse-mode 1))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Dired mode
 ;;
