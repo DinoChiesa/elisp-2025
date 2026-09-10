@@ -17,6 +17,7 @@
 ;;
 
 (add-to-list 'load-path "~/elisp")
+
 ;; Set the load-path for all packages installed by package. Some of the
 ;; package-installed versions over builtin versions, if they are updated more
 ;; recently.
@@ -78,6 +79,8 @@
   "returns non-nil if the system is a work system"
   (member (system-name) '("dpchiesa.c.googlers.com" "dchiesa35")))
 
+(when (dino-is-work-system)
+  (require 'google))
 
 (if (eq system-type 'windows-nt)
     (setopt package-gnupghome-dir
@@ -105,8 +108,6 @@
 (cond
  ((string= (system-name) "dpchiesa.c.googlers.com")
   (setq xterm-extra-capabilities '(getSelection setSelection modifyOtherKeys))))
-
-
 
 ;; (concat
 ;;  (replace-regexp-in-string "\\\\" "/" (getenv "HOME")) "/.emacs.d/elpa/gnupg")
@@ -842,61 +843,7 @@
       (error (format "git executable (%s) cannot be found" magit-git-executable)))
     )
 
-  ;; Override some magit things so that branches get sorted
-  ;; alphabetically. This works only because I am _redefining
-  ;; some functions from magit-base.el !
-  ;; See https://github.com/magit/magit/discussions/5390
-  (require 'dpc-sane-sorting)
-  (defun dino/magit-completing-read
-      (prompt choices &optional predicate require-match initial-input hist def)
-    "Override for magit wrapper for the `completing-read' function.
-
-Specifically, it modifies the behavior when selecting a remote branch to
-push to, as indicated by the PROMPT string.
-
-In this case, the choices passed to `magit-completing-read-function' are
-pre-sorted; the origin and potentially other remotes appear at the top
-of the list. Without proper sort metadata, when using icomplete, the
-options get sorted later by minibuffer, by length, which ... is super
-dumb. This cstuom completing-read fn keeps the previous sort order.
-
-To use it:
-
-  (setq magit-completing-read-function
-        #\\='dino/magit-completing-read)
-
-20251219-1514 - In magit-20251215.2222, baaed on code inspection of
-`magit-builtin-completing-read', it looks like the
-`magit--completion-table' uses \\='identity for sort, which would make this
-workaround unnecessary. I haven\\='t tested it.
-
-However, this function could be extended to use different sort order
-based on the prompt, should the need arise in the future."
-    (setq choices
-          (let* ((case-fold-search nil)
-                 (category (if (string-match "Push [^[:space:]]+ to" prompt)
-                               'unsorted
-                             'sorted-sanely)))
-            (dpc-ss-completion-fn choices category)))
-
-    (let ((ivy-sort-functions-alist nil))
-      (completing-read prompt
-                       choices
-                       predicate require-match
-                       initial-input hist def)))
-
-  (setq magit-completing-read-function #'dino/magit-completing-read)
-  )
-
-(defun dino/magit-push-to-gerrit-master ()
-  "Push the current HEAD to Gerrit's master review queue."
-  (interactive)
-  (magit-git-command-topdir "git push origin HEAD:refs/for/master"))
-
-;; Inject the custom push command into the existing Magit Push ('P') transient menu
-(with-eval-after-load 'magit
-  (transient-append-suffix 'magit-push "p"
-    '("g" "Push to Gerrit (master)" dino/magit-push-to-gerrit-master)))
+  (require 'dino-magit-fixups))
 
 (defun dino-git-commit-mode-fn ()
   "Setup logic for the git commit message buffer.
@@ -941,6 +888,9 @@ Attach this fn to the latter to ensure settings do not get stomped."
   :when (dino-is-work-system)
   :load-path "~/elisp"
   :commands (dino/find-g3-workspace dino/g4d dino/find-g3-experimental-file))
+
+(use-package jj
+  :when (dino-is-work-system))
 
 (use-package flymake
   :ensure t)
