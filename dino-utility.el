@@ -127,21 +127,77 @@ This works only when the frame is split into exactly two windows."
       (split-window-vertically)) ; gives us a split with the other window twice
     (switch-to-buffer nil))) ; restore the original window in this part of the frame
 
+
 (defun dino-insert-filename (&optional arg)
   "inserts the name of the file behind the buffer, at point.
 When invoked with a prefix, doesn't insert the file, but sets the
-filename including the full directory path into the kill ring."
+filename including the full directory path into the kill ring.
+Also works in dired buffers."
   (interactive "P")
-  (let ((fname
-         (if arg
-             (buffer-file-name)
-           (file-name-nondirectory (buffer-file-name)))))
-    (kill-new fname) ;; insert into kill-ring
-    (if (and (not arg)
-             (not buffer-read-only))
-        (insert fname)
-      (message fname)
-      )))
+  (let* ((full-path
+          (or (buffer-file-name)
+              (and (derived-mode-p 'dired-mode)
+                   (or (and (fboundp 'dired-current-directory)
+                            (dired-current-directory))
+                       default-directory))))
+         (fname
+          (when full-path
+            (if arg
+                full-path
+              (file-name-nondirectory (directory-file-name full-path))))))
+    (if (not fname)
+        (message "No file or directory associated with buffer")
+      (kill-new fname)
+      (if (and (not arg)
+               (not buffer-read-only))
+          (insert fname)
+        (message fname)))))
+
+(defun dino/dired-copy-filename (&optional arg)
+  "Copy filename or portion of filename into the kill ring.
+If the buffer is writable (e.g. WDired), acts as standard kill-line`.
+If point is past the first character of the filename on the current line,
+copies only the remainder of the filename from point.
+Otherwise, copies the full basename (or marked files).
+With prefix (C-u), copies the fully-qualified path."
+  (interactive "P")
+  (if (or (not buffer-read-only)
+          (not (derived-mode-p 'dired-mode)))
+      (call-interactively #'kill-line)
+    (let* ((pt (point))
+           (file-beg (save-excursion (dired-move-to-filename)))
+           (file-end (save-excursion (when file-beg (dired-move-to-end-of-filename t)))))
+      (cond
+       ;; With prefix: copy full path (or marked files)
+       (arg
+        (let* ((paths (dired-get-marked-files nil))
+               (str (mapconcat #'identity paths " ")))
+          (kill-new str)
+          (message "%s" str)))
+
+       ;; Point is past the first character of the filename: copy remainder
+       ((and file-beg file-end (> pt file-beg) (<= pt file-end))
+        (let ((remainder (buffer-substring-no-properties pt file-end)))
+          (kill-new remainder)
+          (message "%s" remainder)))
+
+       ;; Point is at or before the first character: copy full basename(s)
+       (file-beg
+        (let* ((paths (dired-get-marked-files nil))
+               (basenames (mapcar #'file-name-nondirectory paths))
+               (str (mapconcat #'identity basenames " ")))
+          (kill-new str)
+          (message "%s" str)))
+
+       ;; Fallback on non-file lines (e.g. directory header line)
+       (t
+        (let ((dir (dired-current-directory)))
+          (if dir
+              (let ((name (file-name-nondirectory (directory-file-name dir))))
+                (kill-new name)
+                (message "%s" name))
+            (message "No file on this line"))))))))
+
 
 (defun dino--maybe-delete-file-name-looking-forward (no-extension)
   "if point is on a filename, delete it."
