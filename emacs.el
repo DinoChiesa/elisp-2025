@@ -80,7 +80,12 @@
   (member (system-name) '("dpchiesa.c.googlers.com" "dchiesa35")))
 
 (when (dino-is-work-system)
-  (require 'google))
+  (require 'google)
+  (add-to-list 'load-path
+               "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs/jetski/elisp")
+  (require 'jetski)
+  (setq jetski-bridge-binary "~/bin/jetski-emacs-bridge")
+  (global-set-key (kbd "C-c j") #'jetski-menu))
 
 (if (eq system-type 'windows-nt)
     (setopt package-gnupghome-dir
@@ -3143,25 +3148,38 @@ colon."
 ;; protobuf mode
 ;; used rarely
 
+(use-package protobuffer
+  :when (dino-is-work-system)
+  :config
+  (setq auto-mode-alist
+        (append
+         '(("\\.proto\\'" . protobuffer-mode)
+           ("\\.txtpb\\'" . protobuffer-mode)
+           )
+         auto-mode-alist ))
+  )
+
 (use-package protobuf-mode
+  :when (not (dino-is-work-system))
   :ensure t
   :defer t
-  :config (progn
-            (defconst my-protobuf-style
-              '((c-basic-offset . 2)
-                (indent-tabs-mode . nil)))
-            (defun dino-protobuf-mode-fn ()
-              "my mode hook for protobuf-mode"
-              (keymap-local-set "ESC C-R"  #'indent-region)
-              (keymap-local-set "ESC #"    #'dino/indent-buffer)
-              (keymap-local-set "C-c C-w"  #'compare-windows)
-              (display-line-numbers-mode)
-
-              (c-add-style "my-style" my-protobuf-style t)
-              ;;(require 'flycheck)
-              ;;(flycheck-mode 1)
-              )
-            (add-hook 'protobuf-mode-hook 'dino-protobuf-mode-fn)))
+  :config
+  (setq auto-mode-alist
+        (append
+         '(("\\.proto\\'"                         . protobuf-mode))
+         auto-mode-alist ))
+  (defconst my-protobuf-style
+    '((c-basic-offset . 2)
+      (indent-tabs-mode . nil)))
+  (defun dino-protobuf-mode-fn ()
+    "my mode hook for protobuf-mode"
+    (keymap-local-set "ESC C-R"  #'indent-region)
+    (keymap-local-set "ESC #"    #'dino/indent-buffer)
+    (keymap-local-set "C-c C-w"  #'compare-windows)
+    (display-line-numbers-mode)
+    (c-add-style "my-style" my-protobuf-style t)
+    )
+  (add-hook 'protobuf-mode-hook 'dino-protobuf-mode-fn))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
