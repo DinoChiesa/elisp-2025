@@ -514,7 +514,9 @@
   (corfu-auto-prefix 2)
   (corfu-cycle t)
   :init
-  (global-corfu-mode 1)
+  (if (fboundp 'global-corfu-mode)
+      (global-corfu-mode 1))
+
   :config
   ;; Built-in documentation popup (replaces company-box doc)
   (corfu-popupinfo-mode 1)
