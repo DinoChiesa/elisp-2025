@@ -1529,11 +1529,18 @@ then switch to the markdown output buffer."
   (define-key markdown-mode-map (kbd "C-c m |") #'markdown-table-align) ;; my favorite feature
   )
 
-(use-package markdown-mode
-  :ensure t
-  :defer t
-  :config
-  :hook (markdown-mode . dino-markdown-mode-fn))
+(if (file-exists-p "~/newdev/elisp-projects/markdown-mode/markdown-mode.el")
+    ;; this modification has support for markdown tables with a max-width
+    ;; and continued lines
+    (use-package markdown-mode
+      :load-path "~/newdev/elisp-projects/markdown-mode"
+      :pin manual
+      :commands (markdown-mode gfm-mode)
+      :hook (markdown-mode . dino-markdown-mode-fn))
+  (use-package markdown-mode
+    :ensure t
+    :defer t
+    :hook (markdown-mode . dino-markdown-mode-fn)))
 
 (use-package terraform-mode
   :when (dino-is-work-system)
@@ -5264,8 +5271,8 @@ Enable `recentf-mode' if it isn't already."
 (define-key global-map (kbd "C-c C-x C-c") #'calendar)
 (define-key global-map (kbd "ESC C-\\")    #'help-for-help)
 (define-key global-map (kbd "C-c C-d")     #'delete-trailing-whitespace)
-(define-key global-map (kbd "C-c j f")     #'json-pretty-print)
-(define-key global-map (kbd "C-c j m")     #'json-minify-region)
+;;(define-key global-map (kbd "C-c j f")     #'json-pretty-print)
+;;(define-key global-map (kbd "C-c j m")     #'json-minify-region)
 (define-key global-map (kbd "C-x c")     #'multiple-cursors-mode)
 (define-key global-map (kbd "<f2> SPC")    #'bm-toggle)
 
