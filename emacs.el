@@ -81,11 +81,9 @@
 
 (when (dino-is-work-system)
   (require 'google)
+  ;; for jetski, later
   (add-to-list 'load-path
-               "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs/jetski/elisp")
-  (require 'jetski)
-  (setq jetski-bridge-binary "~/bin/jetski-emacs-bridge")
-  (global-set-key (kbd "C-c j") #'jetski-menu))
+               "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs/jetski/elisp"))
 
 (if (eq system-type 'windows-nt)
     (setopt package-gnupghome-dir
@@ -150,6 +148,7 @@
 ;; For the following, 'always, 'visible,  't, and nil are options.
 ;; But I don't know the effect! They look the same to me.
 (setq completion-auto-help nil)
+(setq extended-command-suggest-shorter nil)
 
 (put 'eval-expression 'disabled nil)
 (setq xterm-max-cut-length (* 256 1024)) ;; 256kb
@@ -586,7 +585,7 @@
   ;; Easily make line drawings with unicode symbols.
   ;; To use: M-x uniline-mode
   :ensure t
-  :defer t)
+  :defer nil)
 
 (if ;;(or (not (eq system-type 'windows-nt))
     (version< emacs-version "30.1")
@@ -1502,6 +1501,34 @@ server program."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; markdown
 
+;; 20260926-1942
+;;
+;; HOOOHA. Just trying to get markdown mode to load from the
+;; place I want, and not to reload from any place I don't want.
+(let* ((my-md-dir (expand-file-name "~/newdev/elisp-projects/markdown-mode"))
+       (my-md-file (expand-file-name "markdown-mode.el" my-md-dir)))
+  (when (and (file-directory-p my-md-dir)
+             (file-exists-p my-md-file))
+    (setq load-path
+          (seq-remove (lambda (path)
+                        (string-match-p "markdown[-_]mode"
+                                        (file-name-nondirectory (directory-file-name path))))
+                      load-path))
+    (push my-md-dir load-path)
+    (load my-md-file nil nil)
+
+    ;; The following prevents reloading of markdown-mode during completions, as
+    ;; during describe-function.
+    (when (boundp 'definition-prefixes)
+      (let ((target "third_party/elisp/markdown_mode/markdown-mode"))
+        (dolist (prefix '("defun-markdown-" "gfm-" "markdown"))
+          (let ((files (gethash prefix definition-prefixes)))
+            (when files
+              (puthash prefix (delete target files) definition-prefixes)))))
+
+      (when (boundp 'help-definition-prefixes)
+        (setq help-definition-prefixes nil)))))
+
 ;; 20250116-1921
 ;;
 ;; The markdown utility is very outdated. The pandoc command is more up to date
@@ -1525,24 +1552,34 @@ then switch to the markdown output buffer."
   "My hook for markdown mode"
   (modify-syntax-entry ?_ "w")
   (auto-fill-mode -1)
-  (display-line-numbers-mode)
-  (define-key markdown-mode-map (kbd "C-c m s") #'dpc-markdown-standalone)
-  (define-key markdown-mode-map (kbd "C-c m d") #'delete-trailing-whitespace)
-  (define-key markdown-mode-map (kbd "C-c m |") #'markdown-table-align) ;; my favorite feature
-  )
+  (display-line-numbers-mode))
 
-(if (file-exists-p "~/newdev/elisp-projects/markdown-mode/markdown-mode.el")
-    ;; this modification has support for markdown tables with a max-width
-    ;; and continued lines
-    (use-package markdown-mode
-      :load-path "~/newdev/elisp-projects/markdown-mode"
-      :pin manual
-      :commands (markdown-mode gfm-mode)
-      :hook (markdown-mode . dino-markdown-mode-fn))
-  (use-package markdown-mode
-    :ensure t
+(use-package markdown-mode
+  ;; :ensure t
+  :defer t
+  :hook (markdown-mode . dino-markdown-mode-fn)
+  :config
+  (message "markdown mode: %s" (symbol-file 'markdown-mode 'defun))
+  :bind (:map markdown-mode-map
+         ("C-c m s" . dpc-markdown-standalone)
+         ("C-c m d" . delete-trailing-whitespace)
+         ("C-c m |" . markdown-table-align)
+         ("C-c m t" . (lambda ()
+                        (interactive)
+                        (if (fboundp 'markdown-table-toggle-style)
+                            (markdown-table-toggle-style)
+                          (user-error "markdown-table-toggle-style not available"))))))
+
+
+
+(when (dino-is-work-system)
+  (global-set-key (kbd "C-c j") #'jetski-menu)
+  (use-package jetski
     :defer t
-    :hook (markdown-mode . dino-markdown-mode-fn)))
+    :config
+    (setq jetski-bridge-binary "~/bin/jetski-emacs-bridge")
+    ))
+
 
 (use-package terraform-mode
   :when (dino-is-work-system)
