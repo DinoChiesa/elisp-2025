@@ -421,53 +421,67 @@ typing M-n ."
 ;; (setq dired-actual-switches "--time-style=long-iso -laS")
 
 
-(defvar dino-dired-cloudtop-base "/ssh:cloudtop:/usr/local/google/home/dchiesa/"
-  "Base TRAMP path for Cloudtop.")
+(defvar dino-dired-cloudtop-base "/scp:cloudtop:/usr/local/google/home/dchiesa/"
+  "Base TRAMP path for Cloudtop. Uses the scp method so large files go out-of-band.")
 
 (defvar dino-dired-cloudtop-history nil
   "History list of recent Cloudtop destination paths (max 5).")
 
+(defvar dino-dired-local-base "~/Downloads/"
+  "Default local destination when copying from a remote dired buffer.")
 
-(defvar dino-dired-cloudtop-base "/ssh:cloudtop:/usr/local/google/home/dchiesa/"
-  "Base TRAMP path for Cloudtop.")
+(defvar dino-dired-local-history nil
+  "History list of recent local destination paths (max 5).")
 
-(defvar dino-dired-cloudtop-history nil
-  "History list of recent Cloudtop destination paths (max 5).")
-
-(defun dino-dired-scp-to-cloudtop ()
-  "Copy the current file (or marked files) to a directory on Cloudtop via TRAMP."
-  (interactive)
-  (let* ((files (dired-get-marked-files nil current-prefix-arg))
-         (default-dest (or (car dino-dired-cloudtop-history) dino-dired-cloudtop-base))
+(defun dino-dired--copy-files-to (files prompt base history-var format-path)
+  "Copy FILES to a directory read in the minibuffer with PROMPT.
+The default destination is the most recent entry in HISTORY-VAR, else BASE.
+The destination paths, transformed by FORMAT-PATH, go on the kill ring."
+  (let* ((history (symbol-value history-var))
+         (default-dest (or (car history) base))
          (target-dir
-          (let ((file-name-history dino-dired-cloudtop-history)
+          (let ((file-name-history history)
                 (default-directory default-dest))
             (read-directory-name
-             (format "SCP %d file(s) to Cloudtop: " (length files))
+             (format prompt (length files))
              ;;dino-dired-cloudtop-base
              default-dest
              default-dest
              t)))
-         (expanded-target (file-name-as-directory (expand-file-name target-dir dino-dired-cloudtop-base)))
+         (expanded-target (file-name-as-directory (expand-file-name target-dir base)))
          copied-paths)
 
     ;; Cache destination: deduplicate and keep only the 5 most recent
-    (setq dino-dired-cloudtop-history
-          (seq-take (cons expanded-target (delete expanded-target dino-dired-cloudtop-history)) 5))
+    (set history-var
+         (seq-take (cons expanded-target (delete expanded-target history)) 5))
 
-    ;; Perform copy and construct remote paths
     (dolist (file files)
       (let* ((filename (file-name-nondirectory file))
-             (dest (expand-file-name filename expanded-target))
-             ;; Strip "/ssh:cloudtop:/usr/local/google/home/dchiesa/" and prepend "~/"
-             (rel-path (concat "~/" (file-relative-name dest dino-dired-cloudtop-base))))
+             (dest (expand-file-name filename expanded-target)))
         (message "Copying %s to %s..." filename expanded-target)
         (copy-file file dest 1) ;; 1 = ask confirmation if destination exists
-        (push rel-path copied-paths)))
+        (push (funcall format-path dest) copied-paths)))
 
     ;; Copy to kill-ring and system clipboard
-    (let ((clipboard-string (string-join (nreverse copied-paths) "\n")))
-      (kill-new clipboard-string))))
+    (kill-new (string-join (nreverse copied-paths) "\n"))))
+
+(defun dino-dired-scp-other-side ()
+  "Copy the current file (or marked files) to the other side.
+From a local dired buffer, copy to a directory on Cloudtop.
+From a remote (TRAMP) dired buffer, copy to a local directory."
+  (interactive)
+  (let ((files (dired-get-marked-files nil current-prefix-arg)))
+    (if (file-remote-p default-directory)
+        (dino-dired--copy-files-to
+         files "Copy %d file(s) to local: "
+         dino-dired-local-base 'dino-dired-local-history
+         #'abbreviate-file-name)
+      (dino-dired--copy-files-to
+       files "SCP %d file(s) to Cloudtop: "
+       dino-dired-cloudtop-base 'dino-dired-cloudtop-history
+       ;; Strip "/scp:cloudtop:/usr/local/google/home/dchiesa/" and prepend "~/"
+       (lambda (dest)
+         (concat "~/" (file-relative-name dest dino-dired-cloudtop-base)))))))
 
 (provide 'dino-dired-fixups)
 
