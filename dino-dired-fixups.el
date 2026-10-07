@@ -459,7 +459,12 @@ The destination paths, transformed by FORMAT-PATH, go on the kill ring."
       (let* ((filename (file-name-nondirectory file))
              (dest (expand-file-name filename expanded-target)))
         (message "Copying %s to %s..." filename expanded-target)
-        (copy-file file dest 1) ;; 1 = ask confirmation if destination exists
+        (if (file-directory-p file)
+            ;; copy-directory silently merges into an existing directory, so ask first.
+            (when (or (not (file-exists-p dest))
+                      (y-or-n-p (format "%s exists; merge into it? " dest)))
+              (copy-directory file dest nil t))
+          (copy-file file dest 1)) ;; 1 = ask confirmation if destination exists
         (push (funcall format-path dest) copied-paths)))
 
     ;; Copy to kill-ring and system clipboard
