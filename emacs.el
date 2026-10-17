@@ -112,6 +112,36 @@
  ((string= (system-name) "dpchiesa.c.googlers.com")
   (setq xterm-extra-capabilities '(getSelection setSelection modifyOtherKeys))))
 
+;; 20261011-1546
+;;
+;; While recording macros, the osc52 sequences seem to signal a STOP of the
+;; recording.  Also, during macro execution, the osc52 clipboard sequences seem
+;; to get in the way.  By using advice to disable clipboard things during
+;; recording and execution of kbm macros, i seem to be able to avoid such
+;; problems.
+(if (not window-system)
+    (progn
+      (defun my/disable-clipboard-in-macro (&rest _)
+        "Prevent OSC52 clipboard escape codes from corrupting macro input stream."
+        (setq select-enable-clipboard nil))
+
+      (defun my/enable-clipboard-after-macro (&rest _)
+        (setq select-enable-clipboard t))
+
+      (advice-add 'kmacro-start-macro :before #'my/disable-clipboard-in-macro)
+      (advice-add 'kmacro-end-macro :after #'my/enable-clipboard-after-macro)
+
+      (defun my/without-clipboard-during-macro (orig-fun &rest args)
+        "Temporarily disable clipboard integration during macro playback."
+        (let ((select-enable-clipboard nil)
+              (interprogram-cut-function nil)
+              (interprogram-paste-function nil))
+          (apply orig-fun args)))
+
+      (advice-add 'kmacro-call-macro :around #'my/without-clipboard-during-macro)
+      )
+  )
+
 ;; (concat
 ;;  (replace-regexp-in-string "\\\\" "/" (getenv "HOME")) "/.emacs.d/elpa/gnupg")
 
