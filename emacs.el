@@ -4135,8 +4135,8 @@ Does not consider word syntax tables.
               ;; TODO: reconcile this key binding with all the other
               ;; uses of "ESC #" that are bound to dino/indent-buffer.
               ("ESC #"   . dino/toggle-flymake-diagnostics)
-              ("C-c p f" . dcpe/pyformat) ;; should be unnecessary with apheleia
-              ("C-c p l" . dcpe/gpylint)  ;; should be unnecessary with flymake
+              ("C-c p f" . dcpe/format) ;; should be unnecessary with apheleia
+              ("C-c p l" . dcpe/lint)   ;; should be unnecessary with flymake
               ("C-c p r" . dcpe/refactor-multiline-imports)
               ("C-c p u" . dcpe/uv-run)
               ;; TODO: add in "p4 edit FILENAME" as another command
@@ -4157,18 +4157,6 @@ Does not consider word syntax tables.
   (customize-set-variable 'apheleia-formatters-respect-indent-level t)
   (setq fill-column 80)
 
-  ;; explicitly select a single specific formatter in priority order.
-  (cond
-   ((executable-find "pyformat")
-    (setq-local apheleia-formatter 'pyformat))
-   ;; for now, 20260704, black splits long strings, while
-   ;; "ruff format" does not. So even though black is slower,
-   ;; prefer it for this reason.
-   ((executable-find "black")
-    (setq-local apheleia-formatter 'black-custom))
-   ((executable-find "ruff")
-    (setq-local apheleia-formatter 'ruff)))
-
   (apheleia-mode)
 
   (electric-pair-mode)
@@ -4187,13 +4175,11 @@ Does not consider word syntax tables.
   ;; This avoids duplicates with our custom flymake backend.
   (setq-local eglot-stay-out-of '(flymake))
 
-  (cond
-   ((executable-find "gpylint")
-    (add-hook 'flymake-diagnostic-functions #'dcpe/flymake-gpylint nil t))
-   ((executable-find "ruff")
-    (require 'flymake-ruff)
-    ;; Insert settings into ruff.toml in the project root.
-    (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t)))
+  ;; Emacs applies dir-locals only after mode hooks run, so for file buffers,
+  ;; defer the choice of formatter and linter until then.
+  (if buffer-file-name
+      (add-hook 'hack-local-variables-hook #'dino-python-select-tools nil t)
+    (dino-python-select-tools))
 
   (flymake-mode)
 
@@ -4361,6 +4347,11 @@ Does not consider word syntax tables.
           ;;"-i" ;; omit -i to format stdin
           "--assume_filename" filepath
           ))
+
+  ;; 20261009 - pyink takes its settings from [tool.pyink] in the pyproject.toml
+  ;; found from filepath. Selected per-project via `dcpe-formatter'.
+  (setf (alist-get 'pyink apheleia-formatters)
+        '("pyink" "--quiet" "--stdin-filename" filepath "-"))
 
   ;;(setf (alist-get 'python-mode apheleia-mode-alist) '(ruff-isort ruff))
 

@@ -267,27 +267,47 @@ python-mode-hook before `eglot-ensure'."
 This pipes the current buffer content to gpylint via stdin
 and parses the output into diagnostics. Using --from-stdin
 allows gpylint to report the correct filename in its output."
-  (let ((gpylint (executable-find "gpylint"))
-        (file-name (buffer-file-name)))
+  (let ((gpylint (executable-find "gpylint")))
     (unless gpylint
       (error "Cannot find gpylint executable"))
+    (dcpe/--flymake-run-pylint report-fn (list gpylint "--mode=base"))))
 
+(defun dcpe/flymake-pylint (report-fn &rest _args)
+  "Flymake backend for open-source pylint.
+Uses the .pylintrc in the nearest enclosing directory of the
+visited file, if any. Otherwise pylint finds its own config."
+  (let ((pylint (executable-find "pylint"))
+        (rc-dir (and buffer-file-name
+                     (locate-dominating-file buffer-file-name ".pylintrc"))))
+    (unless pylint
+      (error "Cannot find pylint executable"))
+    (dcpe/--flymake-run-pylint
+     report-fn
+     (if rc-dir
+         (list pylint (concat "--rcfile=" (expand-file-name ".pylintrc" rc-dir)))
+       (list pylint)))))
+
+(defun dcpe/--flymake-run-pylint (report-fn command-prefix)
+  "Run COMMAND-PREFIX, a pylint-compatible command, on the buffer via stdin.
+Parse the output into flymake diagnostics and pass them to REPORT-FN."
+  (let ((file-name (buffer-file-name)))
     (when (processp dcpe/flymake-gpylint-process)
       (delete-process dcpe/flymake-gpylint-process))
 
-    (let ((source (current-buffer)))
+    (let ((source (current-buffer))
+          (process-label (file-name-nondirectory (car command-prefix))))
       (setq dcpe/flymake-gpylint-process
             (make-process
-             :name "gpylint-flymake"
+             :name (concat process-label "-flymake")
              :noquery t
              :connection-type 'pipe
-             :buffer (generate-new-buffer " *gpylint-flymake*")
-             :command (list gpylint
-                            "--mode=base"
-                            ;;"--output-format=msvs"
-                            "--from-stdin"
-                            "--msg-template={path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"
-                            (or file-name "stdin"))
+             :buffer (generate-new-buffer (format " *%s-flymake*" process-label))
+             :command (append command-prefix
+                              (list
+                               ;;"--output-format=msvs"
+                               "--from-stdin"
+                               "--msg-template={path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"
+                               (or file-name "stdin")))
              :sentinel
              (lambda (process _event)
                (when (eq (process-status process) 'exit)
@@ -323,7 +343,7 @@ allows gpylint to report the correct filename in its output."
                    (when (buffer-live-p (process-buffer process))
                      (kill-buffer (process-buffer process))))))))
 
-      ;; Send the buffer content to gpylint's stdin
+      ;; Send the buffer content to the linter's stdin
       (process-send-region dcpe/flymake-gpylint-process (point-min) (point-max))
       (process-send-eof dcpe/flymake-gpylint-process))))
 
@@ -521,6 +541,22 @@ Returns the inferred list of modules as a string like \"[ \"mod1\", \"mod2\" ]\"
 buffer max line length."
   (if (bound-and-true-p fill-column) fill-column 86))
 
+(defun dcpe/_tool-label (key name)
+  "Return NAME with KEY bracketed at its first occurrence, eg \"py[i]nk\"."
+  (let ((pos (string-match (regexp-quote (char-to-string key)) name)))
+    (if pos
+        (concat (substring name 0 pos) "[" (char-to-string key) "]"
+                (substring name (1+ pos)))
+      (format "[%c]%s" key name))))
+
+(defun dcpe/_prefer-tool (available preferred)
+  "Return AVAILABLE with the entry named PREFERRED (a symbol) moved first.
+This makes a project's `dcpe-linter' the no-prefix default."
+  (let ((hit (and preferred (rassoc (symbol-name preferred) available))))
+    (if hit
+        (cons hit (delq hit (copy-sequence available)))
+      available)))
+
 (defun dcpe/_determine-tool-choice (action available prompt-prefix)
   "Determine which tool to use from AVAILABLE options.
 ACTION is a string like \"Format\" or \"Lint\" used in the prompt.
@@ -528,7 +564,7 @@ AVAILABLE is an alist mapping character keys to tool name strings.
 PROMPT-PREFIX is non-nil if we should prompt the user for the choice."
   (if prompt-prefix
       (let* ((prompt-parts (mapcar (lambda (item)
-                                     (format "[%c]%s" (car item) (substring (cdr item) 1)))
+                                     (dcpe/_tool-label (car item) (cdr item)))
                                    available))
              (prompt (concat action " with " (mapconcat 'identity prompt-parts ", ") "? "))
              (allowed (apply 'append
@@ -538,21 +574,29 @@ PROMPT-PREFIX is non-nil if we should prompt the user for the choice."
         (downcase (read-char-choice prompt allowed)))
     (car (car available))))
 
-(defun dcpe/gpylint (&optional arg)
-  "Run gpylint or ruff check on the file in the currently visited buffer.
+(defun dcpe/lint (&optional arg)
+  "Run gpylint, pylint, or ruff check on the file in the currently visited buffer.
+
+The default is the buffer's `dcpe-linter' when set (eg via
+.dir-locals.el), otherwise gpylint. pylint uses the .pylintrc in the
+nearest enclosing directory, if any.
 
 With a prefix ARG, prompt the user to select which linter to use."
   (interactive "P")
   (if (and buffer-file-name
            (derived-mode-p 'python-base-mode))
       (let* ((gpylint (executable-find "gpylint"))
+             (pylint (executable-find "pylint"))
              (ruff (executable-find "ruff"))
              (file-name (shell-quote-argument buffer-file-name))
-             (available (delq nil
-                              (list (when gpylint '(?g . "gpylint"))
-                                    (when ruff    '(?r . "ruff"))))))
+             (available (dcpe/_prefer-tool
+                         (delq nil
+                               (list (when gpylint '(?g . "gpylint"))
+                                     (when pylint  '(?l . "pylint"))
+                                     (when ruff    '(?r . "ruff"))))
+                         (bound-and-true-p dcpe-linter))))
         (if (not available)
-            (error "Could not find 'gpylint' or 'ruff' executable")
+            (error "Could not find 'gpylint', 'pylint', or 'ruff' executable")
           (let ((choice (dcpe/_determine-tool-choice "Lint" available arg)))
             (cond
              ((eq choice ?g)
@@ -560,17 +604,78 @@ With a prefix ARG, prompt the user to select which linter to use."
                (concat
                 gpylint " --mode=base --output-format=text --msg-template='{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}' "
                 buffer-file-name)))
+             ((eq choice ?l)
+              (let ((rc-dir (locate-dominating-file buffer-file-name ".pylintrc")))
+                (compilation-start
+                 (concat
+                  pylint
+                  (if rc-dir
+                      (concat " --rcfile="
+                              (shell-quote-argument
+                               (expand-file-name ".pylintrc" rc-dir)))
+                    "")
+                  " --output-format=text --msg-template='{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}' "
+                  file-name))))
              ((eq choice ?r)
               (compilation-start
                (concat ruff " check " file-name)))))))))
 
 
-(defun dcpe/pyformat (&optional arg)
-  "Run one of pyformat, ruff format, or black on the file in the currently
-visited buffer.
+(defconst dcpe/python-apheleia-formatters '(pyformat pyink black-custom ruff)
+  "Apheleia formatter names that `dcpe/format' offers for python buffers.
+Each is a key in `apheleia-formatters'. pyink added by my own emacs init.")
 
-Explicitly running a format command is mostly unnecessary when
-apheleia-mode is enabled.
+(defun dcpe/_installed-apheleia-formatters ()
+  "Return the names in `dcpe/python-apheleia-formatters' that are usable.
+A name is usable if it has an entry in `apheleia-formatters' and the
+program that entry runs is installed."
+  (seq-filter (lambda (name)
+                (let ((command (alist-get name apheleia-formatters)))
+                  (and command
+                       (stringp (car command))
+                       (executable-find (car command)))))
+              dcpe/python-apheleia-formatters))
+
+(defun dcpe/format (&optional arg)
+  "Format the current python buffer with apheleia.
+
+Uses the buffer's `apheleia-formatter', which `dino-python-select-tools'
+sets from `dcpe-formatter' (eg via .dir-locals.el) or picks
+automatically. With a prefix ARG, prompt for one of the usable names in
+`dcpe/python-apheleia-formatters'.
+
+This formats the buffer contents, including unsaved edits, the same way
+format-on-save does, so running it explicitly is mostly unnecessary when
+apheleia-mode is enabled. If apheleia misbehaves, use
+`dcpe/format-direct'."
+  (interactive "P")
+  (unless (derived-mode-p 'python-base-mode)
+    (error "Not in a Python mode"))
+  (require 'apheleia)
+  (let ((formatter
+         (if arg
+             (intern
+              (completing-read
+               "Format with: "
+               (mapcar #'symbol-name (dcpe/_installed-apheleia-formatters))
+               nil t nil nil
+               (and (symbolp apheleia-formatter) apheleia-formatter
+                    (symbol-name apheleia-formatter))))
+           apheleia-formatter)))
+    (unless formatter
+      (error "No apheleia formatter is set for this buffer"))
+    (apheleia-format-buffer formatter)))
+
+(defun dcpe/format-direct (&optional arg)
+  "Fallback: run pyformat, pyink, black, or ruff format directly on the
+file visited by the current buffer, outside apheleia.
+
+Use this only if apheleia misbehaves; normally use `dcpe/format'. It
+formats the file on disk (save first), shows output in a compilation
+buffer, and builds its own command lines, which may differ from the
+`apheleia-formatters' entries. pyink takes its settings from the nearest
+pyproject.toml. The default is the first installed of pyformat, pyink,
+black, ruff.
 
 With a prefix ARG, prompt the user to select which formatter to use."
   (interactive "P")
@@ -578,18 +683,22 @@ With a prefix ARG, prompt the user to select which formatter to use."
            (derived-mode-p 'python-base-mode))
       (let* ((file-name (shell-quote-argument buffer-file-name))
              (pyformat (executable-find "pyformat"))
+             (pyink (executable-find "pyink"))
              (black (executable-find "black"))
              (ruff (executable-find "ruff"))
              (available (delq nil
                               (list (when pyformat '(?p . "pyformat"))
+                                    (when pyink    '(?i . "pyink"))
                                     (when black    '(?b . "black"))
                                     (when ruff     '(?r . "ruff"))))))
         (if (not available)
-            (error "Could not find any of 'pyformat', 'black', or 'ruff' executables")
+            (error "Could not find any of 'pyformat', 'pyink', 'black', or 'ruff' executables")
           (let ((choice (dcpe/_determine-tool-choice "Format" available arg)))
             (cond
              ((eq choice ?p)
               (compilation-start (concat pyformat " -s 2 -i " file-name)))
+             ((eq choice ?i)
+              (compilation-start (concat pyink " --quiet " file-name)))
              ((eq choice ?b)
               (compilation-start
                (format
@@ -616,6 +725,57 @@ With a prefix ARG, prompt the user to select which formatter to use."
             (compilation-start (concat uv " run " file-name))
           (error "Could not find 'uv' executable")))
     (error "Buffer is not visiting a file, or not in a Python mode")))
+
+;; 20261009 - Per-project overrides for the python formatter and linter, set via
+;; .dir-locals.el. `dino-python-mode-fn' requires this file from the python-mode
+;; hook, and Emacs applies dir-locals after mode hooks run, so the
+;; safe-local-variable properties below exist in time and Emacs doesn't prompt.
+(defvar-local dcpe-formatter nil
+  "Name of the apheleia formatter to use for this python buffer, eg `pyink'.
+
+The value is not a program name. It is a lookup key into
+`apheleia-formatters', whose entry for that key holds the actual command
+line (program plus arguments) that apheleia runs. For example `pyink'
+maps to (\"pyink\" \"--quiet\" \"--stdin-filename\" filepath \"-\"), and
+`black-custom' maps to a black command line. `dino-python-select-tools'
+copies this value into `apheleia-formatter'. nil means choose
+automatically. Usually set per project in .dir-locals.el.")
+(put 'dcpe-formatter 'safe-local-variable #'symbolp)
+
+(defvar-local dcpe-linter nil
+  "Flymake linter for python buffers: `gpylint', `pylint', or `ruff'.
+nil means choose automatically. `pylint' uses the .pylintrc found in the
+nearest enclosing directory.")
+(put 'dcpe-linter 'safe-local-variable #'symbolp)
+
+(defun dino-python-select-tools ()
+  "Set the apheleia formatter and flymake linter for the current python buffer.
+Honors `dcpe-formatter' and `dcpe-linter' when set."
+  ;; explicitly select a single specific formatter in priority order.
+  (cond
+   (dcpe-formatter
+    (setq-local apheleia-formatter dcpe-formatter))
+   ((executable-find "pyformat")
+    (setq-local apheleia-formatter 'pyformat))
+   ;; for now, 20260704, black splits long strings, while
+   ;; "ruff format" does not. So even though black is slower,
+   ;; prefer it for this reason.
+   ((executable-find "black")
+    (setq-local apheleia-formatter 'black-custom))
+   ((executable-find "ruff")
+    (setq-local apheleia-formatter 'ruff)))
+
+  (pcase (or dcpe-linter
+             (cond ((executable-find "gpylint") 'gpylint)
+                   ((executable-find "ruff") 'ruff)))
+    ('gpylint
+     (add-hook 'flymake-diagnostic-functions #'dcpe/flymake-gpylint nil t))
+    ('pylint
+     (add-hook 'flymake-diagnostic-functions #'dcpe/flymake-pylint nil t))
+    ('ruff
+     (require 'flymake-ruff)
+     ;; Insert settings into ruff.toml in the project root.
+     (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t))))
 
 (provide 'dino-python-extensions)
 
