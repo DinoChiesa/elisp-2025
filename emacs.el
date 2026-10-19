@@ -463,7 +463,7 @@
   ;; specifies node.
 
   (if-let* ((npm (executable-find "npm"))
-            (npm-prefix-path (shell-command-to-string (concat npm  " config get prefix")))
+            (npm-prefix-path (shell-command-to-string (concat "\"" npm "\""  " config get prefix")))
             (fixedup-prefix-path (file-truename (string-trim npm-prefix-path)))
             (prettierd-path
              (file-name-concat fixedup-prefix-path "node_modules" "@fsouza" "prettierd"
