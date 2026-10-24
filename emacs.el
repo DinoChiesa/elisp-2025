@@ -4162,7 +4162,7 @@ Does not consider word syntax tables.
 
 (defun dino-python-mode-fn ()
   ;; python-mode is not a prog-mode!
-  (require 'dino-python-extensions)
+  (require 'dc-python-extensions)
   (customize-set-variable 'python-indent-offset 2)
   (let ((local-map (current-local-map))) ;; one of {python-mode-map, python-ts-mode-map}
     (when local-map
@@ -4174,10 +4174,10 @@ Does not consider word syntax tables.
               ;; TODO: reconcile this key binding with all the other
               ;; uses of "ESC #" that are bound to dc-edit/indent-buffer.
               ("ESC #"   . dino/toggle-flymake-diagnostics)
-              ("C-c p f" . dcpe/format) ;; should be unnecessary with apheleia
-              ("C-c p l" . dcpe/lint)   ;; should be unnecessary with flymake
-              ("C-c p r" . dcpe/refactor-multiline-imports)
-              ("C-c p u" . dcpe/uv-run)
+              ("C-c p f" . dc-pe/format) ;; should be unnecessary with apheleia
+              ("C-c p l" . dc-pe/lint)   ;; should be unnecessary with flymake
+              ("C-c p r" . dc-pe/refactor-multiline-imports)
+              ("C-c p u" . dc-pe/uv-run)
               ;; TODO: add in "p4 edit FILENAME" as another command
               ("C-c C-c" . comment-region)
               ("C-c C-d" . delete-trailing-whitespace)
@@ -4217,8 +4217,8 @@ Does not consider word syntax tables.
   ;; Emacs applies dir-locals only after mode hooks run, so for file buffers,
   ;; defer the choice of formatter and linter until then.
   (if buffer-file-name
-      (add-hook 'hack-local-variables-hook #'dino-python-select-tools nil t)
-    (dino-python-select-tools))
+      (add-hook 'hack-local-variables-hook #'dc-pe/select-tools nil t)
+    (dc-pe/select-tools))
 
   (flymake-mode)
 
@@ -4228,7 +4228,7 @@ Does not consider word syntax tables.
   ;; (setq flycheck-check-syntax-automatically '(save idle-change mode-enable)) ;; check on save, idle and mode-change
   ;; (setq flycheck-idle-change-delay 4)
 
-  (dcpe/setup-basedpyright-lsp-workspace-handling)
+  (dc-pe/setup-basedpyright-lsp-workspace-handling)
   (eglot-ensure) ;; eglot will use "pyright". Installing basedpyright satisfies this.
 
   (yas-minor-mode)
@@ -4254,7 +4254,7 @@ Does not consider word syntax tables.
   ;; different command for each file. This logic sets it up.
 
   (setq python-check-custom-command nil)
-  (setq python-check-command (dcpe/basedpyright-check-command))
+  (setq python-check-command (dc-pe/basedpyright-check-command))
 
   ;; uv python find --script ergodicity-2.py
   ;; c:\Users\dpchi\AppData\Roaming\npm\basedpyright.ps1 --pythonpath C:\Users\dpchi\AppData\Local\uv\cache\environments-v2\ergodicity-2-d457e2e24b007c47\Scripts\python.exe ergodicity-2.py
@@ -4388,7 +4388,7 @@ Does not consider word syntax tables.
           ))
 
   ;; 20261009 - pyink takes its settings from [tool.pyink] in the pyproject.toml
-  ;; found from filepath. Selected per-project via `dcpe-formatter'.
+  ;; found from filepath. Selected per-project via `dc-pe-formatter'.
   (setf (alist-get 'pyink apheleia-formatters)
         '("pyink" "--quiet" "--stdin-filename" filepath "-"))
 

@@ -1,4 +1,4 @@
-;;; dino-python-extensions.el  -*- coding: utf-8; lexical-binding: t;  -*-
+;;; dc-python-extensions.el  -*- coding: utf-8; lexical-binding: t;  -*-
 
 ;; Copyright © 2025-2026 Dino Chiesa
 ;;
@@ -28,7 +28,7 @@
 ;;   basedpyright for the LSP Server, like ty or pylsp or etc, then this logic
 ;;   won't work as is.
 ;;
-;; - a function, `dcpe/basedpyright-check-command`, to automatically set the
+;; - a function, `dc-pe/basedpyright-check-command`, to automatically set the
 ;;   python-check-command for use with basedpyright, for `python-check`.
 ;;
 ;; - FUTURE - similar work to set the python-check-command for use with ty language server.
@@ -41,10 +41,10 @@
 ;;
 ;;
 ;; To use it, invoke this within the python-mode-hook
-;;  (require 'dino-python-extensions)
-;;  (dcpe/setup-basedpyright-lsp-workspace-handling)
+;;  (require 'dc-python-extensions)
+;;  (dc-pe/setup-basedpyright-lsp-workspace-handling)
 ;;  (setq python-check-custom-command nil)
-;;  (setq python-check-command (dcpe/basedpyright-check-command))
+;;  (setq python-check-command (dc-pe/basedpyright-check-command))
 ;;
 ;;
 
@@ -55,11 +55,11 @@
 (require 'dpc-gemini)
 (require 'json)
 
-;; (defvar dcpe/original-python-contact nil
+;; (defvar dc-pe/original-python-contact nil
 ;;   "Storage for the original eglot-server-programs entry for Python.
 ;; Will be set on first run.")
 
-(defun dcpe/has-pep723-p (&optional _file)
+(defun dc-pe/has-pep723-p (&optional _file)
   "Return non-nil if current buffer contains PEP 723 script metadata."
   (let ((case-fold-search nil))
     (save-match-data
@@ -70,17 +70,17 @@
           ;; Search first 2048 chars for the script tag
           (re-search-forward "^# /// script" 2048 t))))))
 
-(defun dcpe/inject-pep723-metadata ()
+(defun dc-pe/inject-pep723-metadata ()
   "Inject a PEP 723 script metadata block at the top of the buffer.
 If a block already exists, do nothing."
   (interactive)
-  (if (dcpe/has-pep723-p)
+  (if (dc-pe/has-pep723-p)
       (message "PEP 723 block already exists.")
     (save-excursion
       (goto-char (point-min))
       (when (looking-at "^#!")
         (forward-line 1))
-      (let* ((dependencies (dcpe/infer-dependencies))
+      (let* ((dependencies (dc-pe/infer-dependencies))
              ;; Trim and prefix internal newlines with "# "
              (formatted (replace-regexp-in-string "\n" "\n# " (string-trim dependencies))))
         (insert "# /// script\n"
@@ -90,7 +90,7 @@ If a block already exists, do nothing."
                 "\n# ///\n\n")
         (message "Injected PEP 723 metadata.")))))
 
-(defun dcpe/add-pep723-dependency (dependency)
+(defun dc-pe/add-pep723-dependency (dependency)
   "Add DEPENDENCY in the PEP 723 script metadata block at the top of the file.
 This uses a temporary file to avoid forcing a save of the current buffer,
 allowing the change to be undone within Emacs."
@@ -98,7 +98,7 @@ allowing the change to be undone within Emacs."
   (unless (derived-mode-p 'python-mode 'python-ts-mode)
     (error "Current buffer is not in python-mode or python-ts-mode"))
   (let ((uv (executable-find "uv"))
-        (temp-file (make-temp-file "dcpe-uv-" nil ".py")))
+        (temp-file (make-temp-file "dc-pe-uv-" nil ".py")))
     (unless uv
       (error "Could not find 'uv' executable"))
     (unwind-protect
@@ -117,7 +117,7 @@ allowing the change to be undone within Emacs."
       (when (file-exists-p temp-file)
         (delete-file temp-file)))))
 
-(defun dcpe/uv-get-pythonexe (file-name)
+(defun dc-pe/uv-get-pythonexe (file-name)
   "Ensure that uv magic invisible venv is built, then find the python
 interpreter. On Windows, the result will be something like
 C:/Users/me/AppData/Local/uv/cache/env-v2/filename-af3c4e/Scripts/python.exe"
@@ -137,67 +137,67 @@ C:/Users/me/AppData/Local/uv/cache/env-v2/filename-af3c4e/Scripts/python.exe"
             (error "uv found venv python for %s but it does not exist" file-name))
         (error "uv could not find/build venv python for %s" file-name)))))
 
-(defvar dcpe/basedpyright-base-config
+(defvar dc-pe/basedpyright-base-config
   (list :basedpyright.analysis
         '( :autoImportCompletions :json-false
            :typeCheckingMode "standard")) ;; off/basic/standard/recommended
   "Default base configuration data for Python LSP workspace/configuration requests,
-used by `dcpe/basedpyright-workspace-config`.
+used by `dc-pe/basedpyright-workspace-config`.
 
 This list is tailored for basedpyright, specifying analysis options.")
 
-(defun dcpe/basedpyright-workspace-config (server)
+(defun dc-pe/basedpyright-workspace-config (server)
   "Provide data to allow emacs to respond to workspace/configuration
 inquiries from the basedpyright LSP Server. With basedpyright, the
 python.pythonPath tells it how to resolve the venv. The required
 workspace/configuration may not be the same for other LSP servers, like
 ty or pylsp."
-  (let ((config dcpe/basedpyright-base-config))
+  (let ((config dc-pe/basedpyright-base-config))
     (if-let* ((list (eglot--managed-buffers server))
               (_ (and list (null (cdr list))))
               (buffer (car list)))
         (with-current-buffer buffer
           (if (and buffer-file-name
                    (derived-mode-p 'python-base-mode)
-                   (dcpe/has-pep723-p))
-              (let ((python-path (dcpe/uv-get-pythonexe buffer-file-name)))
+                   (dc-pe/has-pep723-p))
+              (let ((python-path (dc-pe/uv-get-pythonexe buffer-file-name)))
                 (append config `(:python (:pythonPath ,python-path))))
             config))
       config)))
 
-(defun dcpe/setup-basedpyright-lsp-workspace-handling ()
+(defun dc-pe/setup-basedpyright-lsp-workspace-handling ()
   "Setup for PEP723 extensions for basedpyright LSP. Invoke this in your
 python-mode-hook before `eglot-ensure'."
-  (setq-default eglot-workspace-configuration #'dcpe/basedpyright-workspace-config))
+  (setq-default eglot-workspace-configuration #'dc-pe/basedpyright-workspace-config))
 
 
-;; (defun dcpe/python-script-project-finder (dir)
+;; (defun dc-pe/python-script-project-finder (dir)
 ;;   "If the file has PEP 723 markup, treat its directory as a transient project root.
 ;; This allows eglot to trigger the contact-wrapper for this specific file.
 ;;
 ;; Using a distinct LSP launch/contact per file makes sense and is
 ;; required when each file has distinct PEP723 dependency markup."
-;;   (when (and buffer-file-name (dcpe/has-pep723-p))
+;;   (when (and buffer-file-name (dc-pe/has-pep723-p))
 ;;     (cons 'transient dir)))
 ;;
 ;; (with-eval-after-load 'project
-;;   (add-hook 'project-find-functions #'dcpe/python-script-project-finder -10))
+;;   (add-hook 'project-find-functions #'dc-pe/python-script-project-finder -10))
 
 
 
 ;; ;; Do not even need this.  This would be required if we needed initializationOptions, but
 ;; ;; that is not required for basedpyright.
 ;;
-;; (defun dcpe/python-contact-wrapper (interactive)
+;; (defun dc-pe/python-contact-wrapper (interactive)
 ;;   (let* ((file (buffer-file-name))
-;;          (want-per-file-lsp (and file (dcpe/has-pep723-p)))
+;;          (want-per-file-lsp (and file (dc-pe/has-pep723-p)))
 ;;          (base-contact
-;;           (if (functionp dcpe/original-python-contact)
-;;               (funcall dcpe/original-python-contact interactive)
-;;             dcpe/original-python-contact)))
+;;           (if (functionp dc-pe/original-python-contact)
+;;               (funcall dc-pe/original-python-contact interactive)
+;;             dc-pe/original-python-contact)))
 ;;
 ;;     (if want-per-file-lsp
-;;         (let* ((python-path (expand-file-name (dcpe/uv-get-pythonexe file)))
+;;         (let* ((python-path (expand-file-name (dc-pe/uv-get-pythonexe file)))
 ;;                (full-venv-path (file-name-parent-directory (file-name-parent-directory python-path)))
 ;;                (where-venvs-reside (file-name-parent-directory full-venv-path))
 ;;                (shortname-of-the-actual-venv (file-name-nondirectory (directory-file-name full-venv-path)))
@@ -229,12 +229,12 @@ python-mode-hook before `eglot-ensure'."
 ;;
 ;;
 ;; (with-eval-after-load 'eglot
-;;   (setq dcpe/original-python-contact
+;;   (setq dc-pe/original-python-contact
 ;;         (copy-tree (cdr (assoc '(python-mode python-ts-mode) eglot-server-programs))))
 ;;
 ;;   (setf (alist-get '(python-mode python-ts-mode) eglot-server-programs
 ;;                    nil nil #'equal)
-;;         #'dcpe/python-contact-wrapper))
+;;         #'dc-pe/python-contact-wrapper))
 
 
 ;; ;; delete ALL:
@@ -251,7 +251,7 @@ python-mode-hook before `eglot-ensure'."
 ;;                         eglot-server-programs))))
 
 
-(defun dcpe/find-basedpyright ()
+(defun dc-pe/find-basedpyright ()
   "find basedpyright on the current machine."
   (if (eq system-type 'windows-nt)
       (with-temp-buffer
@@ -260,9 +260,9 @@ python-mode-hook before `eglot-ensure'."
     (executable-find "basedpyright")))
 
 
-(defvar-local dcpe/flymake-gpylint-process nil)
+(defvar-local dc-pe/flymake-gpylint-process nil)
 
-(defun dcpe/flymake-gpylint (report-fn &rest _args)
+(defun dc-pe/flymake-gpylint (report-fn &rest _args)
   "Flymake backend for gpylint.
 This pipes the current buffer content to gpylint via stdin
 and parses the output into diagnostics. Using --from-stdin
@@ -270,9 +270,9 @@ allows gpylint to report the correct filename in its output."
   (let ((gpylint (executable-find "gpylint")))
     (unless gpylint
       (error "Cannot find gpylint executable"))
-    (dcpe/--flymake-run-pylint report-fn (list gpylint "--mode=base"))))
+    (dc-pe/--flymake-run-pylint report-fn (list gpylint "--mode=base"))))
 
-(defun dcpe/flymake-pylint (report-fn &rest _args)
+(defun dc-pe/flymake-pylint (report-fn &rest _args)
   "Flymake backend for open-source pylint.
 Uses the .pylintrc in the nearest enclosing directory of the
 visited file, if any. Otherwise pylint finds its own config."
@@ -281,22 +281,22 @@ visited file, if any. Otherwise pylint finds its own config."
                      (locate-dominating-file buffer-file-name ".pylintrc"))))
     (unless pylint
       (error "Cannot find pylint executable"))
-    (dcpe/--flymake-run-pylint
+    (dc-pe/--flymake-run-pylint
      report-fn
      (if rc-dir
          (list pylint (concat "--rcfile=" (expand-file-name ".pylintrc" rc-dir)))
        (list pylint)))))
 
-(defun dcpe/--flymake-run-pylint (report-fn command-prefix)
+(defun dc-pe/--flymake-run-pylint (report-fn command-prefix)
   "Run COMMAND-PREFIX, a pylint-compatible command, on the buffer via stdin.
 Parse the output into flymake diagnostics and pass them to REPORT-FN."
   (let ((file-name (buffer-file-name)))
-    (when (processp dcpe/flymake-gpylint-process)
-      (delete-process dcpe/flymake-gpylint-process))
+    (when (processp dc-pe/flymake-gpylint-process)
+      (delete-process dc-pe/flymake-gpylint-process))
 
     (let ((source (current-buffer))
           (process-label (file-name-nondirectory (car command-prefix))))
-      (setq dcpe/flymake-gpylint-process
+      (setq dc-pe/flymake-gpylint-process
             (make-process
              :name (concat process-label "-flymake")
              :noquery t
@@ -344,11 +344,11 @@ Parse the output into flymake diagnostics and pass them to REPORT-FN."
                      (kill-buffer (process-buffer process))))))))
 
       ;; Send the buffer content to the linter's stdin
-      (process-send-region dcpe/flymake-gpylint-process (point-min) (point-max))
-      (process-send-eof dcpe/flymake-gpylint-process))))
+      (process-send-region dc-pe/flymake-gpylint-process (point-min) (point-max))
+      (process-send-eof dc-pe/flymake-gpylint-process))))
 
 
-(defun dcpe/rename-python-check-buffer ()
+(defun dc-pe/rename-python-check-buffer ()
   "Rename the Python check buffer to omit the full command. Without this,
 the name of the compilation buffer can be over 180 characters. Not helpful."
   (let ((current-name (buffer-name)))
@@ -362,7 +362,7 @@ the name of the compilation buffer can be over 180 characters. Not helpful."
             (kill-buffer new-name)))
         (rename-buffer new-name)))))
 
-(defun dcpe/basedpyright-check-command ()
+(defun dc-pe/basedpyright-check-command ()
   "Get the python check command for the current file. This will
 return something sensible, if uv and basedpyright are installed, whether or
 not PEP723 markup is present.
@@ -374,17 +374,17 @@ it figure out the venv.
 
 If no basedpyright, then fall back to *ruff check*, without checking for
 existence."
-  (if-let* ((basedpyright (dcpe/find-basedpyright)))
+  (if-let* ((basedpyright (dc-pe/find-basedpyright)))
       (progn
-        (add-hook 'compilation-mode-hook #'dcpe/rename-python-check-buffer)
+        (add-hook 'compilation-mode-hook #'dc-pe/rename-python-check-buffer)
         (with-eval-after-load 'compile
           (add-to-list 'compilation-error-regexp-alist-alist
                        '(basedpyright
                          "^[[:space:]]+\\([A-Za-z]:[^:\n]+\\):\\([0-9]+\\):\\([0-9]+\\)"
                          1 2 3))
           (add-to-list 'compilation-error-regexp-alist 'basedpyright))
-        (if-let* ((_ (dcpe/has-pep723-p))
-                  (python-path (dcpe/uv-get-pythonexe buffer-file-name)))
+        (if-let* ((_ (dc-pe/has-pep723-p))
+                  (python-path (dc-pe/uv-get-pythonexe buffer-file-name)))
             (format (if (eq system-type 'windows-nt)
                         ;; 20260103-1802
                         ;; I found that using -Command on Windows with pwsh.exe is
@@ -396,7 +396,7 @@ existence."
           basedpyright))
     "ruff check"))
 
-;; (defun dcpe/refactor-multiline-imports ()
+;; (defun dc-pe/refactor-multiline-imports ()
 ;;   "Refactor multiline imports \"from ... import (...)\" into multiple single-
 ;; line imports.
 ;;
@@ -430,7 +430,7 @@ existence."
 ;;             (error (goto-char (line-end-position)))))))
 ;;     (message "Refactored %d multiline import(s)." count)))
 
-(defun dcpe/refactor-multiline-imports ()
+(defun dc-pe/refactor-multiline-imports ()
   "Refactor multiline or multi-symbol imports into multiple single-line imports."
   (interactive)
   (unless (derived-mode-p 'python-mode 'python-ts-mode)
@@ -475,7 +475,7 @@ existence."
 ;; 3.  **Extraction**: If no parentheses are found, it grabs the remainder of the current line.
 ;; 4.  **Guard**: Added `(if (> (length symbols) 1) ...)` to ensure it only refactors lines actually containing multiple symbols, preventing infinite loops or redundant replacements.
 
-(defun dcpe/extract-python-imports ()
+(defun dc-pe/extract-python-imports ()
   "Scan the current buffer and extract Python import statements.
 Verifies that the buffer is in ='python-mode'= or ='python-ts-mode'=.
 Returns the text of the import lines without text properties."
@@ -503,10 +503,10 @@ Returns the text of the import lines without text properties."
                 (goto-char end)))))))
     (mapconcat #'identity (nreverse imports) "\n")))
 
-(defun dcpe/infer-dependencies ()
+(defun dc-pe/infer-dependencies ()
   "Infers Python dependencies based on imports in the current buffer.
 Returns the inferred list of modules as a string like \"[ \"mod1\", \"mod2\" ]\"."
-  (let* ((imports (dcpe/extract-python-imports))
+  (let* ((imports (dc-pe/extract-python-imports))
          (prompt (concat
                   "You are a python development expert. Given these imports in a python module, what python modules do I need to require/install ?\n\n"
                   "<IMPORTS START>\n"
@@ -536,12 +536,12 @@ Returns the inferred list of modules as a string like \"[ \"mod1\", \"mod2\" ]\"
               (error "Unexpected response format from Gemini"))))))))
 
 
-(defun dcpe/py-column-width ()
+(defun dc-pe/py-column-width ()
   "Return a number suitable for various formatters, indicating the python
 buffer max line length."
   (if (bound-and-true-p fill-column) fill-column 86))
 
-(defun dcpe/_tool-label (key name)
+(defun dc-pe/_tool-label (key name)
   "Return NAME with KEY bracketed at its first occurrence, eg \"py[i]nk\"."
   (let ((pos (string-match (regexp-quote (char-to-string key)) name)))
     (if pos
@@ -549,22 +549,22 @@ buffer max line length."
                 (substring name (1+ pos)))
       (format "[%c]%s" key name))))
 
-(defun dcpe/_prefer-tool (available preferred)
+(defun dc-pe/_prefer-tool (available preferred)
   "Return AVAILABLE with the entry named PREFERRED (a symbol) moved first.
-This makes a project's `dcpe-linter' the no-prefix default."
+This makes a project's `dc-pe-linter' the no-prefix default."
   (let ((hit (and preferred (rassoc (symbol-name preferred) available))))
     (if hit
         (cons hit (delq hit (copy-sequence available)))
       available)))
 
-(defun dcpe/_determine-tool-choice (action available prompt-prefix)
+(defun dc-pe/_determine-tool-choice (action available prompt-prefix)
   "Determine which tool to use from AVAILABLE options.
 ACTION is a string like \"Format\" or \"Lint\" used in the prompt.
 AVAILABLE is an alist mapping character keys to tool name strings.
 PROMPT-PREFIX is non-nil if we should prompt the user for the choice."
   (if prompt-prefix
       (let* ((prompt-parts (mapcar (lambda (item)
-                                     (dcpe/_tool-label (car item) (cdr item)))
+                                     (dc-pe/_tool-label (car item) (cdr item)))
                                    available))
              (prompt (concat action " with " (mapconcat 'identity prompt-parts ", ") "? "))
              (allowed (apply 'append
@@ -574,10 +574,10 @@ PROMPT-PREFIX is non-nil if we should prompt the user for the choice."
         (downcase (read-char-choice prompt allowed)))
     (car (car available))))
 
-(defun dcpe/lint (&optional arg)
+(defun dc-pe/lint (&optional arg)
   "Run gpylint, pylint, or ruff check on the file in the currently visited buffer.
 
-The default is the buffer's `dcpe-linter' when set (eg via
+The default is the buffer's `dc-pe-linter' when set (eg via
 .dir-locals.el), otherwise gpylint. pylint uses the .pylintrc in the
 nearest enclosing directory, if any.
 
@@ -589,15 +589,15 @@ With a prefix ARG, prompt the user to select which linter to use."
              (pylint (executable-find "pylint"))
              (ruff (executable-find "ruff"))
              (file-name (shell-quote-argument buffer-file-name))
-             (available (dcpe/_prefer-tool
+             (available (dc-pe/_prefer-tool
                          (delq nil
                                (list (when gpylint '(?g . "gpylint"))
                                      (when pylint  '(?l . "pylint"))
                                      (when ruff    '(?r . "ruff"))))
-                         (bound-and-true-p dcpe-linter))))
+                         (bound-and-true-p dc-pe-linter))))
         (if (not available)
             (error "Could not find 'gpylint', 'pylint', or 'ruff' executable")
-          (let ((choice (dcpe/_determine-tool-choice "Lint" available arg)))
+          (let ((choice (dc-pe/_determine-tool-choice "Lint" available arg)))
             (cond
              ((eq choice ?g)
               (compilation-start
@@ -621,12 +621,12 @@ With a prefix ARG, prompt the user to select which linter to use."
                (concat ruff " check " file-name)))))))))
 
 
-(defconst dcpe/python-apheleia-formatters '(pyformat pyink black-custom ruff)
-  "Apheleia formatter names that `dcpe/format' offers for python buffers.
+(defconst dc-pe/python-apheleia-formatters '(pyformat pyink black-custom ruff)
+  "Apheleia formatter names that `dc-pe/format' offers for python buffers.
 Each is a key in `apheleia-formatters'. pyink added by my own emacs init.")
 
-(defun dcpe/_installed-apheleia-formatters ()
-  "Return the names in `dcpe/python-apheleia-formatters' that are usable.
+(defun dc-pe/_installed-apheleia-formatters ()
+  "Return the names in `dc-pe/python-apheleia-formatters' that are usable.
 A name is usable if it has an entry in `apheleia-formatters' and the
 program that entry runs is installed."
   (seq-filter (lambda (name)
@@ -634,20 +634,20 @@ program that entry runs is installed."
                   (and command
                        (stringp (car command))
                        (executable-find (car command)))))
-              dcpe/python-apheleia-formatters))
+              dc-pe/python-apheleia-formatters))
 
-(defun dcpe/format (&optional arg)
+(defun dc-pe/format (&optional arg)
   "Format the current python buffer with apheleia.
 
-Uses the buffer's `apheleia-formatter', which `dino-python-select-tools'
-sets from `dcpe-formatter' (eg via .dir-locals.el) or picks
+Uses the buffer's `apheleia-formatter', which `dc-pe/select-tools'
+sets from `dc-pe-formatter' (eg via .dir-locals.el) or picks
 automatically. With a prefix ARG, prompt for one of the usable names in
-`dcpe/python-apheleia-formatters'.
+`dc-pe/python-apheleia-formatters'.
 
 This formats the buffer contents, including unsaved edits, the same way
 format-on-save does, so running it explicitly is mostly unnecessary when
 apheleia-mode is enabled. If apheleia misbehaves, use
-`dcpe/format-direct'."
+`dc-pe/format-direct'."
   (interactive "P")
   (unless (derived-mode-p 'python-base-mode)
     (error "Not in a Python mode"))
@@ -657,7 +657,7 @@ apheleia-mode is enabled. If apheleia misbehaves, use
              (intern
               (completing-read
                "Format with: "
-               (mapcar #'symbol-name (dcpe/_installed-apheleia-formatters))
+               (mapcar #'symbol-name (dc-pe/_installed-apheleia-formatters))
                nil t nil nil
                (and (symbolp apheleia-formatter) apheleia-formatter
                     (symbol-name apheleia-formatter))))
@@ -666,11 +666,11 @@ apheleia-mode is enabled. If apheleia misbehaves, use
       (error "No apheleia formatter is set for this buffer"))
     (apheleia-format-buffer formatter)))
 
-(defun dcpe/format-direct (&optional arg)
+(defun dc-pe/format-direct (&optional arg)
   "Fallback: run pyformat, pyink, black, or ruff format directly on the
 file visited by the current buffer, outside apheleia.
 
-Use this only if apheleia misbehaves; normally use `dcpe/format'. It
+Use this only if apheleia misbehaves; normally use `dc-pe/format'. It
 formats the file on disk (save first), shows output in a compilation
 buffer, and builds its own command lines, which may differ from the
 `apheleia-formatters' entries. pyink takes its settings from the nearest
@@ -693,7 +693,7 @@ With a prefix ARG, prompt the user to select which formatter to use."
                                     (when ruff     '(?r . "ruff"))))))
         (if (not available)
             (error "Could not find any of 'pyformat', 'pyink', 'black', or 'ruff' executables")
-          (let ((choice (dcpe/_determine-tool-choice "Format" available arg)))
+          (let ((choice (dc-pe/_determine-tool-choice "Format" available arg)))
             (cond
              ((eq choice ?p)
               (compilation-start (concat pyformat " -s 2 -i " file-name)))
@@ -704,17 +704,17 @@ With a prefix ARG, prompt the user to select which formatter to use."
                (format
                 "%s --line-length %d --preview --enable-unstable-feature string_processing %s"
                 black
-                (dcpe/py-column-width)
+                (dc-pe/py-column-width)
                 file-name)))
              ((eq choice ?r)
               (compilation-start
                (format
                 "%s format --silent --line-length %d %s"
                 ruff
-                (dcpe/py-column-width)
+                (dc-pe/py-column-width)
                 file-name)))))))))
 
-(defun dcpe/uv-run ()
+(defun dc-pe/uv-run ()
   "Run the current buffer's file using `uv run` in a compilation buffer."
   (interactive)
   (if (and buffer-file-name
@@ -730,31 +730,31 @@ With a prefix ARG, prompt the user to select which formatter to use."
 ;; .dir-locals.el. `dino-python-mode-fn' requires this file from the python-mode
 ;; hook, and Emacs applies dir-locals after mode hooks run, so the
 ;; safe-local-variable properties below exist in time and Emacs doesn't prompt.
-(defvar-local dcpe-formatter nil
+(defvar-local dc-pe-formatter nil
   "Name of the apheleia formatter to use for this python buffer, eg `pyink'.
 
 The value is not a program name. It is a lookup key into
 `apheleia-formatters', whose entry for that key holds the actual command
 line (program plus arguments) that apheleia runs. For example `pyink'
 maps to (\"pyink\" \"--quiet\" \"--stdin-filename\" filepath \"-\"), and
-`black-custom' maps to a black command line. `dino-python-select-tools'
+`black-custom' maps to a black command line. `dc-pe/select-tools'
 copies this value into `apheleia-formatter'. nil means choose
 automatically. Usually set per project in .dir-locals.el.")
-(put 'dcpe-formatter 'safe-local-variable #'symbolp)
+(put 'dc-pe-formatter 'safe-local-variable #'symbolp)
 
-(defvar-local dcpe-linter nil
+(defvar-local dc-pe-linter nil
   "Flymake linter for python buffers: `gpylint', `pylint', or `ruff'.
 nil means choose automatically. `pylint' uses the .pylintrc found in the
 nearest enclosing directory.")
-(put 'dcpe-linter 'safe-local-variable #'symbolp)
+(put 'dc-pe-linter 'safe-local-variable #'symbolp)
 
-(defun dino-python-select-tools ()
+(defun dc-pe/select-tools ()
   "Set the apheleia formatter and flymake linter for the current python buffer.
-Honors `dcpe-formatter' and `dcpe-linter' when set."
+Honors `dc-pe-formatter' and `dc-pe-linter' when set."
   ;; explicitly select a single specific formatter in priority order.
   (cond
-   (dcpe-formatter
-    (setq-local apheleia-formatter dcpe-formatter))
+   (dc-pe-formatter
+    (setq-local apheleia-formatter dc-pe-formatter))
    ((executable-find "pyformat")
     (setq-local apheleia-formatter 'pyformat))
    ;; for now, 20260704, black splits long strings, while
@@ -765,19 +765,19 @@ Honors `dcpe-formatter' and `dcpe-linter' when set."
    ((executable-find "ruff")
     (setq-local apheleia-formatter 'ruff)))
 
-  (pcase (or dcpe-linter
+  (pcase (or dc-pe-linter
              (cond ((executable-find "gpylint") 'gpylint)
                    ((executable-find "ruff") 'ruff)))
     ('gpylint
-     (add-hook 'flymake-diagnostic-functions #'dcpe/flymake-gpylint nil t))
+     (add-hook 'flymake-diagnostic-functions #'dc-pe/flymake-gpylint nil t))
     ('pylint
-     (add-hook 'flymake-diagnostic-functions #'dcpe/flymake-pylint nil t))
+     (add-hook 'flymake-diagnostic-functions #'dc-pe/flymake-pylint nil t))
     ('ruff
      (require 'flymake-ruff)
      ;; Insert settings into ruff.toml in the project root.
      (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t))))
 
-(provide 'dino-python-extensions)
+(provide 'dc-python-extensions)
 
 
-;;; dino-python-extensions.el ends here
+;;; dc-python-extensions.el ends here
