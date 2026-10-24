@@ -347,11 +347,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timestamp insertion functions
 ;;
-(use-package dino-timestamp
+(use-package dc-timestamp
   :load-path "~/elisp"
   :defer t
   :pin manual
-  :commands (dts/insert-currentTimeMillis dts/insert-timeofday))
+  :commands (dc-ts/insert-currentTimeMillis dc-ts/insert-timeofday))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Some configuration specific for system-types.
@@ -5310,7 +5310,7 @@ Enable `recentf-mode' if it isn't already."
 (define-key global-map (kbd "C-c q")       #'query-replace)
 (define-key global-map (kbd "C-c c")       #'goto-char)
 (define-key global-map (kbd "C-c r")       #'replace-regexp)
-(define-key global-map (kbd "C-x t")       #'dts/insert-timeofday)
+(define-key global-map (kbd "C-x t")       #'dc-ts/insert-timeofday)
 (define-key global-map (kbd "C-x C-d")     #'delete-window)
 (define-key global-map (kbd "C-x x")       #'copy-to-register)
 (define-key global-map (kbd "C-x g")       #'insert-register)

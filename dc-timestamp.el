@@ -1,4 +1,4 @@
-;; dino-timestamp.el --- insert timestamp strings -*- lexical-binding: t; -*-
+;; dc-timestamp.el --- insert timestamp strings -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;; utility functions for inserting timestamps into files, while iterating through
@@ -7,15 +7,15 @@
 ;;; Code:
 
 
-(defvar dts--just-deleted-string nil
+(defvar dc-ts--just-deleted-string nil
   "holder of the string most recently deleted by
-`dts--maybe-delete-time-string-looking-forward'. Used
+`dc-ts--maybe-delete-time-string-looking-forward'. Used
 to determine if we need to rotate through various formats.")
 
-(defconst dts--punctuation-regex "[\\!\?\"\.'#$%&*+/;<=>@^`|~]"
+(defconst dc-ts--punctuation-regex "[\\!\?\"\.'#$%&*+/;<=>@^`|~]"
   "regexp for punctuation")
 
-(defconst dts--monthnames-and-numbers '(("jan" . 1) ("feb" . 2) ("mar" . 3)
+(defconst dc-ts--monthnames-and-numbers '(("jan" . 1) ("feb" . 2) ("mar" . 3)
                                         ("apr" . 4) ("may" . 5) ("jun" . 6)
                                         ("jul" . 7) ("aug" . 8) ("sep" . 9)
                                         ("oct" . 10) ("nov" . 11) ("dec" . 12)
@@ -26,14 +26,14 @@ to determine if we need to rotate through various formats.")
                                         ("november" . 11) ("december" . 12)))
 
 ;; for each
-(defconst dts--time-formats '(("%Y%m%d-%H%M"         . dts--parse-YYYYMMDDHHMM-time)
-                              ("%A, %e %B %Y, %H:%M" . dts--parse-rfc822-time)
-                              ("%Y %B %e"            . dts--parse-YBe-time)
-                              ("%H:%M:%S"            . dts--parse-HMS-time)
-                              ("%Y-%m-%dT%H:%M:%S"   . dts--parse-YmdHMS-time)
+(defconst dc-ts--time-formats '(("%Y%m%d-%H%M"         . dc-ts--parse-YYYYMMDDHHMM-time)
+                              ("%A, %e %B %Y, %H:%M" . dc-ts--parse-rfc822-time)
+                              ("%Y %B %e"            . dc-ts--parse-YBe-time)
+                              ("%H:%M:%S"            . dc-ts--parse-HMS-time)
+                              ("%Y-%m-%dT%H:%M:%S"   . dc-ts--parse-YmdHMS-time)
                               )
   "A list of time formats with corresponding parse functions to use in
-`dino/insert-timeofday' and `dts--maybe-delete-time-string-looking-forward' ")
+`dc-ts/insert-timeofday' and `dc-ts--maybe-delete-time-string-looking-forward' ")
 
 ;; (setq dino-time-formats '(
 ;;                              ("%Y%m%d-%H%M" . dino-parse-YYYYMMDDHHMM-time)
@@ -42,7 +42,7 @@ to determine if we need to rotate through various formats.")
 ;;                              ("%H:%M:%S" . dino-parse-hms-time)
 ;;                              ))
 
-(defun dts--parse-YYYYMMDDHHMM-time (arg)
+(defun dc-ts--parse-YYYYMMDDHHMM-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
 in format YYYYMMDD-HHMM. Example: \"20130820-0848\". Otherwise, ARG is a
 string; parse it with that regex, and return the time in emacs internal
@@ -63,12 +63,12 @@ time format, eg (sec-high sec-low).
           (apply 'encode-time
                  (list seconds minute hour day month year tz)))))))
 
-(defun dts--monthname-to-number (monthname)
+(defun dc-ts--monthname-to-number (monthname)
   "Maps a monthname to a number, starting with 1 for January.
 For invalid monthnames, returns nil."
-  (cdr (assoc-string (downcase monthname) dts--monthnames-and-numbers)))
+  (cdr (assoc-string (downcase monthname) dc-ts--monthnames-and-numbers)))
 
-(defun dts--parse-rfc822-time (arg)
+(defun dc-ts--parse-rfc822-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
 formatted like: \"Tuesday, 21 November 2017, 12:42\". Otherwise,
 ARG is a string; parse it with that regex, and return the time in
@@ -82,7 +82,7 @@ emacs internal time format, eg (sec-high sec-low).
       (when (string-match regex arg 0)
 
         (let ((day (string-to-number (match-string 2 arg)))
-              (month (dts--monthname-to-number (match-string 3 arg)))
+              (month (dc-ts--monthname-to-number (match-string 3 arg)))
               (year (string-to-number (match-string 4 arg)))
               (hour (string-to-number (match-string 6 arg)))
               (minute (string-to-number (match-string 7 arg)))
@@ -91,7 +91,7 @@ emacs internal time format, eg (sec-high sec-low).
           (apply 'encode-time
                  (list seconds minute hour day month year tz)))))))
 
-(defun dts--parse-YBe-time (arg)
+(defun dc-ts--parse-YBe-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
 formatted like: \"2017 November 21\". Otherwise, ARG is a string;
 parse it with that regex, and return the time in emacs internal time
@@ -104,7 +104,7 @@ format, eg (sec-high sec-low).
       (when (string-match regex arg 0)
 
         (let ((year (string-to-number (match-string 1 arg)))
-              (month (dts--monthname-to-number (match-string 3 arg)))
+              (month (dc-ts--monthname-to-number (match-string 3 arg)))
               (day (string-to-number (match-string 4 arg)))
               (hour (nth 2 dt))
               (minute (nth 1 dt))
@@ -113,7 +113,7 @@ format, eg (sec-high sec-low).
           (apply 'encode-time
                  (list seconds minute hour day month year tz)))))))
 
-(defun dts--parse-HMS-time (arg)
+(defun dc-ts--parse-HMS-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
 formatted like: \"14:32:33\". Otherwise, ARG is a string; parse it
 with that regex, and return the time in emacs internal time format,
@@ -136,7 +136,7 @@ eg (sec-high sec-low).
           (apply 'encode-time
                  (list seconds minute hour day month year tz)))))))
 
-(defun dts--parse-YmdHMS-time (arg)
+(defun dc-ts--parse-YmdHMS-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
 formatted like: \"2019-02-12T14:32:33\". Otherwise, ARG is a string;
 parse it with that regex, and return the time in emacs internal time
@@ -160,59 +160,59 @@ format, eg (sec-high sec-low).
 
 
 
-(defun dts--maybe-delete-time-string-looking-forward ()
+(defun dc-ts--maybe-delete-time-string-looking-forward ()
   "If point is looking forward at a time string, according to
-any of the formats in `dts--time-formats', delete it, and return a
+any of the formats in `dc-ts--time-formats', delete it, and return a
 number that represents the index of the time-format string found. Else
 return nil.
 
-See also `dts--maybe-delete-time-string-under-point'."
+See also `dc-ts--maybe-delete-time-string-under-point'."
   (interactive)
   (let ((ix 0)
         found)
-    (setq dts--just-deleted-string nil)
-    (while (and (< ix (length dts--time-formats))
+    (setq dc-ts--just-deleted-string nil)
+    (while (and (< ix (length dc-ts--time-formats))
                 (not found))
-      (let ((tf (nth ix dts--time-formats)))
+      (let ((tf (nth ix dc-ts--time-formats)))
         (if (looking-at (funcall (cdr tf) t))
             (progn
               (setq found ix
-                    dts--just-deleted-string (buffer-substring-no-properties (match-beginning 0) (match-end 0)))
+                    dc-ts--just-deleted-string (buffer-substring-no-properties (match-beginning 0) (match-end 0)))
               (delete-region (match-beginning 0) (match-end 0)))
           (setq ix (1+ ix)))))
     found))
 
-(defun dts--maybe-delete-time-string-under-point ()
+(defun dc-ts--maybe-delete-time-string-under-point ()
   "if point is on a time string, according to
-any of the formats in `dts--time-formats', delete it, and return a
+any of the formats in `dc-ts--time-formats', delete it, and return a
 number representing the index of the time-format string found.  Else
 return nil.
 
-See also `dts--maybe-delete-time-string-looking-forward'"
+See also `dc-ts--maybe-delete-time-string-looking-forward'"
   (interactive)
   (save-excursion
     (save-match-data
       (or
        ;; 1. try current position.
-       (dts--maybe-delete-time-string-looking-forward)
+       (dc-ts--maybe-delete-time-string-looking-forward)
        ;; 2. try searching back to punctuation.
-       (and (re-search-backward dts--punctuation-regex (line-beginning-position) t)
+       (and (re-search-backward dc-ts--punctuation-regex (line-beginning-position) t)
             (progn (forward-char)
-                   (dts--maybe-delete-time-string-looking-forward)))
+                   (dc-ts--maybe-delete-time-string-looking-forward)))
        ;; 3. try searching back to whitespace
        (and (re-search-backward "[[:space:]]" (line-beginning-position) t)
             (progn (forward-char)
-                   (dts--maybe-delete-time-string-looking-forward)))
+                   (dc-ts--maybe-delete-time-string-looking-forward)))
        ;; 4. move back to BOL, try there.
        (progn
          (beginning-of-line)
-         (dts--maybe-delete-time-string-looking-forward))))))
+         (dc-ts--maybe-delete-time-string-looking-forward))))))
 
-(defun dts--time-is-within-seconds (the-time delta-seconds)
+(defun dc-ts--time-is-within-seconds (the-time delta-seconds)
   "Returns t if THE-TIME is less than DELTA-SECONDS ago."
   (< (float-time (time-subtract (current-time) the-time)) delta-seconds))
 
-(defun dts/insert-timeofday (&optional arg)
+(defun dc-ts/insert-timeofday (&optional arg)
   "Inserts a string representing the time of day at point.
 If the mode is txt-mode, then the format used is like this:
   Tuesday, 20 August 2013, 08:48
@@ -237,29 +237,29 @@ inserted timestamp.
   (interactive "P")
   (cond
    ((or (window-minibuffer-p) (equal major-mode 'wdired-mode) arg)
-    (let ((time-format (nth 0 dts--time-formats)))
+    (let ((time-format (nth 0 dc-ts--time-formats)))
       (save-excursion
         (insert (format-time-string (car time-format))))))
    (t
-    (let ((ix (dts--maybe-delete-time-string-under-point)))
+    (let ((ix (dc-ts--maybe-delete-time-string-under-point)))
       (if (numberp ix)
-          (let ((previous-time (funcall (cdr (nth ix dts--time-formats)) dts--just-deleted-string)))
+          (let ((previous-time (funcall (cdr (nth ix dc-ts--time-formats)) dc-ts--just-deleted-string)))
             (if (and previous-time
-                     (not (dts--time-is-within-seconds previous-time 10))) ;; not recent
+                     (not (dc-ts--time-is-within-seconds previous-time 10))) ;; not recent
                 (setq ix (1- ix))))) ;; keep same format
 
       (setq ix (if (numberp ix) (1+ ix)  ;; increment
                  (if (equal major-mode 'text-mode) 1 0))) ;; start at reasonable defaults
 
-      (if (>= ix (length dts--time-formats)) ;; roll-over
+      (if (>= ix (length dc-ts--time-formats)) ;; roll-over
           (setq ix 0))
 
       (let ((orig-point (point)))
-        (insert (format-time-string (car (nth ix dts--time-formats))))
+        (insert (format-time-string (car (nth ix dc-ts--time-formats))))
         (push-mark)
         (goto-char orig-point))))))
 
-(defun dts/insert-currentTimeMillis ()
+(defun dc-ts/insert-currentTimeMillis ()
   "Insert the value like java's currentTimeMillis.
 
 On Sunday, 7 December 2025, for some reason, I observed that calling
@@ -278,4 +278,4 @@ diagnostic efforts where I spent several hours and learned nothing."
     (insert (number-to-string millis-int))
     ))
 
-(provide 'dino-timestamp)
+(provide 'dc-timestamp)
