@@ -772,8 +772,7 @@ delete the old jar (or not), and everything will keep working.
   (let ((dir-to-search
          (or explicitly-provided-dir-to-search dcjava-location-of-gformat-jar)))
     (if (and dir-to-search (file-directory-p dir-to-search))
-        (let* ((regex
-                (dino-escape-braces-in-regex "google-java-format-[0-9].+\\.jar$"))
+        (let* ((regex "google-java-format-[0-9].+\\.jar$")
                (filter-fn
                 (lambda (candidate)
                   (and

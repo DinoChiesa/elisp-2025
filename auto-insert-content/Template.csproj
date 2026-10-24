@@ -10,7 +10,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <AppName>@@BASEFILENAMELESSEXTENSION@@</AppName>
     <OutputType>Library</OutputType>
-    <ProjectGuid>{@@LISP((dino-insert-uuid))@@}</ProjectGuid>
+    <ProjectGuid>{@@LISP((dc-edit/insert-uuid))@@}</ProjectGuid>
     <ProductVersion>9.0.30729</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <SignAssembly>false</SignAssembly>
@@ -180,4 +180,3 @@
 
 
 </Project>
-

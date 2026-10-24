@@ -74,7 +74,6 @@
 ;;; Code:
 
 
-(require 'dino-utility)
 (require 'cl-seq) ;; cl-remove-if
 
 ;; ==== sorters

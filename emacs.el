@@ -281,28 +281,38 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; my own various unorganized utility functions
+;; dino's modular utilities: dc-paths, dc-sys, dc-edit, dc-cloud, dc-xml
 ;;
-(use-package dino-utility
+(use-package dc-paths
+  :load-path "~/elisp"
+  :pin manual)
+
+(use-package dc-sys
   :load-path "~/elisp"
   :pin manual
-  :commands (dino/camel-to-snakecase-word-at-point
-             dino/snake-to-camelcase-word-at-point
-             dino/indent-buffer
-             dino/indent-line-to-current-column
-             dino/shfmt-buffer
-             dino/create-github-repo
-             dino/display-full-year-calendar
-             dino/cleanup-stale-elpa-packages)
-  :autoload (dino/insert-or-modify-alist-entry
-             dino/maybe-add-to-exec-path
-             dino/fixup-exec-path
-             dino/find-nvm-bin-dir
-             dino/setup-shmode-for-apheleia
-             dino/find-executable-in-paths)
   :config
-  (dino/cleanup-stale-elpa-packages) ;; clean old stuff on startup
-  (add-hook 'before-save-hook 'dino/untabify-maybe))
+  (dc-sys/cleanup-stale-elpa-packages)
+  (dc-sys/setup-find-file-advice)
+  (dc-sys/setup-calendar-advice)
+  (dc-sys/setup-window-title-hook))
+
+(use-package dc-edit
+  :load-path "~/elisp"
+  :pin manual
+  :config
+  (add-hook 'before-save-hook #'dc-edit/untabify-maybe))
+
+(use-package dc-cloud
+  :load-path "~/elisp"
+  :pin manual
+  :defer t)
+
+(use-package dc-xml
+  :load-path "~/elisp"
+  :pin manual
+  :defer t
+  :config
+  (dc-xml/setup-comment-advice))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; peggy-mode for pegjs files
@@ -379,10 +389,10 @@
     ;; even as I switch nvm versions.  A similar symlinked path does not exist
     ;; in Linux apparently. So I need to use dino/find-nvm-bin-dir, along with
     ;; delete-dups.
-    (dino/maybe-add-to-exec-path
+    (dc-paths/maybe-add-to-exec-path
      `(,invocation-directory ;; c:\emacs\bin, so git commit hooks can find emacsclient
-       ,(dino/find-nvm-bin-dir)
-       ,@(dino/fixup-dirs-for-exec-path paths-file))))
+       ,(dc-paths/find-nvm-bin-dir)
+       ,@(dc-paths/fixup-dirs-for-exec-path paths-file))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -733,7 +743,7 @@
   (icomplete-mode 1)
   (icomplete-vertical-mode 1)
 
-  :requires (dpc-sane-sorting dino-utility)
+  :requires (dpc-sane-sorting)
   ;; Gemini says the  order of evaluation is :custom, then :init, then :config.
   :custom
   ;; For info: C-h v completion-styles-alist
@@ -1350,7 +1360,7 @@ server program."
   (apheleia-mode)
   (flymake-mode) ;; for shellcheck
   (hs-minor-mode) ;; show: C-c @ C-s  hide: C-c @ C-h
-  (dino/setup-shmode-for-apheleia)
+  (dc-paths/setup-shmode-for-apheleia)
   (modify-syntax-entry ?_ "w")
 
   (setq flymake-shellcheck-allow-external-files t) ;; pass -x to shellcheck
@@ -1361,10 +1371,10 @@ server program."
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("M-TAB"   . completion-at-point)
               ;; TODO: reconcile this key binding with all the other
-              ;; uses of "ESC #" that are bound to dino/indent-buffer.
+              ;; uses of "ESC #" that are bound to dc-edit/indent-buffer.
               ("C-c :"   . sh-set-shell)
               ("ESC #"   . dino/toggle-flymake-diagnostics)
-              ("C-c C-g" . dino/shfmt-buffer) ;; theoretically unnecessary with apheleia
+              ("C-c C-g" . dc-edit/shfmt-buffer) ;; theoretically unnecessary with apheleia
               ("C-c C-c" . comment-region)
               )))))
 
@@ -1404,7 +1414,7 @@ server program."
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("ESC C-R" . indent-region)
-              ("ESC #"   . dino/indent-buffer)
+              ("ESC #"   . dc-edit/indent-buffer)
               ("C-c C-w" . compare-windows)
               ("C-c C-c" . comment-region)
               ("C-c C-d" . delete-trailing-whitespace)
@@ -2037,7 +2047,7 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
               (mapc (lambda (binding)
                       (define-key local-map (kbd (car binding)) (cdr binding)))
                     '(("ESC C-R" . indent-region)
-                      ("ESC #"   . dino/indent-buffer)
+                      ("ESC #"   . dc-edit/indent-buffer)
                       ("ESC ."   . completion-at-point)
                       ("C-c C-c" . comment-region)
                       ("C-c C-d" . delete-trailing-whitespace)
@@ -2157,7 +2167,7 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
   (face-remap-add-relative 'show-paren-match '(:background "color-238")))
 
 (if (boundp 'eglot-server-programs)
-    (dino/maybe-register-vscode-server-for-eglot 'html-mode))
+    (dc-paths/maybe-register-vscode-server-for-eglot 'html-mode))
 
 ;; 20250708-1805
 ;; Fixup treesit-fold .
@@ -2264,7 +2274,7 @@ more information."
 ;; Also I am not sure what css-ts-mode gives me? or does completion come from TS?
 
 ;; one-time thing
-(dino/maybe-register-vscode-server-for-eglot '(css-mode css-ts-mode))
+(dc-paths/maybe-register-vscode-server-for-eglot '(css-mode css-ts-mode))
 
 (use-package css-mode
   :defer t
@@ -2279,7 +2289,7 @@ more information."
               (mapc (lambda (binding)
                       (define-key local-map (kbd (car binding)) (cdr binding)))
                     '(("ESC C-R" . indent-region)
-                      ("ESC #"   . dino/indent-buffer)
+                      ("ESC #"   . dc-edit/indent-buffer)
                       ("C-c C-c" . comment-region)
                       ("C-c C-d" . delete-trailing-whitespace)
                       ("C-c C-w" . compare-windows)
@@ -2790,7 +2800,7 @@ more information."
           ( "C-c C-c" . dino-dired-copy-file-to-dir-in-other-window)
           ( "C-c C-m" . dino-dired-move-file-to-dir-in-other-window)
           ( "C-c s"   . dino-dired-scp-other-side)
-          ( "C-k"     . dino/dired-copy-filename)
+          ( "C-k"     . dc-sys/dired-copy-filename)
           ;;( "C-c C-s" . g4-status-or-magit)
           ;;( "C-x m" . magit-status)
           ;; converse of i (dired-maybe-insert-subdir)
@@ -2906,7 +2916,7 @@ just auto-corrects on common mis-spellings by me."
   (dino-define-global-abbrev-table)
   (display-line-numbers-mode)
   (define-key text-mode-map (kbd "C-c C-c")    #'center-paragraph)
-  (define-key text-mode-map (kbd "C-c i")      #'dino/indent-line-to-current-column)
+  (define-key text-mode-map (kbd "C-c i")      #'dc-edit/indent-line-to-current-column)
   (define-key text-mode-map (kbd "C-<insert>") #'uniline-mode)
   (define-key text-mode-map (kbd "C-c m d")    #'delete-trailing-whitespace)
   ;;(variable-pitch-mode)
@@ -2931,7 +2941,7 @@ just auto-corrects on common mis-spellings by me."
 
     ;; for re-tabbing a region or buffer of code:
     (keymap-local-set "ESC C-R"  #'indent-region)
-    (keymap-local-set "ESC #"    #'dino/indent-buffer)
+    (keymap-local-set "ESC #"    #'dc-edit/indent-buffer)
 
     ;; set this key binding on for c-mode, in lieu of c-subword mode,
     ;; which overwrites my preference
@@ -3177,7 +3187,7 @@ colon."
          (message "setting local key bindings....")
 
          (keymap-local-set "ESC C-R"  #'indent-region)
-         (keymap-local-set "ESC #"    #'dino/indent-buffer)
+         (keymap-local-set "ESC #"    #'dc-edit/indent-buffer)
          (keymap-local-set "C-c C-w"  #'compare-windows)
 
          ;; for skeleton stuff
@@ -3189,9 +3199,9 @@ colon."
          ;;(local-set-key (kbd "\"") 'skeleton-pair-insert-maybe)
 
          ;; these allow typeover of matching brackets
-         (local-set-key (kbd "\"") #'dino-skeleton-pair-end)
-         (local-set-key (kbd ")") 'dino-skeleton-pair-end)
-         (local-set-key (kbd "]") 'dino-skeleton-pair-end)
+         (local-set-key (kbd "\"") #'dc-edit/skeleton-pair-end)
+         (local-set-key (kbd ")") #'dc-edit/skeleton-pair-end)
+         (local-set-key (kbd "]") #'dc-edit/skeleton-pair-end)
 
          (local-set-key (kbd "{") 'skeleton-pair-insert-maybe)
          ;;(local-set-key (kbd "{") 'dino-insert-open-brace)
@@ -3251,7 +3261,7 @@ colon."
   (defun dino-protobuf-mode-fn ()
     "my mode hook for protobuf-mode"
     (keymap-local-set "ESC C-R"  #'indent-region)
-    (keymap-local-set "ESC #"    #'dino/indent-buffer)
+    (keymap-local-set "ESC #"    #'dc-edit/indent-buffer)
     (keymap-local-set "C-c C-w"  #'compare-windows)
     (display-line-numbers-mode)
     (c-add-style "my-style" my-protobuf-style t)
@@ -3512,7 +3522,7 @@ colon."
          (message "setting local key bindings....")
 
          (keymap-local-set "ESC C-R"  #'indent-region)
-         (keymap-local-set "ESC #"    #'dino/indent-buffer)
+         (keymap-local-set "ESC #"    #'dc-edit/indent-buffer)
          (keymap-local-set "C-c C-w"  #'compare-windows)
 
          (local-set-key "\C-c\C-y"  'csharp-show-syntax-table-prop)
@@ -3531,14 +3541,13 @@ colon."
          (local-set-key (kbd "[") 'skeleton-pair-insert-maybe)
 
          ;; insert a pair of quotes
-         (local-set-key (kbd "\"") 'dino-insert-paired-quotes)
-         (local-set-key (kbd "\'") 'dino-insert-paired-quotes)
+         (local-set-key (kbd "\"") #'dc-edit/insert-paired-quotes)
+         (local-set-key (kbd "'") #'dc-edit/insert-paired-quotes)
 
          ;; these allow typeover of matching brackets
-         ;; (local-set-key (kbd "\"") 'dino-skeleton-pair-end)
-         (local-set-key (kbd ">") 'dino-skeleton-pair-end)
-         (local-set-key (kbd ")") 'dino-skeleton-pair-end)
-         (local-set-key (kbd "]") 'dino-skeleton-pair-end)
+         (local-set-key (kbd ">") #'dc-edit/skeleton-pair-end)
+         (local-set-key (kbd ")") #'dc-edit/skeleton-pair-end)
+         (local-set-key (kbd "]") #'dc-edit/skeleton-pair-end)
 
          ;;(local-set-key (kbd "{") 'skeleton-pair-insert-maybe)
 
@@ -3655,7 +3664,7 @@ colon."
 
   (message "setting local key bindings....")
   (keymap-local-set "ESC C-R"  #'indent-region)
-  (keymap-local-set "ESC #"    #'dino/indent-buffer)
+  (keymap-local-set "ESC #"    #'dc-edit/indent-buffer)
   (keymap-local-set "C-c C-w"  #'compare-windows)
   (keymap-local-set "C-c C-g"  #'dino-csharpier-buffer)
   (keymap-local-set "C-x C-e"  #'compile)
@@ -3845,8 +3854,8 @@ Does not consider word syntax tables.
 
   (keymap-local-set "ESC C-R"  #'indent-region)
   (keymap-local-set "C-c C-c"  #'comment-region)
-  (keymap-local-set "C-c C-k s"    #'dino/camel-to-snakecase-word-at-point)
-  (keymap-local-set "C-c C-k c"    #'dino/snake-to-camelcase-word-at-point)
+  (keymap-local-set "C-c C-k s"    #'dc-edit/camel-to-snakecase-word-at-point)
+  (keymap-local-set "C-c C-k c"    #'dc-edit/snake-to-camelcase-word-at-point)
 
   ;; not sure if necessary or not.
   (modify-syntax-entry ?/ ". 124b" php-mode-syntax-table)
@@ -3989,12 +3998,12 @@ Does not consider word syntax tables.
   (setq yas-indent-line 'nil)
   (keymap-local-set "ESC C-R" #'indent-region)
   (keymap-local-set "C-c n"   #'sgml-name-char) ;; inserts entity ref of pressed char
-  (keymap-local-set "M-#"     #'dino-xml-pretty-print-buffer)
-  (keymap-local-set "C-c f"   #'dino-replace-filename-no-extension)
+  (keymap-local-set "M-#"     #'dc-xml/pretty-print-buffer)
+  (keymap-local-set "C-c f"   #'dc-edit/replace-filename-no-extension)
   (keymap-local-set "ESC C-i" #'completion-at-point)
   (keymap-local-set "C-<"     #'nxml-backward-element)
   (keymap-local-set "C->"     #'nxml-forward-element)
-  (keymap-local-set "C-c C-c" #'dino-xml-comment-region)
+  (keymap-local-set "C-c C-c" #'dc-xml/comment-region)
   (keymap-local-set "C-c C-f" #'fix-dependency-xml-formatting)
 
   (setq nxml-sexp-element-flag t
@@ -4161,9 +4170,9 @@ Does not consider word syntax tables.
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("ESC C-R" . indent-region) ;; not sure if useful in python
               ("M-TAB"   . completion-at-point)
-              ("C-c i"   .  dino/indent-line-to-current-column)
+              ("C-c i"   .  dc-edit/indent-line-to-current-column)
               ;; TODO: reconcile this key binding with all the other
-              ;; uses of "ESC #" that are bound to dino/indent-buffer.
+              ;; uses of "ESC #" that are bound to dc-edit/indent-buffer.
               ("ESC #"   . dino/toggle-flymake-diagnostics)
               ("C-c p f" . dcpe/format) ;; should be unnecessary with apheleia
               ("C-c p l" . dcpe/lint)   ;; should be unnecessary with flymake
@@ -4508,12 +4517,12 @@ counteracts that. "
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("ESC C-R" . indent-region)
-              ("ESC #"   . dino/indent-buffer)
+              ("ESC #"   . dc-edit/indent-buffer)
               ("C-c C-c" . comment-region)
               ("C-c C-d" . delete-trailing-whitespace)
               ("C-c C-w" . compare-windows)
-              ("C-c C-k s" . dino/camel-to-snakecase-word-at-point)
-              ("C-c C-k c" . dino/snake-to-camelcase-word-at-point)
+              ("C-c C-k s" . dc-edit/camel-to-snakecase-word-at-point)
+              ("C-c C-k c" . dc-edit/snake-to-camelcase-word-at-point)
               ("<TAB>" . js-indent-line)
               ("C-<TAB>" . yas-expand)
               ("SPC" . dino--maybe-space)
@@ -4681,7 +4690,7 @@ counteracts that. "
               ("C-c i"     . dcjava-auto-add-import)
               ("C-c C-i"   . dcjava-auto-add-import)
               ("C-c C-l"   . dcjava-learn-new-import)
-              ("C-c i"     . dino/indent-line-to-current-column)
+              ("C-c i"     . dc-edit/indent-line-to-current-column)
               ("C-c C-f"   . dcjava-find-wacapps-java-source-for-class-at-point)
               ("C-c C-r"   . dcjava-reload-classlist)
               ("ESC #"     . dino/toggle-flymake-diagnostics)
@@ -4784,7 +4793,7 @@ counteracts that. "
   :commands (salted-encrypt-buffer-to-new-file salted-file-mode)
   :config
   (setq salted--salt-file-utility
-        (dino/find-executable-in-paths
+        (dc-paths/find-executable-in-paths
          (if (eq system-type 'windows-nt)
              "salt_file.exe"
            "salt_file")
@@ -5285,15 +5294,15 @@ Enable `recentf-mode' if it isn't already."
 ;;
 ;; (define-key global-map (kbd "C-;") nil) ;; works to unset a key
 
-(define-key global-map (kbd "C-x 7")       #'dino-toggle-frame-split)
+(define-key global-map (kbd "C-x 7")       #'dc-sys/toggle-frame-split)
 (define-key global-map (kbd "C-x C-b")     #'ibuffer) ; instead of buffer-list
 (define-key global-map (kbd "C-x |")       #'align-regexp)
 (define-key global-map (kbd "C-x ?")       #'describe-text-properties)
-(define-key global-map (kbd "C-x w")       #'dino-fixup-linefeeds)
-(define-key global-map (kbd "C-c u")       #'dino-insert-uuid)
-(define-key global-map (kbd "C-c f")       #'dino-insert-filename)
+(define-key global-map (kbd "C-x w")       #'dc-edit/fixup-linefeeds)
+(define-key global-map (kbd "C-c u")       #'dc-edit/insert-uuid)
+(define-key global-map (kbd "C-c f")       #'dc-edit/insert-filename)
 (define-key global-map (kbd "C-c C-l")     #'lorem-ipsum)
-(define-key global-map (kbd "C-c b")       #'dino-base64-insert-file)
+(define-key global-map (kbd "C-c b")       #'dc-edit/base64-insert-file)
 (define-key global-map (kbd "C-c 1")       #'just-one-space)
 (define-key global-map (kbd "C-c s")       #'search-forward-regexp)
 (define-key global-map (kbd "C-c C-s")     #'magit-status)
@@ -5312,8 +5321,8 @@ Enable `recentf-mode' if it isn't already."
 (define-key global-map (kbd "C-c w")       #'where-is)
 (define-key global-map (kbd "C-c C-w")     #'compare-windows)
 (define-key global-map (kbd "C-c C-y")     #'dcjava-wacapps-intelligently-open-file)
-(define-key global-map (kbd "C-c ~")       #'revert-buffer-unconditionally)
-(define-key global-map (kbd "C-x ~")       #'dino/toggle-buffer-modified)
+(define-key global-map (kbd "C-c ~")       #'dc-edit/revert-buffer-unconditionally)
+(define-key global-map (kbd "C-x ~")       #'dc-edit/toggle-buffer-modified)
 (define-key global-map (kbd "C-x C-g")     #'auto-fill-mode)
 (define-key global-map (kbd "C-x C-e")     #'smarter-compile)
 (define-key global-map (kbd "C-x E")       #'smarter-compile-run)
@@ -5325,7 +5334,7 @@ Enable `recentf-mode' if it isn't already."
 (define-key global-map (kbd "ESC SPC")     #'set-mark-command)
 (define-key global-map (kbd "C-c k")       #'keymap-global-set)
 (define-key global-map (kbd "C-x d")       #'dino-ediff-buffer-against-file)
-(define-key global-map (kbd "C-x &")       #'dino/urlencode-region)
+(define-key global-map (kbd "C-x &")       #'dc-edit/urlencode-region)
 (define-key global-map (kbd "C-<")         #'beginning-of-defun)
 (define-key global-map (kbd "C->")         #'end-of-defun)
 (define-key global-map (kbd "C-c C-x C-c") #'calendar)

@@ -3,7 +3,7 @@
                 <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
                 <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
                 <ProductVersion>3.0</ProductVersion>
-                <ProjectGuid>{@@LISP((dino-insert-uuid))@@}</ProjectGuid>
+                <ProjectGuid>{@@LISP((dc-edit/insert-uuid))@@}</ProjectGuid>
                 <SchemaVersion>2.0</SchemaVersion>
                 <OutputName>WixProject1</OutputName>
                 <OutputType>Package</OutputType>
