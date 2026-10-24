@@ -889,7 +889,7 @@
       (error (format "git executable (%s) cannot be found" magit-git-executable)))
     )
 
-  (require 'dino-magit-fixups))
+  (require 'dc-magit-gerrit))
 
 (defun dino-git-commit-mode-fn ()
   "Setup logic for the git commit message buffer.
