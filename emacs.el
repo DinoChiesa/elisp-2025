@@ -2503,26 +2503,26 @@ more information."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; dpc-gemini
+;; dc-gemini
 ;;
 ;; my own little package. Defines an "ask gemini" command that prompts in the
 ;; minibuffer. It inserts whatever is in the marked region as the default prompt.
 ;; Also retrieves a key from a keyfile.
 
-(use-package dpc-gemini
+(use-package dc-gemini
   :defer t
   :load-path "~/elisp"
   :ensure nil
   ;; autoloads defined in local modules don't work. That mechanism works only if the
   ;; package is published via elpa.
-  :autoload (dpc-gemini/get-config-property)
-  :commands (dpc-gemini/ask-gemini dpc-gemini/select-model)
-  :bind (("C-c g a" . dpc-gemini/ask-gemini)
-         ("C-c g ?" . dpc-gemini/ask-gemini)
-         ("C-c g l" . dpc-gemini/list-models)
-         ("C-c g s" . dpc-gemini/select-model))
+  :autoload (dc-gemini/get-config-property)
+  :commands (dc-gemini/ask-gemini dc-gemini/select-model)
+  :bind (("C-c g a" . dc-gemini/ask-gemini)
+         ("C-c g ?" . dc-gemini/ask-gemini)
+         ("C-c g l" . dc-gemini/list-models)
+         ("C-c g s" . dc-gemini/select-model))
   :config
-  (setq dpc-gemini-properties-file "~/.google-gemini-properties"))
+  (setq dc-gemini-properties-file "~/.google-gemini-properties"))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2536,7 +2536,7 @@ more information."
 (defun dpc-gptel-setup ()
   "Invoked when gptel is loaded."
   (setq gptel-backend (gptel-make-gemini "Gemini"
-                        :key (dpc-gemini/get-config-property "apikey")
+                        :key (dc-gemini/get-config-property "apikey")
                         :stream t))
   (setq gptel-model 'gemini-flash-latest)
   ;; for transient menu different view?
@@ -2620,11 +2620,11 @@ more information."
 
   :config
   (require 'dc-sane-sorting)
-  (setq chatgpt-shell-google-key (dpc-gemini/get-config-property "apikey"))
+  (setq chatgpt-shell-google-key (dc-gemini/get-config-property "apikey"))
   ;; 20250823-1212 - chatgpt-shell currently has builtin support for latest Gemini models.
   ;; Consider re-adding this when gemini-3.0 is released.
   ;; (chatgpt-shell-google-load-models) ;; CGS does not include complete list of Google models
-  (setq chatgpt-shell-model-version (dpc-gemini/get-config-property "default-model"))
+  (setq chatgpt-shell-model-version (dc-gemini/get-config-property "default-model"))
 
   (setq chatgpt-shell-swap-model-selector
         (lambda (candidates)
@@ -2677,7 +2677,7 @@ more information."
   (setq acp-logging-enabled t) ;; helpful while it's new / evolving
 
   ;; Auth via API key
-  (let ((api-key (dpc-gemini/get-config-property "apikey")))
+  (let ((api-key (dc-gemini/get-config-property "apikey")))
     (if api-key
         (setq agent-shell-google-authentication
               (agent-shell-google-make-authentication :api-key api-key))

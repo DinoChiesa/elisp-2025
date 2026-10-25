@@ -52,7 +52,7 @@
 ;;; Code:
 
 (require 'eglot)
-(require 'dpc-gemini)
+(require 'dc-gemini)
 (require 'json)
 
 ;; (defvar dc-pe/original-python-contact nil
@@ -514,10 +514,10 @@ Returns the inferred list of modules as a string like \"[ \"mod1\", \"mod2\" ]\"
                   "<IMPORTS END>\n\n"
                   "Return your response as a python list, of quoted module names.  For example the result could take this form:\n\n"
                   "  [ \"requests\", \"python-dotenv\" ]")))
-    (unless dpc-gemini-selected-model
-      (dpc-gemini/read-settings-from-properties-file))
-    (let ((gem-url (concat dpc-gemini-base-url "v1beta/models/" dpc-gemini-selected-model ":generateContent")))
-      (dpc-gemini/post-prompt gem-url prompt)
+    (unless dc-gemini-selected-model
+      (dc-gemini/read-settings-from-properties-file))
+    (let ((gem-url (concat dc-gemini-base-url "v1beta/models/" dc-gemini-selected-model ":generateContent")))
+      (dc-gemini/post-prompt gem-url prompt)
       (save-excursion
         (with-current-buffer "*gemini-response*"
           (let* ((json-object-type 'hash-table)
