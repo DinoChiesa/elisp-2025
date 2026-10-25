@@ -187,50 +187,34 @@ This can be used in place of `message-box' on Windows.
 
 This is used within `spelchek.el' in only one case: to notify
 the user that he needs to register for an API key.
-
 "
-
-(let (rris)
-  (fset 'rris 'replace-regexp-in-string)
-  (let* ((msg (format format-string args))
-           (ps-cmd
-            ;; This is a command to be passed on the cmd.exe line.
-            ;; Newlines encoded as \n or `n do not display properly. This
-            ;; code transforms splits the string on newlines, then joins,
-            ;; using [char]0x000D as the "glue".  Also - need to perform
-            ;; special escaping of single and double quotes.  All this
-            ;; because we are passing a script to powershell on the
-            ;; command line.
-            ;;
-            ;; creating a file with script code in it, then passing
-            ;; that file to powershell, would avoid the need for
-            ;; special escaping.  But that is not feasible, since by
-            ;; default powershell prohibits executing scripts. But
-            ;; powershell allows running script passed as -Command. So.
-            (concat "[void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');"
-                    "[Windows.Forms.MessageBox]::Show("
-                    (mapconcat #'(lambda (elt)
-                                  (rris (char-to-string 34)
-                                        (char-to-string 39)
-                                        (pp-to-string
-                                         (rris (char-to-string 34)
-                                               "'+[char]0x0022+'"
-                                               (rris (char-to-string 39)
-                                                     "'+[char]0x0027+'"
-                                                     elt)
-                                               ))))
-                               (split-string msg "\n" nil)
-                               "+[char]0x000D+")
-                    ",'Message from Emacs',"
-                    "[Windows.Forms.MessageBoxButtons]::OK,"
-                    "[Windows.Forms.MessageBoxIcon]::Information)"))
-           (shell-command
-            (format "%s -Command %s"
-                    (spelchek-path-of-powershell-exe)
-                    (concat "\"& {" ps-cmd "}\""))))
-      (shell-command-on-region (point) (point)
-                               shell-command
-                               nil nil nil))))
+  (let* ((msg (apply #'format format-string args))
+         (ps-cmd
+          (concat "[void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');"
+                  "[Windows.Forms.MessageBox]::Show("
+                  (mapconcat (lambda (elt)
+                               (replace-regexp-in-string
+                                (char-to-string 34)
+                                (char-to-string 39)
+                                (pp-to-string
+                                 (replace-regexp-in-string
+                                  (char-to-string 34)
+                                  "'+[char]0x0022+'"
+                                  (replace-regexp-in-string
+                                   (char-to-string 39)
+                                   "'+[char]0x0027+'"
+                                   elt)))))
+                             (split-string msg "\n" nil)
+                             "+[char]0x000D+")
+                  ",'Message from Emacs',"
+                  "[Windows.Forms.MessageBoxButtons]::OK,"
+                  "[Windows.Forms.MessageBoxIcon]::Information)"))
+         (ps-exe (spelchek-path-of-powershell-exe)))
+    (if (and ps-exe (file-executable-p ps-exe))
+        (call-process ps-exe nil nil nil
+                      "-NoProfile" "-NonInteractive"
+                      "-Command" (concat "& {" ps-cmd "}"))
+      (message-box msg))))
 
 
 (defun spelchek-get-buffer-for-word-goog-tb (word)

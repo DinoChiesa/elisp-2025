@@ -291,11 +291,12 @@ the user that he needs to register for an API key.
                   ",'Message from Emacs',"
                   "[Windows.Forms.MessageBoxButtons]::OK,"
                   "[Windows.Forms.MessageBoxIcon]::Information)"))
-         (cmd
-          (format "%s -Command %s"
-                  (thesaurus-path-of-powershell-exe)
-                  (concat "\"& {" ps-cmd "}\""))))
-    (shell-command cmd)))
+         (ps-exe (thesaurus-path-of-powershell-exe)))
+    (if (and ps-exe (file-executable-p ps-exe))
+        (call-process ps-exe nil nil nil
+                      "-NoProfile" "-NonInteractive"
+                      "-Command" (concat "& {" ps-cmd "}"))
+      (message-box msg))))
 
 (defun thesaurus-get-buffer-for-word-bhl (word)
   "retrieve a list of synonyms for the given word, from the

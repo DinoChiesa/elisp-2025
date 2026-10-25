@@ -15,6 +15,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 's)
+(require 'url-util)
 
 ;;; Filename insertion and replacement
 
@@ -244,40 +245,22 @@ Helpful when editing markdown files requiring trailing whitespace for linebreaks
     (message "%s %s %s" label (format-time-string "%H:%M:%S") msg)))
 
 (defun dc-edit/urlencode-region (start end)
-  "URL-encode the string in region from START to END using node encodeURIComponent."
+  "URL-encode the string in region from START to END."
   (interactive "r")
   (save-excursion
-    (save-restriction
-      (narrow-to-region start end)
-      (let* ((str (buffer-substring-no-properties (point-min) (point-max)))
-             (len (- (point-max) (point-min))))
-        (goto-char (point-min))
-        (delete-char len)
-        (insert
-         (replace-regexp-in-string
-          "~~" "%27"
-          (shell-command-to-string
-           (concat
-            "node -e \"console.log(encodeURIComponent('"
-            (replace-regexp-in-string
-             "'" "~~"
-             (replace-regexp-in-string "\n" "" str))
-            "'))\""))))))))
+    (let ((encoded (url-hexify-string (buffer-substring-no-properties start end))))
+      (delete-region start end)
+      (goto-char start)
+      (insert encoded))))
 
 (defun dc-edit/urldecode-region (start end)
   "URL-decode the string in region from START to END."
   (interactive "r")
   (save-excursion
-    (save-restriction
-      (narrow-to-region start end)
-      (let* ((str (buffer-substring-no-properties (point-min) (point-max)))
-             (len (- (point-max) (point-min))))
-        (goto-char (point-min))
-        (delete-char len)
-        (insert (shell-command-to-string
-                 (concat
-                  "node -e \"console.log(unescape('"
-                  str "'))\"")))))))
+    (let ((decoded (url-unhex-string (buffer-substring-no-properties start end))))
+      (delete-region start end)
+      (goto-char start)
+      (insert decoded))))
 
 (defun dc-edit/sum-column (start end)
   "Sum a column of numbers in rectangular region between START and END."

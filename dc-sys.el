@@ -300,7 +300,9 @@ By default operates on `package-user-dir`."
          (script-path (concat home-dir "/bin/cal"))
          (python (or (executable-find "python") (executable-find "python3")))
          (calendar-output (if (and python (file-exists-p script-path))
-                              (shell-command-to-string (concat python " " script-path " -6"))
+                              (with-temp-buffer
+                                (call-process python nil t nil script-path "-6")
+                                (buffer-string))
                             "")))
     (when (string-empty-p calendar-output)
       (user-error "Cannot find calendar script at %s" script-path))
