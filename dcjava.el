@@ -10,7 +10,7 @@
 ;; Modified   : February 2016
 ;; Version    : 1.4
 ;; Keywords   : apigee
-;; Requires   : s
+;; Requires   :
 ;; License    : Apache 2.0
 ;; X-URL      : https://github.com/dpchiesa/elisp
 ;; Last-saved : <2026-April-21 15:40:33>
@@ -93,7 +93,6 @@
 ;;; Code:
 ;;
 
-(require 's)
 (require 'cl-seq)
 (require 'seq)
 (require 'subr-x)
@@ -473,8 +472,8 @@ possible."
          (save-excursion
            (beginning-of-line)
            (and (looking-at dcjava--import-stmt-regex)
-                (s-trim
-                 (s-chop-suffix
+                (string-trim
+                 (string-remove-suffix
                   ";"
                   (buffer-substring-no-properties (match-beginning 0) (match-end 0))))))))
     (if import-stmt
@@ -519,17 +518,17 @@ See https://mail.gnu.org/archive/html/emacs-devel/2018-01/msg00727.html "
                                   (concat "/ssh:" remote-host ":~/")
                                 "~/"))
          (source-dir-for-find (if remote-host
-                                  (s-chop-left (- (length desired-default-dir) 2) dir)
+                                  (substring dir (- (length desired-default-dir) 2))
                                 dir))
-         (inferred-filename (concat (s-replace "." "/" possibly-qualified-classname) ".java"))
+         (inferred-filename (concat (string-replace "." "/" possibly-qualified-classname) ".java"))
          (command (dcjava--command-to-find-java-src source-dir-for-find inferred-filename))
          (default-directory (expand-file-name desired-default-dir))
          (found-file
-          (s-trim-right
+          (string-trim-right
            (with-connection-local-variables
             (shell-command-to-string command)))))
     (setq found-file
-          (if (s-blank? found-file) nil (s-chomp found-file)))
+          (if (string-blank-p found-file) nil (string-trim-right found-file "[\r\n]+")))
     (if (and found-file remote-host)
         (concat "/ssh:" remote-host ":" found-file)
       found-file)))
@@ -540,15 +539,15 @@ Command is based on INFERRED-FILENAME and will be rg or find."
   (if (executable-find "rg")
       (format "rg --files -g %s %s"
               (shell-quote-argument
-               (if (s-contains? "/" inferred-filename)
+               (if (string-search "/" inferred-filename)
                    (concat "**/" inferred-filename)
                  inferred-filename))
               (shell-quote-argument source-dir))
     (format "find %s %s %s"
             (shell-quote-argument source-dir)
-            (if (s-contains? "/" inferred-filename) "-path" "-name")
+            (if (string-search "/" inferred-filename) "-path" "-name")
             (shell-quote-argument
-             (if (s-contains? "/" inferred-filename)
+             (if (string-search "/" inferred-filename)
                  (concat "*/" inferred-filename)
                inferred-filename)))))
 
@@ -681,14 +680,14 @@ the shell find command. "
       (user-error "Buffer is not visiting a file"))
 
     (cond
-     ((s-contains? "/main/java/" dir)
-      (let ((test-dir (s-replace "/main/java/" "/test/unittests/java/" dir))
+     ((string-search "/main/java/" dir)
+      (let ((test-dir (string-replace "/main/java/" "/test/unittests/java/" dir))
             (test-filename (format "%sTest.%s" basename extension)))
         (setq target-path (concat test-dir test-filename))))
 
-     ((s-contains? "/test/unittests/java/" dir)
-      (let ((main-dir (s-replace "/test/unittests/java/" "/main/java/" dir))
-            (main-filename (format "%s.%s" (s-chop-suffix "Test" basename) extension)))
+     ((string-search "/test/unittests/java/" dir)
+      (let ((main-dir (string-replace "/test/unittests/java/" "/main/java/" dir))
+            (main-filename (format "%s.%s" (string-remove-suffix "Test" basename) extension)))
         (setq target-path (concat main-dir main-filename))))
 
      (t
@@ -714,17 +713,17 @@ open it."
 
   (let* ((basename (file-name-nondirectory partial-path))
          (command (concat "rg --files " (dcjava-wacapps-dir) " --glob " basename))
-         (file-list (s-lines
-                     (s-trim (shell-command-to-string command)))))
+         (file-list (split-string
+                     (string-trim (shell-command-to-string command)) "\n" t)))
 
     (let ((found-file nil)
           (candidates file-list))
       ;; Keep looping while there are candidates and we haven't found a file
       (while (and candidates (not found-file))
         (let* ((current-file-untrimmed (car candidates))
-               (current-file (and current-file-untrimmed (s-trim current-file-untrimmed))))
+               (current-file (and current-file-untrimmed (string-trim current-file-untrimmed))))
           (if (and (file-exists-p current-file)
-                   (s-ends-with? partial-path current-file))
+                   (string-suffix-p partial-path current-file))
               (setq found-file current-file))
           (setq candidates (cdr candidates))))
 
@@ -769,7 +768,7 @@ or nil if there is none."
         (cond
          ((member current-dir-name package-root-dir-names)
           (setq inferred-package-name (mapconcat #'identity (push current-dir-name dir-stack) ".")))
-         ((s-equals? current-dir-name "java")
+         ((string= current-dir-name "java")
           (setq inferred-package-name (mapconcat #'identity dir-stack ".")))
          (t
           (progn
