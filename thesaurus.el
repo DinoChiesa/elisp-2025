@@ -1,4 +1,4 @@
-;;; thesaurus.el --- replace a word with a synonym looked up in a web service.
+;;; thesaurus.el --- replace a word with a synonym looked up in a web service. -*- coding: utf-8; lexical-binding: t; -*-
 ;;
 ;; Author: Dino Chiesa, Alex Henning
 ;; Created: Thu, 29 Mar 2012  09:18
@@ -156,11 +156,12 @@ function.  Eg
 (defvar thesaurus-cache-dir (file-name-directory thesaurus---load-path))
 (defvar thesaurus-cache-basefilename ".thesaurus.cache")
 
-(defvar thesaurus-can-save-cache-p (or
-       (and (>= emacs-major-version 23)
-            (>= emacs-minor-version 1)
-            (null (string-match "23.1.1" (version))))
-       (> emacs-major-version 23))
+(defvar thesaurus-can-save-cache-p
+  (or
+   (and (>= emacs-major-version 23)
+        (>= emacs-minor-version 1)
+        (null (string-match "23.1.1" (version))))
+   (> emacs-major-version 23))
   "Whether it is possible to save the cache")
 
 (defvar thesaurus-cache nil)
@@ -185,12 +186,12 @@ function.  Eg
 
 (defun thesaurus-hashtable-to-alist (hash)
   "Return an association-list representation of the hashtable HASH."
-   (let ((alist nil))
-     (maphash
-      #'(lambda (key value)
-        (setq alist (cons (cons key value) alist)))
-      hash)
-     alist))
+  (let ((alist nil))
+    (maphash
+     #'(lambda (key value)
+         (setq alist (cons (cons key value) alist)))
+     hash)
+    alist))
 
 
 (defun thesaurus-hashtable-from-alist (alist &rest options)
@@ -199,7 +200,7 @@ function.  Eg
     (mapc
      #'(lambda (kv-pair) (puthash (car kv-pair) (cdr kv-pair) ht))
      alist)
-     ht))
+    ht))
 
 (defun thesaurus-cache-save ()
   (with-temp-buffer
@@ -275,15 +276,15 @@ the user that he needs to register for an API key.
             (concat "[void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');"
                     "[Windows.Forms.MessageBox]::Show("
                     (mapconcat #'(lambda (elt)
-                                  (rris (char-to-string 34)
-                                        (char-to-string 39)
-                                        (pp-to-string
-                                         (rris (char-to-string 34)
-                                               "'+[char]0x0022+'"
-                                               (rris (char-to-string 39)
-                                                     "'+[char]0x0027+'"
-                                                     elt)
-                                               ))))
+                                   (rris (char-to-string 34)
+                                    (char-to-string 39)
+                                    (pp-to-string
+                                     (rris (char-to-string 34)
+                                      "'+[char]0x0022+'"
+                                      (rris (char-to-string 39)
+                                       "'+[char]0x0027+'"
+                                       elt)
+                                      ))))
                                (split-string msg "\n" nil)
                                "+[char]0x000D+")
                     ",'Message from Emacs',"
@@ -296,7 +297,6 @@ the user that he needs to register for an API key.
       (shell-command-on-region (point) (point)
                                shell-command
                                nil nil nil))))
-
 
 (defun thesaurus-get-buffer-for-word-bhl (word)
   "retrieve a list of synonyms for the given word, from the
@@ -314,8 +314,6 @@ BigHugeLabs web service."
       (message (concat "retrieving " bhl-url))
       (url-retrieve-synchronously bhl-url))))
 
-
-
 (defun thesaurus-process-http-headers ()
   "In the buffer created by `url-retrieve-synchronously',
 there are HTTP headers, and content. This fn removes the headers
@@ -324,8 +322,7 @@ a substantive response was received.
 
 This implementation deletes each line until finding a blank line,
 which in correctly-formatted HTTP messages signals the end of the
-headers and the beginning of the message content.
-"
+headers and the beginning of the message content."
   (let ((clength 0))
     (while (/= (point) (line-end-position))
       (when (and (= clength 0)
@@ -349,9 +346,7 @@ where
    word = the actual word
 
 The return value is a list, with those three items in it,
-in that order.
-
-"
+in that order."
   (let (start end s parts)
     (setq start  (point)
           end (line-end-position)
@@ -360,7 +355,6 @@ in that order.
     (delete-region start end)
     (delete-char 1)
     parts))
-
 
 (defun thesaurus-fetch-synonyms (word)
   "fetch synonyms for the given word, from a remote source."
@@ -377,18 +371,15 @@ in that order.
                     (if elt
                         (add-to-list 'synonym-list elt))))
               (message-box "No synonyms found.")))
-;;          (kill-buffer buf)
+          ;; (kill-buffer buf)
           (nreverse synonym-list)))))
-
 
 ;;;###autoload
 (defun thesaurus-get-synonyms (word)
   "retrieve synonyms for the given word, either from the cache,
-or, if there is no cache hit, then from the remote service.
-"
+or, if there is no cache hit, then from the remote service."
   (or (thesaurus-cache-get word)
       (thesaurus-cache-put word (thesaurus-fetch-synonyms word))))
-
 
 (defun thesaurus-get-menu-position ()
   "get the position for the popup menu"
@@ -398,7 +389,6 @@ or, if there is no cache hit, then from the remote service.
                     (+ (cdr x-y) 20))
               (selected-window)))
     t))
-
 
 (defun thesaurus--generate-menu (candidates)
   "Generate a menu suitable for use in `x-popup-menu' from the
@@ -412,13 +402,11 @@ The output is a list like this:
   (\"Replace with...\"
     (\"Ignored pane title\"
       (\"thing 1 to display\" \"value to return if thing 1 is selected\")
-      (\"thing 2 to display\" \"value if thing 2 is selected\")))
-
-"
+      (\"thing 2 to display\" \"value if thing 2 is selected\")))"
   (let ((items (mapcar #'(lambda (elt)
-                         (cons
-                          (concat (nth 2 elt) " (" (nth 0 elt) ")")
-                          (nth 2 elt)))
+                           (cons
+                            (concat (nth 2 elt) " (" (nth 0 elt) ")")
+                            (nth 2 elt)))
                        candidates)))
 
     ;; this works with x-popup-menu
@@ -429,8 +417,7 @@ The output is a list like this:
   "Prompt the user with the available replacement choices.
 In this context the list of choices is the list of synonyms.
 
-See `thesaurus-prompt-mechanism'.
-"
+See `thesaurus-prompt-mechanism'."
   (cond
    ((not candidates)
     nil)
@@ -458,8 +445,7 @@ See `thesaurus-prompt-mechanism'.
 
 As a side effect, this fn stores the bounds of the word that is found.
 This allows this module to delete the word later, when the user chooses
-a replacement word.
-"
+a replacement word."
   (if (get 'word 'thing-at-point)
       (funcall (get 'word 'thing-at-point))
     (let ((bounds (bounds-of-thing-at-point 'word)))
@@ -478,16 +464,15 @@ of synonyms for the word, either from the cache or from a remote
 service, and prompt the user with a list of possible
 replacements.  If the user chooses a replacement, the original
 word in the buffer will be removed and the replacement will be
-inserted in its place.
-"
+inserted in its place."
   (interactive (list (read-string "Get synonyms for word: " (thesaurus-word-at-point))))
   (let ((chosen (thesaurus-prompt-user-with-choices
                  (thesaurus-get-synonyms word))))
     (when chosen
-          (goto-char (car thesaurus-bounds-of-looked-up-word))
-          (delete-region (car thesaurus-bounds-of-looked-up-word)
-                         (cdr thesaurus-bounds-of-looked-up-word))
-          (insert chosen))))
+      (goto-char (car thesaurus-bounds-of-looked-up-word))
+      (delete-region (car thesaurus-bounds-of-looked-up-word)
+                     (cdr thesaurus-bounds-of-looked-up-word))
+      (insert chosen))))
 
 (defun thesaurus--trim-trailing-newlines (string)
   (while (string-match "\\(.*\\)\\(\n\\|\r\\)$" string)
@@ -499,8 +484,7 @@ inserted in its place.
 (defun thesaurus-set-bhl-api-key-from-file (filename)
   "A way to set the API key for BigHugeLabs with the contents of
 a text file. That text file should contain the key obtained from
-BHL during registration.
-"
+BHL during registration."
   (interactive)
   (setq thesaurus-bhl-api-key
         (and (file-exists-p filename)

@@ -1,4 +1,4 @@
-;;; smarter-compile.el --- a smarter wrapper for `compile'
+;;; smarter-compile.el --- a smarter wrapper for `compile' -*- coding: utf-8; lexical-binding: t; -*-
 
 ;; Copyright (C) 1998-2011  by Seiji Zenitani
 
@@ -268,28 +268,28 @@ COMMAND can be:
     expanded as described above, and the expansion is then
     used as the `compile-command'.
 "
-   :type '(repeat
-           (cons
-            (choice
-             (regexp :tag "Filename pattern")
-             (function :tag "Major-mode"))
-            (choice
-             (string :tag "Compilation command")
-             (sexp :tag "Lisp expression"))))
-   :group 'smarter-compile)
+  :type '(repeat
+          (cons
+           (choice
+            (regexp :tag "Filename pattern")
+            (function :tag "Major-mode"))
+           (choice
+            (string :tag "Compilation command")
+            (sexp :tag "Lisp expression"))))
+  :group 'smarter-compile)
 
 (put 'smart-compile-alist 'risky-local-variable t)
 
 (defconst smart-compile-expando-alist '(
-  ("%M" . (smart-compile-get-make-program))
-  ("%t" . (format-time-string "%H:%M:%S"))
-  ("%d" . (format-time-string "%y-%b-%d"))
-  ("%F" . (buffer-file-name))
-  ("%f" . (file-name-nondirectory (buffer-file-name)))
-  ("%n" . (file-name-sans-extension
-           (file-name-nondirectory (buffer-file-name))))
-  ("%e" . (or (file-name-extension (buffer-file-name)) ""))
-  ))
+                                        ("%M" . (smart-compile-get-make-program))
+                                        ("%t" . (format-time-string "%H:%M:%S"))
+                                        ("%d" . (format-time-string "%y-%b-%d"))
+                                        ("%F" . (buffer-file-name))
+                                        ("%f" . (file-name-nondirectory (buffer-file-name)))
+                                        ("%n" . (file-name-sans-extension
+                                                 (file-name-nondirectory (buffer-file-name))))
+                                        ("%e" . (or (file-name-extension (buffer-file-name)) ""))
+                                        ))
 (put 'smart-compile-expando-alist 'risky-local-variable t)
 
 
@@ -301,7 +301,7 @@ for the current buffer.")
 (defvar smart-compile-compile-command-in-comments-extension-list
   '(".c" ".cs" ".vb" ".VB" ".js" ".java")
 
-"The list of extensions of files for which `smarter-compile' will
+  "The list of extensions of files for which `smarter-compile' will
 look in the header comments for a specification for `compile-command'.
 The specification might look like this:
 
@@ -382,11 +382,11 @@ files, you need to do something like this:
 
 "
   (let (entry-of-interest (assoc regex smart-compile-alist)))
-    (if entry-of-interest
-        (setcdr entry-of-interest new-command)
-      (add-to-list
-       'smart-compile-alist
-       (cons regex new-command))))
+  (if entry-of-interest
+      (setcdr entry-of-interest new-command)
+    (add-to-list
+     'smart-compile-alist
+     (cons regex new-command))))
 
 
 (defun smart-compile-get-value-from-comments (marker-string &optional line-limit)
@@ -491,7 +491,7 @@ comment that specifies the compile command, then it returns non-nil.
    (stringp buffer-file-name)
 
    (member (file-name-extension buffer-file-name t)
-         smart-compile-compile-command-in-comments-extension-list)
+           smart-compile-compile-command-in-comments-extension-list)
 
    (smart-compile-get-value-from-comments tagword)))
 
@@ -501,9 +501,9 @@ comment that specifies the compile command, then it returns non-nil.
   "function to be used as a test in the `smart-compile-alist',
 to test presence of a msbuild project file.
 "
-   (smart-compile-any
-    '(lambda (elt) (file-expand-wildcards elt t))
-    '("*.csproj" "*.vcproj" "*.vbproj" "*.wixproj" "*.shfbproj" "*.sln")))
+  (smart-compile-any
+   '(lambda (elt) (file-expand-wildcards elt t))
+   '("*.csproj" "*.vcproj" "*.vbproj" "*.wixproj" "*.shfbproj" "*.sln")))
 
 
 (defun smart-compile-get-make-program ()
@@ -655,18 +655,18 @@ A good way to do things is to bind this function to \C-x\C-e.
   (call-interactively 'compile))
 
 (defun smarter-compile-run (&optional arg)
-    "An interactive function to wrap the `compile' function.
+  "An interactive function to wrap the `compile' function.
 This scans ther comments to look for a run: command and
 uses that for the compile command, and then
 invokes the `compile' function, interactively.
 "
-    (interactive)
-    (let ((run-header (smart-compile-run-command-in-header-comments)))
-      (if run-header
-          (let ((run-command (smart-compile-expand-command run-header)))
-            (set (make-local-variable 'compile-command) run-command)
-            (set (make-local-variable 'smart-compile-previously-suggested-p) nil)
-            (call-interactively 'compile)))))
+  (interactive)
+  (let ((run-header (smart-compile-run-command-in-header-comments)))
+    (if run-header
+        (let ((run-command (smart-compile-expand-command run-header)))
+          (set (make-local-variable 'compile-command) run-command)
+          (set (make-local-variable 'smart-compile-previously-suggested-p) nil)
+          (call-interactively 'compile)))))
 
 
 (provide 'smarter-compile)

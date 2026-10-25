@@ -1,4 +1,4 @@
-;;; auto-insert-plus.el --- extensions for auto-insert-mode
+;;; auto-insert-plus.el --- extensions for auto-insert-mode -*- coding: utf-8; lexical-binding: t; -*-
 ;;
 ;; Author     : Dino Chiesa <dpchiesa@hotmail.com>
 ;; Created    : October 5, 2023
@@ -6,7 +6,7 @@
 ;; Keywords   : template
 ;; URL        :
 ;; X-URL      :
-;; Last-saved : <2024-December-27 22:43:24>
+;; Last-saved : <2026-October-25 13:06:26>
 
 ;;; Commentary:
 
@@ -39,7 +39,7 @@ It can be set by the @DOT@ pseudo-variable in a template." )
 argument then it is an error for the extension not to be present."
   (let* ((extension (if extension (regexp-quote extension) "\\.[^.]*"))
          (regexp (concat "\\(.*\\)" extension "$")) )
-    ;(message regexp)(sleep-for 10)
+    ;;(message regexp)(sleep-for 10)
     (if (string-match regexp name)
         (substring name (match-beginning 1) (match-end 1))
       (error "No extension" name) ) ) )
@@ -57,7 +57,7 @@ argument then it is an error for the extension not to be present."
     ( "@COMMENT-START@" (if comment-start comment-start "") )
     ( "@COMMENT-END@"   (if comment-end comment-end "") )
     ( "@DOT@"           (setq aip/initial-dot-position (match-beginning 0))
-                        "" )
+      "" )
     ( "@NIL@"           "" ) ;; for avoiding expansion of "last saved" in a Template
 
     ;; insert a file and expand its content. Things like FILENAME will
@@ -67,24 +67,24 @@ argument then it is an error for the extension not to be present."
              (buffer-substring-no-properties
               (match-beginning 2)
               (match-end 2))))
-        (if (file-readable-p filename)
-            (with-temp-buffer
-              (insert-file-contents filename)
-              (aip/expand-expandos)
-              (buffer-substring-no-properties (point-min) (point-max)))
-          (concat "The file '" filename "' is not readable"))))
+       (if (file-readable-p filename)
+           (with-temp-buffer
+             (insert-file-contents filename)
+             (aip/expand-expandos)
+             (buffer-substring-no-properties (point-min) (point-max)))
+         (concat "The file '" filename "' is not readable"))))
 
     ( "@ENV(\\(.+\\))@"    (let ((varname
-                                (buffer-substring-no-properties
-                                 (match-beginning 1)
-                                 (match-end 1))))
-                           (or (getenv varname) varname)))
+                                  (buffer-substring-no-properties
+                                   (match-beginning 1)
+                                   (match-end 1))))
+                            (or (getenv varname) varname)))
 
     ( "@@"              "@")
 
     ;; eg:  <ProjectGuid>{@LISP((dino-insert-uuid))@}</ProjectGuid>
     ( "@LISP(\\(.*\\))@"         (let ((sexp (match-string-no-properties 1)))
-                                   (if sexp (eval (read sexp)) "")))
+                                  (if sexp (eval (read sexp)) "")))
     )
   "An alist specifying the variables to recognize and how to replace them.
 Elements look like (REGEXP LISP-CODE ...). When a variable is recognized,
