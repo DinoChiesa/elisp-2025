@@ -1370,10 +1370,9 @@ server program."
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("M-TAB"   . completion-at-point)
-              ;; TODO: reconcile this key binding with all the other
-              ;; uses of "ESC #" that are bound to dc-edit/indent-buffer.
               ("C-c :"   . sh-set-shell)
-              ("ESC #"   . dino/toggle-flymake-diagnostics)
+              ("ESC #"   . dc-edit/indent-buffer)
+              ("C-c ! l" . dino/toggle-flymake-diagnostics)
               ("C-c C-g" . dc-edit/shfmt-buffer) ;; theoretically unnecessary with apheleia
               ("C-c C-c" . comment-region)
               )))))
@@ -1417,7 +1416,6 @@ server program."
               ("ESC #"   . dc-edit/indent-buffer)
               ("C-c C-w" . compare-windows)
               ("C-c C-c" . comment-region)
-              ("C-c C-d" . delete-trailing-whitespace)
               ))))
 
   (eval-after-load "smarter-compile"
@@ -2050,7 +2048,6 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
                       ("ESC #"   . dc-edit/indent-buffer)
                       ("ESC ."   . completion-at-point)
                       ("C-c C-c" . comment-region)
-                      ("C-c C-d" . delete-trailing-whitespace)
                       ("C-c C-w" . compare-windows)
                       ("ESC C-i" . completion-at-point)
                       ("C-c C-g" . powershell-format-buffer)
@@ -2291,7 +2288,6 @@ more information."
                     '(("ESC C-R" . indent-region)
                       ("ESC #"   . dc-edit/indent-buffer)
                       ("C-c C-c" . comment-region)
-                      ("C-c C-d" . delete-trailing-whitespace)
                       ("C-c C-w" . compare-windows)
                       ("ESC ."   . completion-at-point)
                       ("ESC C-i" . completion-at-point)
@@ -2491,8 +2487,7 @@ more information."
 (use-package dictionary
   :defer t
   :commands (dictionary-lookup-definition dictionary-search)
-  ;; the following conflicts with somea few local maps.
-  :config (define-key global-map (kbd "C-c C-d")  #'dictionary-lookup-definition)
+  :config (define-key global-map (kbd "C-c d d") #'dictionary-lookup-definition)
   (setq dictionary-use-single-buffer t)
   (setq dictionary-server "dict.org")
   (custom-set-faces
@@ -4171,16 +4166,14 @@ Does not consider word syntax tables.
             '(("ESC C-R" . indent-region) ;; not sure if useful in python
               ("M-TAB"   . completion-at-point)
               ("C-c i"   .  dc-edit/indent-line-to-current-column)
-              ;; TODO: reconcile this key binding with all the other
-              ;; uses of "ESC #" that are bound to dc-edit/indent-buffer.
-              ("ESC #"   . dino/toggle-flymake-diagnostics)
+              ("ESC #"   . dc-edit/indent-buffer)
+              ("C-c ! l" . dino/toggle-flymake-diagnostics)
               ("C-c p f" . dc-pe/format) ;; should be unnecessary with apheleia
               ("C-c p l" . dc-pe/lint)   ;; should be unnecessary with flymake
               ("C-c p r" . dc-pe/refactor-multiline-imports)
               ("C-c p u" . dc-pe/uv-run)
               ;; TODO: add in "p4 edit FILENAME" as another command
               ("C-c C-c" . comment-region)
-              ("C-c C-d" . delete-trailing-whitespace)
               ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
               ("C-c C-w" . compare-windows)
               ;; making underscore be "word syntax" obviates these next two bindings:
@@ -4519,7 +4512,6 @@ counteracts that. "
             '(("ESC C-R" . indent-region)
               ("ESC #"   . dc-edit/indent-buffer)
               ("C-c C-c" . comment-region)
-              ("C-c C-d" . delete-trailing-whitespace)
               ("C-c C-w" . compare-windows)
               ("C-c C-k s" . dc-edit/camel-to-snakecase-word-at-point)
               ("C-c C-k c" . dc-edit/snake-to-camelcase-word-at-point)
@@ -4693,7 +4685,8 @@ counteracts that. "
               ("C-c i"     . dc-edit/indent-line-to-current-column)
               ("C-c C-f"   . dcjava-find-wacapps-java-source-for-class-at-point)
               ("C-c C-r"   . dcjava-reload-classlist)
-              ("ESC #"     . dino/toggle-flymake-diagnostics)
+              ("ESC #"     . dc-edit/indent-buffer)
+              ("C-c ! l"   . dino/toggle-flymake-diagnostics)
               ("ESC C-R"   . indent-region)
               ;;("C-c C-s" . dcjava-sort-import-statements) ;; obsolete with gformat+apheleia
               ("C-c C-c"   . comment-region)
