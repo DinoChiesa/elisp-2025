@@ -2796,31 +2796,31 @@ more information."
 (defun dino-dired-mode-hook-fn ()
   (mapc (lambda (binding)
           (define-key dired-mode-map (kbd (car binding)) (cdr binding)))
-        '(( "C-c C-g" . dino-dired-kill-new-file-contents)
-          ( "C-c C-c" . dino-dired-copy-file-to-dir-in-other-window)
-          ( "C-c C-m" . dino-dired-move-file-to-dir-in-other-window)
-          ( "C-c s"   . dino-dired-scp-other-side)
+        '(( "C-c C-g" . dc-dired/kill-new-file-contents)
+          ( "C-c C-c" . dc-dired/copy-file-to-dir-in-other-window)
+          ( "C-c C-m" . dc-dired/move-file-to-dir-in-other-window)
+          ( "C-c s"   . dc-dired/scp-other-side)
           ( "C-k"     . dc-sys/dired-copy-filename)
           ;;( "C-c C-s" . g4-status-or-magit)
           ;;( "C-x m" . magit-status)
           ;; converse of i (dired-maybe-insert-subdir)
           ( "K" . dired-kill-subdir)
           ( "L" . ffap-literally) ;; no coding conversion (see "enriched mode")
-          ( "F" . dino-dired-do-find)
-          ( "s" . dino-dired-sort-cycle)
-          ( "S" . dino-dired-do-symlink)))
+          ( "F" . dc-dired/do-find)
+          ( "s" . dc-dired/sort-cycle)
+          ( "S" . dc-dired/do-symlink)))
 
   (if (dino-is-work-system)
       (define-key dired-mode-map  (kbd "C-c C-s") #'g4-status-or-magit)
     (define-key dired-mode-map  (kbd "C-c C-s") #'magit-status))
-  (dino-dired-sort-cycle "t") ;; on init, sort by time
+  (dc-dired/sort-cycle "t") ;; on init, sort by time
   (auto-revert-mode 1))
 
 (use-package dired
   :ensure nil
   :hook (dired-mode . dino-dired-mode-hook-fn)
   :config
-  (require 'dino-dired-fixups)
+  (require 'dc-dired)
   ;; eliminate the gid in dired when using ls-lisp (eg, on windows)
   (setq ls-lisp-verbosity '(links uid))
   (when (require 'w32-browser nil 'noerror) ;; Windows only

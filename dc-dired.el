@@ -1,12 +1,12 @@
 ;;; -*- coding: utf-8; lexical-binding: t;  -*-
 
-;;; dino-dired-fixups.el --- fixups for dired mode
+;;; dc-dired.el --- fixups for dired mode
 ;;
 ;; Author: Dino Chiesa
 ;; Created: Sat, 31 Mar 2012  10:31
 ;; Package-Requires: ()
 ;; Version: 2025.05.26
-;; URL: https://github.com/DinoChiesa/dpchiesa-elisp/blob/master/dino-dired-fixups.el
+;; URL: https://github.com/DinoChiesa/dpchiesa-elisp/blob/master/dc-dired.el
 ;; License: Public Domain
 ;; Keywords: dired
 
@@ -21,7 +21,7 @@
 ;; (use-package dired
 ;;   :ensure nil
 ;;   :config
-;;   (require 'dino-dired-fixups)
+;;   (require 'dc-dired)
 ;;   ;; eliminate the gid in dired when using ls-lisp (eg, on windows)
 ;;   (setq ls-lisp-verbosity '(links uid)))
 
@@ -32,13 +32,13 @@
 (require 's)
 
 
-(defvar dino-dired-time-format-switch "--time-style=long-iso"
+(defvar dc-dired-time-format-switch "--time-style=long-iso"
   "Switch to use for time format. Always prefixed after rotating the sort switches.")
 
 ;; (defun ls-lisp-format-time (file-attr time-index now)
 ;;   "################")
 
-(defun dino-dired-available-switches ()
+(defun dc-dired-available-switches ()
   ;; On MacOS, the builtin ls program does not do the -X option. (lame)
   ;; The MacPorts or brew versions of GNU ls does. If it exists, use it.
   ;; the -X is used by dired-fixups for sorting by extension.
@@ -60,7 +60,7 @@
    (t
     '("t" "U" "S" ""))))
 
-(defvar dino-dired-sort-switches-to-cycle (dino-dired-available-switches) ;; eg '("t" "U" "S" "")
+(defvar dc-dired-sort-switches-to-cycle (dc-dired-available-switches) ;; eg '("t" "U" "S" "")
   "The one-character switches to cycle through for dired with `dired-sort-toggle'.
 The toggle scheme: cycle through these switches:  -t  -U -S, and (maybe) -X,
 to sort by:
@@ -70,7 +70,7 @@ to sort by:
   -X = extension (not always available)
   default = name")
 
-(setf (symbol-function 'dino-dired-available-switches) nil)
+(setf (symbol-function 'dc-dired-available-switches) nil)
 
 (defun ls-lisp-format-file-size (f-size human-readable)
   "This is a redefinition of the function from `dired.el'. This
@@ -87,14 +87,14 @@ which is up to 10gb.  Some files are larger than that.
           ((< f-size 1024) (format " %10.0f%s"  f-size (car post-fixes)))))))
 
 
-(defun dino-dired-next-sorting-switch (old)
+(defun dc-dired-next-sorting-switch (old)
   "returns the next sorting switch, a one-character string, after OLD"
-  (let ((found (member old dino-dired-sort-switches-to-cycle)))
+  (let ((found (member old dc-dired-sort-switches-to-cycle)))
     (or (and found
              (or (cadr found) "t"))
         "t")))
 
-(defun dino-dired-sort-cycle (&optional arg)
+(defun dc-dired/sort-cycle (&optional arg)
   "This is intended as a replacement for, or alternative to,
 the `dired-sort-toggle' fn from dired.el. Normally, dired sorts on
 either name or time, and you can swap between those two (eg, toggle)
@@ -112,12 +112,12 @@ initial sort."
         (let (case-fold-search)
           (cond
            ;; set new switch to passed-in value
-           ((and arg (member arg dino-dired-sort-switches-to-cycle))
-            (dino-dired-generate-new-sorting-switch-string arg))
+           ((and arg (member arg dc-dired-sort-switches-to-cycle))
+            (dc-dired-generate-new-sorting-switch-string arg))
 
            ;; invalid arg; just sort by name
            (arg
-            (dino-dired-generate-new-sorting-switch-string ""))
+            (dc-dired-generate-new-sorting-switch-string ""))
 
            ;; Rotate among the available sort switches.
            (t
@@ -125,9 +125,9 @@ initial sort."
             ;; currently forces it to always be suffixed to any dired switches.
             (let ((switches-without-time-format
                    (s-trim
-                    (if (not (s-blank? dino-dired-time-format-switch))
-                        (s-chop-prefix dino-dired-time-format-switch
-                                       (s-chop-suffix dino-dired-time-format-switch dired-actual-switches))
+                    (if (not (s-blank? dc-dired-time-format-switch))
+                        (s-chop-prefix dc-dired-time-format-switch
+                                       (s-chop-suffix dc-dired-time-format-switch dired-actual-switches))
                       dired-actual-switches))))
 
               ;; The following will rotate the sorting switches, and then re-apply the time
@@ -138,60 +138,60 @@ initial sort."
                ;; This case handles the situation in which the options to ls are not concatted.
                ((string-match " " switches-without-time-format)
                 (let ((n 0)
-                      (L (1- (length dino-dired-sort-switches-to-cycle)))
+                      (L (1- (length dc-dired-sort-switches-to-cycle)))
                       result)
                   (while (and (< n L) (not result))
-                    (let ((cur-switch (nth n dino-dired-sort-switches-to-cycle)))
+                    (let ((cur-switch (nth n dc-dired-sort-switches-to-cycle)))
 
                       (if (and (not (string= cur-switch ""))
                                (string-match (concat " -" cur-switch "\\'") switches-without-time-format))
                           (setq result
                                 (concat
                                  (substring switches-without-time-format 0 (match-beginning 0))
-                                 " -" (dino-dired-next-sorting-switch cur-switch))))))
+                                 " -" (dc-dired-next-sorting-switch cur-switch))))))
                   (or result
                       (concat switches-without-time-format " -t"))))
 
                ;; the options to ls are collapsed, no intervening spaces
                (t
                 (let* ((switches-regex
-                        (concat "[" (mapconcat 'identity dino-dired-sort-switches-to-cycle "") "]"))
+                        (concat "[" (mapconcat 'identity dc-dired-sort-switches-to-cycle "") "]"))
                        (old-sorting-switch
                         (if (string-match switches-regex switches-without-time-format)
                             (substring switches-without-time-format (match-beginning 0) (match-end 0))
                           "ZZ")))
-                  (dino-dired-generate-new-sorting-switch-string
-                   (dino-dired-next-sorting-switch old-sorting-switch)
+                  (dc-dired-generate-new-sorting-switch-string
+                   (dc-dired-next-sorting-switch old-sorting-switch)
                    switches-without-time-format)))))))))
 
-  (dino-dired-sort-set-modeline dired-actual-switches)
-  (if (not (s-blank? dino-dired-time-format-switch))
+  (dc-dired-sort-set-modeline dired-actual-switches)
+  (if (not (s-blank? dc-dired-time-format-switch))
       (setq dired-actual-switches
             ;; 20260228-1401 - On windows anyway (maybe because of ls-lisp?) if
             ;; the time-format switch appears before the other "-la?" switches,
             ;; then the 'a' is apparently ignored, which means the dot and
             ;; double-dot (current and parent dir) are not shown in dired. So
             ;; this logic appends the time-format switch.
-            (concat dired-actual-switches " " dino-dired-time-format-switch)))
+            (concat dired-actual-switches " " dc-dired-time-format-switch)))
 
   (revert-buffer))
 
 
-(defun dino-dired-generate-new-sorting-switch-string (new &optional old)
+(defun dc-dired-generate-new-sorting-switch-string (new &optional old)
   (concat
    "-la"
    ;; strip -l and any other sorting switches
    (replace-regexp-in-string
-    (concat "[-l" (mapconcat 'identity dino-dired-sort-switches-to-cycle "") "]")
+    (concat "[-l" (mapconcat 'identity dc-dired-sort-switches-to-cycle "") "]")
     ""
     (or old ""))
    new))
 
 
-(defun dino-dired-sort-set-modeline (switches)
+(defun dc-dired-sort-set-modeline (switches)
   "This is cribbed from the dired-sort-set-modeline fn in `dired.el'.
 This one supports the new search modes defined in the new
-`dino-dired-sort-cycle'.
+`dc-dired/sort-cycle'.
 "
   ;; Set modeline display according to dired-actual-switches.
   ;; Modeline display of "by name" or "by date" guarantees the user a
@@ -216,7 +216,7 @@ This one supports the new search modes defined in the new
 
 
 ;; nifty utility function
-(defun dino-dired-do-find (&optional arg)
+(defun dc-dired/do-find (&optional arg)
   "Visit each of the marked files, or the file under the point, or when
 prefix arg, the next N files "
   (interactive "P")
@@ -224,12 +224,12 @@ prefix arg, the next N files "
           (dired-get-marked-files nil arg)))
     (mapc 'find-file fn-list)))
 
-(defun mode-for-buffer (&optional buffer-or-string)
+(defun dc-dired--mode-for-buffer (&optional buffer-or-string)
   "Returns the major mode associated with a buffer."
   (with-current-buffer (or buffer-or-string (current-buffer))
     major-mode))
 
-(defun dino-dired-copy-or-move-other-window (operation)
+(defun dc-dired-copy-or-move-other-window (operation)
   "Copy or move the marked files to another directory.
 OPERATION is a symbol, either `COPY' or `MOVE' .
 This works with files or directories."
@@ -238,7 +238,7 @@ This works with files or directories."
   (let ((other-visible-dired-buffers
          (delq nil (mapcar #'(lambda (w)
                                (let* ((b (window-buffer w))
-                                      (m (mode-for-buffer b)))
+                                      (m (dc-dired--mode-for-buffer b)))
                                 (and (eq m 'dired-mode)
                                  (not (eq b (current-buffer)))
                                  b)))
@@ -271,7 +271,7 @@ This works with files or directories."
       (revert-buffer))))
 
 
-(defun dino-dired-move-file-to-dir-in-other-window (&optional arg)
+(defun dc-dired/move-file-to-dir-in-other-window (&optional arg)
   "If there are two or more windows, and the current one is in
 dired-mode, and one of the others is also dired-mode, then move
 the file under cursor or the marked files to the directory shown
@@ -279,9 +279,9 @@ in the other dired window. If the current buffer is not in
 dired-mode, or if not exactly 2 windows show dired, then message
 and quit."
   (interactive "P")
-  (dino-dired-copy-or-move-other-window 'MOVE))
+  (dc-dired-copy-or-move-other-window 'MOVE))
 
-(defun dino-dired-copy-file-to-dir-in-other-window (&optional arg)
+(defun dc-dired/copy-file-to-dir-in-other-window (&optional arg)
   "If there are two or more windows, and the current one is in
 dired-mode, and one of the others is also dired-mode, then copy
 the file under cursor or the marked files to the directory shown
@@ -289,26 +289,26 @@ in the other dired window. If the current buffer is not in
 dired-mode, or if not exactly 2 windows show dired, then message
 and quit."
   (interactive "P")
-  (dino-dired-copy-or-move-other-window 'COPY))
+  (dc-dired-copy-or-move-other-window 'COPY))
 
 
 ;; Auto-update dired buffers with a timer.
 
-(defvar dired-file-modification-hash (make-hash-table :test 'equal))
+(defvar dc-dired--file-modification-hash (make-hash-table :test 'equal))
 
-(defun maybe-revert-dired-buffers ()
+(defun dc-dired--maybe-revert-dired-buffers ()
   (walk-windows
    #'(lambda (win)
        (with-selected-window win
         (when (eq major-mode 'dired-mode)
          (if (file-attributes default-directory)
              ;; there are attributes, the dir exists
-             (let ((mod (gethash default-directory dired-file-modification-hash)))
+             (let ((mod (gethash default-directory dc-dired--file-modification-hash)))
               (unless (and mod
                        (equal mod (nth 5 (file-attributes
                                           default-directory))))
                (setq mod (nth 5 (file-attributes default-directory)))
-               (puthash default-directory mod dired-file-modification-hash)
+               (puthash default-directory mod dc-dired--file-modification-hash)
                (dired-revert)))
            ;; else, the dired buffer points to a dir that no longer exists
            (let ((zombie-buffer (window-buffer win)))
@@ -316,7 +316,7 @@ and quit."
    ;;(condition-case nil (delete-window win) (error nil)))))))
    'no-mini 'all-frames))
 
-(run-with-idle-timer 1 t 'maybe-revert-dired-buffers)
+(run-with-idle-timer 1 t 'dc-dired--maybe-revert-dired-buffers)
 
 
 ;; When opening a file from dired, it will use the command guessed here.  A
@@ -345,7 +345,7 @@ for a given file or set of files. This function makes an intelligent guess."
       (read-shell-command prompt))))
 
 
-(defun dino-dired-do-symlink (&optional arg)
+(defun dc-dired/do-symlink (&optional arg)
   "Create a symlink or junction for marked files or file at point.
 On Windows, creates a Junction if target is a directory, or a
 SymbolicLink if target is a file using `pwsh` or `powershell`. On other
@@ -389,7 +389,7 @@ OSes, calls `dired-do-symlink`."
                 (window-list))))
     (dired-do-symlink arg)))
 
-(defun dino-dired-kill-new-file-contents (&optional arg)
+(defun dc-dired/kill-new-file-contents (&optional arg)
   "Copies the contents of the marked file into the kill-ring"
   (interactive "P")
   (let ((filename-list (dired-get-marked-files nil arg)))
@@ -417,23 +417,23 @@ typing M-n ."
 (setq dired-use-ls-dired nil)
 
 
-(setq dired-listing-switches (concat "-la " dino-dired-time-format-switch))
+(setq dired-listing-switches (concat "-la " dc-dired-time-format-switch))
 ;; (setq dired-actual-switches "--time-style=long-iso -laS")
 
 
-(defvar dino-dired-cloudtop-base "/scp:cloudtop:/usr/local/google/home/dchiesa/"
+(defvar dc-dired-cloudtop-base "/scp:cloudtop:/usr/local/google/home/dchiesa/"
   "Base TRAMP path for Cloudtop. Uses the scp method so large files go out-of-band.")
 
-(defvar dino-dired-cloudtop-history nil
+(defvar dc-dired-cloudtop-history nil
   "History list of recent Cloudtop destination paths (max 5).")
 
-(defvar dino-dired-local-base "~/Downloads/"
+(defvar dc-dired-local-base "~/Downloads/"
   "Default local destination when copying from a remote dired buffer.")
 
-(defvar dino-dired-local-history nil
+(defvar dc-dired-local-history nil
   "History list of recent local destination paths (max 5).")
 
-(defun dino-dired--copy-files-to (files prompt base history-var format-path)
+(defun dc-dired--copy-files-to (files prompt base history-var format-path)
   "Copy FILES to a directory read in the minibuffer with PROMPT.
 The default destination is the most recent entry in HISTORY-VAR, else BASE.
 The destination paths, transformed by FORMAT-PATH, go on the kill ring."
@@ -444,7 +444,7 @@ The destination paths, transformed by FORMAT-PATH, go on the kill ring."
                 (default-directory default-dest))
             (read-directory-name
              (format prompt (length files))
-             ;;dino-dired-cloudtop-base
+             ;;dc-dired-cloudtop-base
              default-dest
              default-dest
              t)))
@@ -470,24 +470,24 @@ The destination paths, transformed by FORMAT-PATH, go on the kill ring."
     ;; Copy to kill-ring and system clipboard
     (kill-new (string-join (nreverse copied-paths) "\n"))))
 
-(defun dino-dired-scp-other-side ()
+(defun dc-dired/scp-other-side ()
   "Copy the current file (or marked files) to the other side.
 From a local dired buffer, copy to a directory on Cloudtop.
 From a remote (TRAMP) dired buffer, copy to a local directory."
   (interactive)
   (let ((files (dired-get-marked-files nil current-prefix-arg)))
     (if (file-remote-p default-directory)
-        (dino-dired--copy-files-to
+        (dc-dired--copy-files-to
          files "Copy %d file(s) to local: "
-         dino-dired-local-base 'dino-dired-local-history
+         dc-dired-local-base 'dc-dired-local-history
          #'abbreviate-file-name)
-      (dino-dired--copy-files-to
+      (dc-dired--copy-files-to
        files "SCP %d file(s) to Cloudtop: "
-       dino-dired-cloudtop-base 'dino-dired-cloudtop-history
+       dc-dired-cloudtop-base 'dc-dired-cloudtop-history
        ;; Strip "/scp:cloudtop:/usr/local/google/home/dchiesa/" and prepend "~/"
        (lambda (dest)
-         (concat "~/" (file-relative-name dest dino-dired-cloudtop-base)))))))
+         (concat "~/" (file-relative-name dest dc-dired-cloudtop-base)))))))
 
-(provide 'dino-dired-fixups)
+(provide 'dc-dired)
 
-;;; dino-dired-fixups.el ends here
+;;; dc-dired.el ends here
