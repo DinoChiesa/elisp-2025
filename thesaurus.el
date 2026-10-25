@@ -128,6 +128,10 @@
   "Provides a facility to look up synonyms."
   :group 'Editing)
 
+(eval-when-compile (require 'dropdown-list nil t))
+(declare-function dropdown-list "dropdown-list" (candidates))
+(require 'cl-lib)
+
 (defcustom thesaurus-bhl-api-key nil
   "The api key for connecting to BigHugeLabs.com.
 
@@ -138,16 +142,14 @@ Get one by visiting  http://words.bighugelabs.com/getkey.php
   :group 'thesaurus)
 
 (defcustom thesaurus-prompt-mechanism 'x-popup-menu
-  "The mechanism used to prompt the user for his choice of
-synonym. Options: 'x-popup-menu, or 'dropdown-list.  When setting
-this, set it to the symbol, not to the string or the actual
-function.  Eg
+  "The mechanism used to prompt the user for his choice of synonym.
+Options: \\='x-popup-menu, or \\='dropdown-list. When setting this, set it to the
+symbol, not to the string or the actual function. Eg:
 
-  (setq thesaurus-prompt-mechanism 'x-popup-menu)
-
+  (setq thesaurus-prompt-mechanism \\='x-popup-menu)
 "
   :type 'symbol
-  :options '('x-popup-menu 'dropdown-list)
+  :options '(x-popup-menu dropdown-list)
   :group 'thesaurus)
 
 (defvar thesaurus---load-path (or load-file-name "~/thesaurus.el")
@@ -254,49 +256,46 @@ This can be used in place of `message-box' on Windows.
 
 This is used within `thesaurus.el' in only one case: to notify
 the user that he needs to register for an API key.
-
 "
-  (let ((rris))
-    (fset 'rris 'replace-regexp-in-string)
-    (let* ((msg (format format-string args))
-           (ps-cmd
-            ;; This is a command to be passed on the cmd.exe line.
-            ;; Newlines encoded as \n or `n do not display properly. This
-            ;; code transforms splits the string on newlines, then joins,
-            ;; using [char]0x000D as the "glue".  Also - need to perform
-            ;; special escaping of single and double quotes.  All this
-            ;; because we are passing a script to powershell on the
-            ;; command line.
-            ;;
-            ;; creating a file with script code in it, then passing
-            ;; that file to powershell, would avoid the need for
-            ;; special escaping.  But that is not feasible, since by
-            ;; default powershell prohibits executing scripts. But
-            ;; powershell allows running script passed as -Command. So.
-            (concat "[void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');"
-                    "[Windows.Forms.MessageBox]::Show("
-                    (mapconcat #'(lambda (elt)
-                                   (rris (char-to-string 34)
-                                    (char-to-string 39)
-                                    (pp-to-string
-                                     (rris (char-to-string 34)
-                                      "'+[char]0x0022+'"
-                                      (rris (char-to-string 39)
-                                       "'+[char]0x0027+'"
-                                       elt)
-                                      ))))
-                               (split-string msg "\n" nil)
-                               "+[char]0x000D+")
-                    ",'Message from Emacs',"
-                    "[Windows.Forms.MessageBoxButtons]::OK,"
-                    "[Windows.Forms.MessageBoxIcon]::Information)"))
-           (shell-command
-            (format "%s -Command %s"
-                    (thesaurus-path-of-powershell-exe)
-                    (concat "\"& {" ps-cmd "}\""))))
-      (shell-command-on-region (point) (point)
-                               shell-command
-                               nil nil nil))))
+  (let* ((msg (apply #'format format-string args))
+         (ps-cmd
+          ;; This is a command to be passed on the cmd.exe line.
+          ;; Newlines encoded as \n or `n do not display properly. This
+          ;; code transforms splits the string on newlines, then joins,
+          ;; using [char]0x000D as the "glue".  Also - need to perform
+          ;; special escaping of single and double quotes.  All this
+          ;; because we are passing a script to powershell on the
+          ;; command line.
+          ;;
+          ;; creating a file with script code in it, then passing
+          ;; that file to powershell, would avoid the need for
+          ;; special escaping.  But that is not feasible, since by
+          ;; default powershell prohibits executing scripts. But
+          ;; powershell allows running script passed as -Command. So.
+          (concat "[void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');"
+                  "[Windows.Forms.MessageBox]::Show("
+                  (mapconcat (lambda (elt)
+                               (replace-regexp-in-string
+                                (char-to-string 34)
+                                (char-to-string 39)
+                                (pp-to-string
+                                 (replace-regexp-in-string
+                                  (char-to-string 34)
+                                  "'+[char]0x0022+'"
+                                  (replace-regexp-in-string
+                                   (char-to-string 39)
+                                   "'+[char]0x0027+'"
+                                   elt)))))
+                             (split-string msg "\n" nil)
+                             "+[char]0x000D+")
+                  ",'Message from Emacs',"
+                  "[Windows.Forms.MessageBoxButtons]::OK,"
+                  "[Windows.Forms.MessageBoxIcon]::Information)"))
+         (cmd
+          (format "%s -Command %s"
+                  (thesaurus-path-of-powershell-exe)
+                  (concat "\"& {" ps-cmd "}\""))))
+    (shell-command cmd)))
 
 (defun thesaurus-get-buffer-for-word-bhl (word)
   "retrieve a list of synonyms for the given word, from the
@@ -369,7 +368,7 @@ in that order."
                 (while (not (= (point-min) (point-max)))
                   (let ((elt (thesaurus-parse-one-line)))
                     (if elt
-                        (add-to-list 'synonym-list elt))))
+                        (cl-pushnew elt synonym-list :test #'equal))))
               (message-box "No synonyms found.")))
           ;; (kill-buffer buf)
           (nreverse synonym-list)))))
@@ -500,7 +499,6 @@ BHL during registration."
             (thesaurus-cache-load)
           (thesaurus-cache-initialize))))
 
-(eval-when-compile (require 'dropdown-list nil t))
 
 (thesaurus-install)
 

@@ -325,9 +325,9 @@ These expando variables are available:
 To add to this list, use something like this elisp:
 
   (eval-after-load \"smarter-compile\"
-    '(progn
+    \\='(progn
        (add-to-list
-        'smart-compile-compile-command-in-comments-extension-list
+        \\='smart-compile-compile-command-in-comments-extension-list
         \".go\")))
  ")
 
@@ -337,11 +337,9 @@ To add to this list, use something like this elisp:
   :type 'string
   :group 'smarter-compile)
 
-(if (not (fboundp 'string/ends-with))
-    (defun string/ends-with (s ending)
-      "return non-nil if string S ends with ENDING"
-      (let ((elength (length ending)))
-        (string= (substring s (- 0 elength)) ending))))
+(defun string/ends-with (s ending)
+  "Return non-nil if string S ends with ENDING."
+  (string-suffix-p ending s))
 
 
 (defcustom smart-compile-comment-cmd-line-limit 64
@@ -381,12 +379,12 @@ files, you need to do something like this:
       \"cl.exe /Od  /Zi /DEBUG /RTC1 /MTd /W3 /c %f\")
 
 "
-  (let (entry-of-interest (assoc regex smart-compile-alist)))
-  (if entry-of-interest
-      (setcdr entry-of-interest new-command)
-    (add-to-list
-     'smart-compile-alist
-     (cons regex new-command))))
+  (let ((entry-of-interest (assoc regex smart-compile-alist)))
+    (if entry-of-interest
+        (setcdr entry-of-interest new-command)
+      (add-to-list
+       'smart-compile-alist
+       (cons regex new-command)))))
 
 
 (defun smart-compile-get-value-from-comments (marker-string &optional line-limit)
@@ -415,7 +413,7 @@ colon.
 
 "
   (let ((line-limit (or line-limit smart-compile-comment-cmd-line-limit))
-        start search-limit found)
+        start search-limit)
     ;; determine what lines to look in
     (save-excursion
       (save-restriction
@@ -567,8 +565,7 @@ It does not call `compile'.
 
     ;; walk the list
     (let ((alist smart-compile-alist)
-          (case-fold-search nil)
-          (function nil))
+          (case-fold-search nil))
 
       (while (and alist not-done)
         (let* ((item (car alist))
@@ -626,10 +623,9 @@ previously set by smart-compile, and if not, invokes
 `smart-compile-select-compile-command' to set the value.  Then it
 invokes the `compile' function, interactively.
 
-A good way to do things is to bind this function to \C-x\C-e.
+A good way to do things is to bind this function to \\='C-x C-e\\=':
 
-    (global-set-key \"\C-x\C-e\"  'smarter-compile)
-
+    (keymap-global-set \"C-x C-e\" #\\='smarter-compile)
 "
   (interactive "p")
 
@@ -654,7 +650,7 @@ A good way to do things is to bind this function to \C-x\C-e.
   ;; local compile command has now been set
   (call-interactively 'compile))
 
-(defun smarter-compile-run (&optional arg)
+(defun smarter-compile-run (&optional _arg)
   "An interactive function to wrap the `compile' function.
 This scans ther comments to look for a run: command and
 uses that for the compile command, and then
