@@ -15,7 +15,7 @@
 ;;; Code:
 
 (require 'magit)
-(require 'dpc-sane-sorting)
+(require 'dc-sane-sorting)
 
 ;; Override some magit things so that branches get sorted
 ;; alphabetically. This works only because I am _redefining
@@ -44,7 +44,7 @@ To use it:
                (category (if (string-match "Push [^[:space:]]+ to" prompt)
                              'unsorted
                            'sorted-sanely)))
-          (dpc-ss-completion-fn choices category)))
+          (dc-ss/completion-fn choices category)))
 
   (let ((ivy-sort-functions-alist nil))
     (completing-read prompt

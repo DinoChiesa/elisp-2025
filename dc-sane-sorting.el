@@ -1,4 +1,4 @@
-;;; dpc-sane-sorting.el  -*- coding: utf-8; lexical-binding: t;  -*-
+;;; dc-sane-sorting.el  -*- coding: utf-8; lexical-binding: t;  -*-
 
 ;; Copyright (c) 2025 Google LLC
 ;;
@@ -36,7 +36,7 @@
 ;;     (setq completion-category-overrides
 ;;       (cons `(file
 ;;               (styles . (basic substring))
-;;               (cycle-sort-function . ,#'dpc-ss-files)
+;;               (cycle-sort-function . ,#'dc-ss/files)
 ;;               (cycle . 10))
 ;;           completion-category-overrides))
 ;;
@@ -46,7 +46,7 @@
 ;;   For example:
 ;;     (completing-read
 ;;       "New model: "
-;;       (dpc-ss-completion-fn candidates 'sorted-sanely)
+;;       (dc-ss/completion-fn candidates 'sorted-sanely)
 ;;       nil t)))
 ;;
 ;;   The unsorted category is handy in `recentf-open'. The list of candidates
@@ -60,7 +60,7 @@
 ;;        (list
 ;;         (progn (unless recentf-mode (recentf-mode 1))
 ;;                (completing-read (format-prompt "Open recent?" nil)
-;;                                 (dpc-ss-completion-fn recentf-list 'unsorted)
+;;                                 (dc-ss/completion-fn recentf-list 'unsorted)
 ;;                                 nil t))))
 ;;       (when file
 ;;         (funcall recentf-menu-action file)))
@@ -77,11 +77,11 @@
 (require 'cl-seq) ;; cl-remove-if
 
 ;; ==== sorters
-(defun dpc-ss-alpha (candidates)
+(defun dc-ss/alpha (candidates)
   "Sorts the model CANDIDATE by name"
   (sort candidates :lessp #'string<))
 
-(defun dpc-ss-alpha-exactfirst (candidates)
+(defun dc-ss/alpha-exactfirst (candidates)
   "Sort CANDIDATES to place an exact match for the minibuffer
 content first. The rest of the candidates are sorted alphabetically.
 This corrects the problem in which I type «M-x grep» and the top
@@ -93,11 +93,11 @@ the `command' category in `completion-category-overrides', like so:
   (setq completion-category-overrides
     (cons `(command
             (styles . (basic substring))
-            (cycle-sort-function . ,#'dpc-ss-alpha-exactfirst)
+            (cycle-sort-function . ,#'dc-ss/alpha-exactfirst)
             (cycle . 10))
         completion-category-overrides))
 
-See also `dpc-ss-alphaexact-startswith-first' which
+See also `dc-ss/alphaexact-startswith-first' which
 is probably better.
 "
   (let ((cur-input (minibuffer-contents-no-properties)))
@@ -109,7 +109,7 @@ is probably better.
                       #'string-lessp))
         (sort candidates #'string-lessp)))))
 
-(defun dpc-ss-alphaexact-startswith-first (candidates)
+(defun dc-ss/alphaexact-startswith-first (candidates)
   "Sort CANDIDATES placing:
   1. An exact match for the minibuffer content first.
   2. Candidates that start with the input, sorted alphabetically.
@@ -121,7 +121,7 @@ is probably better.
   (setq completion-category-overrides
     (cons `(command
             (styles . (basic substring))
-            (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)
+            (cycle-sort-function . ,#'dc-ss/alphaexact-startswith-first)
             (cycle . 10))
         completion-category-overrides))
 "
@@ -153,7 +153,7 @@ is probably better.
     (nconc exact-matches starts-with-matches remaining-candidates)))
 
 
-(defun dpc-ss-files (candidates)
+(defun dc-ss/files (candidates)
   "Sort a list of CANDIDATES alphabetically, except that  \"./\"
 always appears at the end, and an exact match of what the user
 typed is presented at the top of the list.
@@ -164,7 +164,7 @@ the `file' category in `completion-category-overrides', like so:
   (setq completion-category-overrides
     (cons `(file
             (styles . (basic substring))
-            (cycle-sort-function . ,#'dpc-ss-files)
+            (cycle-sort-function . ,#'dc-ss/files)
             (cycle . 10))
         completion-category-overrides))
 "
@@ -219,19 +219,19 @@ the `file' category in `completion-category-overrides', like so:
           ;; No exact match: just sort with "./" last
           (sort candidates sort-sensibly-with-dot-slash-last))))))
 
-(defvar dpc-ss-supported-categories '(sorted-sanely unsorted startswith)
+(defvar dc-ss-supported-categories '(sorted-sanely unsorted startswith)
   "List of supported completion categories added to `completion-category-overrides'
-by this package. They can be used within `dpc-ss-completion-fn'. You
+by this package. They can be used within `dc-ss/completion-fn'. You
 can add your own categories to `completion-category-overrides' of course.")
 
-(defun dpc-ss-completion-fn (candidates category-symbol)
+(defun dc-ss/completion-fn (candidates category-symbol)
   "Returns a function to be used as the COMPLETIONS parameter in
 `completing-read'.
 
 CANDIDATES is a list of strings, the completion candidates.
 CATEGORY-SYMBOL is a symbol indicating the completion category, which
 influences sorting behavior. It must be a member of
-`dpc-ss-supported-categories'.
+`dc-ss-supported-categories'.
 
 This allows you to control sort order for that call to `completing-read'.
 
@@ -244,7 +244,7 @@ candidate last?  With this function:
 
    (completing-read
       \"Choose: \"
-      (dpc-ss-completion-fn candidates \\'sorted-sanely) nil t)
+      (dc-ss/completion-fn candidates \\'sorted-sanely) nil t)
 
 The list is shown with the items sorted alphabetically.
 
@@ -255,11 +255,11 @@ be sorted:
         (lambda (candidates)
           (completing-read
             \"New model: \"
-            (dpc-ss-completion-fn candidates \\'sorted-sanely)
+            (dc-ss/completion-fn candidates \\'sorted-sanely)
             nil t)))"
-  (unless (memq category-symbol dpc-ss-supported-categories)
+  (unless (memq category-symbol dc-ss-supported-categories)
     (error "Invalid category symbol: %s. Supported categories are: %s"
-           category-symbol dpc-ss-supported-categories))
+           category-symbol dc-ss-supported-categories))
   (let ((candidates candidates))
     (lambda (string pred action)
       (if (eq action 'metadata)
@@ -279,26 +279,26 @@ be sorted:
 ;; an example, `find-file' uses a category, so I can use this `completion-category-overrides'
 ;; trick to modify sorting for it.  Conversely, the completing-read in magit does not specify a
 ;; category when reading a branch name, so I cannot use the overrides trick to modify sorting
-;; for magit purposes.  As an example of using a category, see above `dpc-ss-completion-fn'.
+;; for magit purposes.  As an example of using a category, see above `dc-ss/completion-fn'.
 ;; To specify the sorting for a category, add the category, in this case `sorted-sanely', to
 ;; `completion-category-overrides', and the right sorting will happen.
 ;;
 ;; In some cases we want no sorting; particularly with recentf.  Even here, without an
 ;; overrides, minibuffer will apply its weird sort. So we override to say "no sort" with the
 ;; `unsorted' category. This also requires a change in `recentf-open' to use
-;; `dpc-ss-completion-fn' or a similar completions fn that provides a category.
+;; `dc-ss/completion-fn' or a similar completions fn that provides a category.
 ;;
 
 (dolist (entry
          `((startswith    . ((styles . (substring))
-                             (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
+                             (cycle-sort-function . ,#'dc-ss/alphaexact-startswith-first)))
            (sorted-sanely . ((styles . (substring))
-                             (cycle-sort-function . ,#'dpc-ss-alpha)))
+                             (cycle-sort-function . ,#'dc-ss/alpha)))
            (unsorted      . ((styles . (substring))
                              (cycle-sort-function . ,#'identity)))))
   (setf (alist-get (car entry) completion-category-overrides) (cdr entry)))
 
 
-(provide 'dpc-sane-sorting)
+(provide 'dc-sane-sorting)
 
-;;; dpc-sane-sorting.el ends here
+;;; dc-sane-sorting.el ends here

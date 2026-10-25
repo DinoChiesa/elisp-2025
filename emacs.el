@@ -722,7 +722,7 @@
   (setq enable-recursive-minibuffers t)
   (minibuffer-depth-indicate-mode 1))
 
-(use-package dpc-sane-sorting
+(use-package dc-sane-sorting
   ;; helpers that make icomplete-vertical sort sanely
   :load-path "~/elisp"
   :pin manual
@@ -743,7 +743,7 @@
   (icomplete-mode 1)
   (icomplete-vertical-mode 1)
 
-  :requires (dpc-sane-sorting)
+  :requires (dc-sane-sorting)
   ;; Gemini says the  order of evaluation is :custom, then :init, then :config.
   :custom
   ;; For info: C-h v completion-styles-alist
@@ -788,13 +788,13 @@
                                   ;; buffers.
                                   ))
              (command          . ((styles . (basic substring))
-                                  (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
+                                  (cycle-sort-function . ,#'dc-ss/alphaexact-startswith-first)))
              (consult-location . ((styles . (substring)))) ;; also not sure about this
              (symbol-help      . ((styles . (substring))
-                                  (cycle-sort-function . ,#'dpc-ss-alphaexact-startswith-first)))
+                                  (cycle-sort-function . ,#'dc-ss/alphaexact-startswith-first)))
              (symbol           . ((styles . (basic shorthand substring)))) ;; not sure when this is used
              (file             . ((styles . (basic substring))
-                                  (cycle-sort-function . ,#'dpc-ss-files)
+                                  (cycle-sort-function . ,#'dc-ss/files)
                                   (cycle . 10)))))
     (setf (alist-get (car entry) completion-category-overrides) (cdr entry)))
 
@@ -2619,7 +2619,7 @@ more information."
     t)
 
   :config
-  (require 'dpc-sane-sorting)
+  (require 'dc-sane-sorting)
   (setq chatgpt-shell-google-key (dpc-gemini/get-config-property "apikey"))
   ;; 20250823-1212 - chatgpt-shell currently has builtin support for latest Gemini models.
   ;; Consider re-adding this when gemini-3.0 is released.
@@ -2629,7 +2629,7 @@ more information."
   (setq chatgpt-shell-swap-model-selector
         (lambda (candidates)
           (completing-read "Swap to: "
-                           (dpc-ss-completion-fn candidates 'sorted-sanely) nil t)))
+                           (dc-ss/completion-fn candidates 'sorted-sanely) nil t)))
 
   :catch
   (lambda (_keyword err)
@@ -5146,12 +5146,12 @@ counteracts that. "
   :commands (recentf-mode recentf-open)
   :bind (( "C-x C-r" . recentf-open))
   :config
-  (require 'dpc-sane-sorting)
+  (require 'dc-sane-sorting)
   (recentf-mode 1)
 
   ;; Redefine `recentf-open' to use a completion function which means I can
   ;; disable sorting the recent files list, while using sorting for other
-  ;; categories. See dpc-sane-sorting.el for the `unsorted' category.
+  ;; categories. See dc-sane-sorting.el for the `unsorted' category.
   (defun recentf-open (file)
     "Prompt for FILE in `recentf-list' and visit it.
 Enable `recentf-mode' if it isn't already."
@@ -5159,7 +5159,7 @@ Enable `recentf-mode' if it isn't already."
      (list
       (progn (unless recentf-mode (recentf-mode 1))
              (completing-read (format-prompt "Open recent?" nil)
-                              (dpc-ss-completion-fn recentf-list 'unsorted)
+                              (dc-ss/completion-fn recentf-list 'unsorted)
                               nil t))))
     (when file
       (funcall recentf-menu-action file)))

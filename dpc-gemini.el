@@ -53,7 +53,7 @@
 (require 'seq)
 (require 's)
 (require 'subr-x)
-(require 'dpc-sane-sorting)
+(require 'dc-sane-sorting)
 
 ;;; Code:
 
@@ -208,7 +208,7 @@ do not filter by supportedGenerationMethods."
             (json-pretty-print-buffer))
 
         (let* ((modelnames
-                (dpc-ss-alpha
+                (dc-ss/alpha
                  (mapcar (lambda (model)
                            (let ((name (gethash "name" model)))
                              (if (and (stringp name) (s-starts-with-p "models/" name))
@@ -439,7 +439,7 @@ If the region is active, use region content as suggested prompt."
                       (mapcar (lambda (m) (gethash "name" m)) available-models)))
              (selected-model
               (completing-read "Model?: "
-                               (dpc-ss-completion-fn short-model-names 'sorted-sanely) nil t)))
+                               (dc-ss/completion-fn short-model-names 'sorted-sanely) nil t)))
         (when selected-model
           (setq dpc-gemini-selected-model selected-model)))))
 
