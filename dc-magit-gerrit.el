@@ -9,7 +9,7 @@
 ;; - completions sorting override
 ;; - fetching Gerrit changes into local branches
 ;; - refetching / resetting to latest patchsets
-;; - pushing to Gerrit's master review queue
+;; - pushing to Gerrit's primary review queue
 ;; - Magit transient menu integrations
 
 ;;; Code:
@@ -156,15 +156,44 @@ With a prefix argument (\\[universal-argument]), prompts for the change number."
     (magit-reset-hard "FETCH_HEAD")
     (message "Reset %s to %s" (magit-get-current-branch) ref)))
 
-(defun dc-mg/push-to-gerrit-master ()
-  "Push the current HEAD to Gerrit's master review queue."
-  (interactive)
-  (magit-git-command-topdir "git push origin HEAD:refs/for/master"))
+(defun dc-mg--primary-branch (&optional remote)
+  "Determine the primary branch for REMOTE ('origin' by default).
+Returns a string such as \"main\" or \"master\"."
+  (let* ((rem (or remote (dc-mg--remote) "origin"))
+         (remote-head (magit-git-string "symbolic-ref" (format "refs/remotes/%s/HEAD" rem))))
+    (cond
+     (remote-head
+      (file-name-nondirectory remote-head))
+     ((when-let* ((mb (magit-main-branch rem)))
+        (file-name-nondirectory mb)))
+     ((magit-ref-p (format "refs/remotes/%s/main" rem)) "main")
+     ((magit-ref-p (format "refs/remotes/%s/master" rem)) "master")
+     (t "master"))))
+
+(defun dc-mg--gerrit-push-description ()
+  "Dynamic description for Magit push transient menu."
+  (format "Push to Gerrit (%s)" (dc-mg--primary-branch)))
+
+(defun dc-mg/push-to-gerrit-primary (&optional target-branch)
+  "Push the current HEAD to Gerrit's review queue for TARGET-BRANCH.
+Without prefix arg, pushes to refs/for/<primary-branch> ('main' or 'master').
+With prefix arg (\\[universal-argument]), prompts for the target branch."
+  (interactive
+   (list
+    (let ((default (dc-mg--primary-branch)))
+      (if current-prefix-arg
+          (read-string (format "Target Gerrit branch (default %s): " default) nil nil default)
+        default))))
+  (let* ((remote (dc-mg--remote))
+         (branch (or target-branch (dc-mg--primary-branch remote)))
+         (cmd (format "git push %s HEAD:refs/for/%s" remote branch)))
+    (message "Pushing to Gerrit: %s" cmd)
+    (magit-git-command-topdir cmd)))
 
 ;; Inject the custom push command into the existing Magit Push ('P') transient menu
 (with-eval-after-load 'magit
   (transient-append-suffix 'magit-push "p"
-    '("g" "Push to Gerrit (master)" dc-mg/push-to-gerrit-master)))
+    '("g" dc-mg--gerrit-push-description dc-mg/push-to-gerrit-primary)))
 
 (with-eval-after-load 'magit
   (transient-append-suffix 'magit-fetch "u"
