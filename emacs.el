@@ -2857,6 +2857,8 @@ just auto-corrects on common mis-spellings by me."
 
   (define-abbrev-table 'global-abbrev-table
     '(
+      ("<-" "←" nil 0)
+      ("->" "→" nil 0)
       ("teh" "the" nil 0)
       ("somehting" "something" nil 0)
       ("shuold" "should" nil 0)
