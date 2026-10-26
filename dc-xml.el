@@ -12,6 +12,7 @@
 ;;; Code:
 
 (require 'subr-x)
+(require 'xml) ;; load before redefining xml-parse-tag-1 so ours wins
 (require 'nxml-mode nil t)
 
 (eval-and-compile
@@ -20,7 +21,7 @@
 
   ;; [4a] NameChar ::= NameStartChar | "-" | "." | [0-9] | #xB7
   ;;                 | [#x0300-#x036F] | [#x203F-#x2040]
-  (defconst dc-xml-name-char-re "[[:word:]:_.0-9\\u00B7\\u0300-\\u036F\\u203F\\u2040-]")
+  (defconst dc-xml-name-char-re "[[:word:]:_.0-9\u00B7\u0300-\u036F\u203F\u2040-]")
 
   ;; [5] Name     ::= NameStartChar (NameChar)*
   (defconst dc-xml-name-re (concat dc-xml-name-start-char-re dc-xml-name-char-re "*")))
@@ -68,7 +69,7 @@ Retains XML comments as (nil . \"<!-- comment -->\") nodes."
          (buffer-substring-no-properties pos (match-beginning 0))
          (xml-parse-string))))
      ;; DTD
-     ((looking-at-p "<!DOCTYPE[ \\t\\n\\r]")
+     ((looking-at-p "<!DOCTYPE[ \t\n\r]")
       (let ((dtd (xml-parse-dtd parse-ns)))
         (skip-syntax-forward " ")
         (if xml-validating-parser
