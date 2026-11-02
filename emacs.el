@@ -1674,20 +1674,19 @@ then switch to the markdown output buffer."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Make C-x 1 a toggle
 ;;
 (winner-mode +1)
 
-(defun toggle-delete-other-windows ()
-  "If multiple windows in frame, delete all but the current window.
-Otherwise restore previous window config."
-  (interactive)
-  (if (and winner-mode
-           (equal (selected-window) (next-window)))
-      (winner-undo)
-    (delete-other-windows)))
-
-(global-set-key (kbd "C-x 1") #'toggle-delete-other-windows)
+;; (defun toggle-delete-other-windows ()
+;;   "If multiple windows in frame, delete all but the current window.
+;; Otherwise restore previous window config."
+;;   (interactive)
+;;   (if (and winner-mode
+;;            (equal (selected-window) (next-window)))
+;;       (winner-undo)
+;;     (delete-other-windows)))
+;;
+;; (global-set-key (kbd "C-x 1") #'toggle-delete-other-windows)
 
 
 
@@ -5291,6 +5290,7 @@ Enable `recentf-mode' if it isn't already."
 
 (define-key global-map (kbd "C-x 7")       #'dc-sys/toggle-frame-split)
 (define-key global-map (kbd "C-x C-b")     #'ibuffer) ; instead of buffer-list
+(define-key global-map (kbd "C-x 1")       #'delete-other-windows)
 (define-key global-map (kbd "C-x |")       #'align-regexp)
 (define-key global-map (kbd "C-x ?")       #'describe-text-properties)
 (define-key global-map (kbd "C-x w")       #'dc-edit/fixup-linefeeds)
