@@ -930,10 +930,15 @@ Attach this fn to the latter to ensure settings do not get stomped."
   :load-path "~/elisp"
   :commands (g4-status g4-status-or-magit))
 
-(use-package dino-g3
+(use-package dc-g3
   :when (dino-is-work-system)
   :load-path "~/elisp"
-  :commands (dino/find-g3-workspace dino/g4d dino/find-g3-experimental-file))
+  :pin manual
+  :commands (dc-g3/find-favorite
+             dc-g3/add-favorite
+             dc-g3/remove-favorite
+             dc-g3/find-workspace
+             dc-g3/g4d))
 
 (use-package jj
   :when (dino-is-work-system))
