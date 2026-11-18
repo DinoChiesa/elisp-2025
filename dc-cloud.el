@@ -46,24 +46,34 @@
 
 (defvar dc-cloud--gcloud-token-cache (make-hash-table :test 'equal)
   "Hash table to store gcloud tokens.
-Key is tokentype, value is (timestamp . token-string).")
+Key is \"tokentype[:service-account]\", value is (timestamp . token-string).")
 
-(defun dc-cloud--gcloud-auth-print-token (tokentype)
+(defun dc-cloud--gcloud-auth-print-token (tokentype &optional service-account)
   "Return output of $(gcloud auth print-{identity,access}-token).
+If SERVICE-ACCOUNT (an email address) is non-nil and non-empty, passes
+`--impersonate-service-account=SERVICE-ACCOUNT'.
 Memoizes the result for a period of `dc-cloud-gcloud-auth-cache-ttl' ONLY if
 the token starts with \"ya29.\" (for access tokens) or \"ey\" (for
 identity tokens)."
-  (let* ((now (float-time))
-         (cache-entry (gethash tokentype dc-cloud--gcloud-token-cache))
+  (let* ((sa (and (stringp service-account)
+                  (not (string-empty-p (string-trim service-account)))
+                  (string-trim service-account)))
+         (cache-key (if sa (format "%s:%s" tokentype sa) tokentype))
+         (now (float-time))
+         (cache-entry (gethash cache-key dc-cloud--gcloud-token-cache))
          (cache-age (if cache-entry (- now (car cache-entry)) 1.0e+INF)))
     (if (and cache-entry (< cache-age dc-cloud-gcloud-auth-cache-ttl))
         ;; Cache Hit: Return the stored string
         (cdr cache-entry)
       ;; Cache Miss (or expired): Run the expensive shell command
       (let* ((gcloud-pgm "gcloud")
-             (app-default "application-default ")
-             (command-string (format "%s auth %s print-%s-token"
-                                     gcloud-pgm app-default tokentype))
+             (app-default (if sa "" "application-default "))
+             (impersonate (if sa
+                              (format " --impersonate-service-account=%s"
+                                      (shell-quote-argument sa))
+                            ""))
+             (command-string (format "%s auth %sprint-%s-token%s"
+                                     gcloud-pgm app-default tokentype impersonate))
              (output (replace-regexp-in-string "\n$" "" (shell-command-to-string command-string)))
              (lines (split-string output "\n"))
              (token (car (last lines))))
@@ -71,22 +81,24 @@ identity tokens)."
         (when (and (stringp token)
                    (or (string-prefix-p "ya29." token)
                        (string-prefix-p "ey" token))) ;; Check for JWTs too
-          (puthash tokentype (cons now token) dc-cloud--gcloud-token-cache))
+          (puthash cache-key (cons now token) dc-cloud--gcloud-token-cache))
         token))))
 
-(defun dc-cloud/gcloud-auth-print-access-token ()
-  "Return output of $(gcloud auth print-access-token)."
+(defun dc-cloud/gcloud-auth-print-access-token (&optional service-account)
+  "Return output of $(gcloud auth print-access-token).
+If SERVICE-ACCOUNT is provided, impersonate that service account email."
   (interactive)
-  (let ((tok (dc-cloud--gcloud-auth-print-token "access")))
+  (let ((tok (dc-cloud--gcloud-auth-print-token "access" service-account)))
     (when (called-interactively-p 'interactive)
       (kill-new tok)
       (message "%s" tok))
     tok))
 
-(defun dc-cloud/gcloud-auth-print-identity-token ()
-  "Return output of $(gcloud auth print-identity-token)."
+(defun dc-cloud/gcloud-auth-print-identity-token (&optional service-account)
+  "Return output of $(gcloud auth print-identity-token).
+If SERVICE-ACCOUNT is provided, impersonate that service account email."
   (interactive)
-  (let ((tok (dc-cloud--gcloud-auth-print-token "identity")))
+  (let ((tok (dc-cloud--gcloud-auth-print-token "identity" service-account)))
     (when (called-interactively-p 'interactive)
       (kill-new tok)
       (message "%s" tok))
