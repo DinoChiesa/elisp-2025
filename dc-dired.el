@@ -229,20 +229,31 @@ prefix arg, the next N files "
   (with-current-buffer (or buffer-or-string (current-buffer))
     major-mode))
 
+(defun dc-dired--other-visible-dired-buffers ()
+  "Return a list of other visible `dired-mode' buffers in the current frame."
+  (delq nil (mapcar (lambda (w)
+                      (let ((b (window-buffer w)))
+                        (and (not (eq b (current-buffer)))
+                             (eq (dc-dired--mode-for-buffer b) 'dired-mode)
+                             b)))
+                    (window-list))))
+
+(defun dc-dired--other-window-dired-dir (&optional predicate)
+  "If there is a single other visible `dired-mode' buffer, return its `default-directory'
+when PREDICATE (if non-nil) returns non-nil for that directory."
+  (let ((others (dc-dired--other-visible-dired-buffers)))
+    (when (= (length others) 1)
+      (let ((dir (with-current-buffer (car others) default-directory)))
+        (when (or (null predicate) (funcall predicate dir))
+          dir)))))
+
 (defun dc-dired-copy-or-move-other-window (operation)
   "Copy or move the marked files to another directory.
 OPERATION is a symbol, either `COPY' or `MOVE' .
 This works with files or directories."
   (unless (eq major-mode 'dired-mode)
     (error "works only when current-buffer is in dired-mode"))
-  (let ((other-visible-dired-buffers
-         (delq nil (mapcar #'(lambda (w)
-                               (let* ((b (window-buffer w))
-                                      (m (dc-dired--mode-for-buffer b)))
-                                (and (eq m 'dired-mode)
-                                 (not (eq b (current-buffer)))
-                                 b)))
-                           (window-list)))))
+  (let ((other-visible-dired-buffers (dc-dired--other-visible-dired-buffers)))
 
     (unless (= (length other-visible-dired-buffers) 1)
       (error "Can copy only if exactly 2 dired windows are visible"))
@@ -356,13 +367,7 @@ OSes, calls `dired-do-symlink`."
                        (executable-find "powershell")
                        "powershell"))
              (files (dired-get-marked-files nil arg))
-             (other-dired-dir
-              (car (delq nil (mapcar (lambda (w)
-                                       (let ((b (window-buffer w)))
-                                         (when (and (not (eq b (current-buffer)))
-                                                    (with-current-buffer b (eq major-mode 'dired-mode)))
-                                           (with-current-buffer b default-directory))))
-                                     (window-list)))))
+             (other-dired-dir (dc-dired--other-window-dired-dir))
              (target-dir (or other-dired-dir default-directory)))
         (dolist (file files)
           (let* ((file-is-dir (file-directory-p file))
@@ -433,12 +438,46 @@ typing M-n ."
 (defvar dc-dired-local-history nil
   "History list of recent local destination paths (max 5).")
 
+(defun dc-dired--to-scp-arg (path)
+  "Convert PATH (either a local path or a TRAMP path) into an argument for `scp'."
+  (if (file-remote-p path)
+      (let ((user (file-remote-p path 'user))
+            (host (file-remote-p path 'host))
+            (localname (file-remote-p path 'localname)))
+        (format "%s%s:%s"
+                (if user (concat user "@") "")
+                host
+                localname))
+    (expand-file-name path)))
+
+(defun dc-dired--run-scp (src dest-dir)
+  "Run `scp -r -p' synchronously to copy SRC into DEST-DIR, signaling an error on failure."
+  (let ((src-arg (dc-dired--to-scp-arg src))
+        (dest-arg (dc-dired--to-scp-arg dest-dir))
+        ;; `call-process' runs locally and fails if `default-directory' is a
+        ;; remote TRAMP path or does not exist on the local machine.
+        (default-directory (expand-file-name "~/")))
+    (with-temp-buffer
+      (let ((exit-code (call-process "scp" nil t nil "-r" "-p" src-arg dest-arg)))
+        (unless (zerop exit-code)
+          (error "scp failed (exit %d): %s" exit-code (string-trim (buffer-string))))))))
+
 (defun dc-dired--copy-files-to (files prompt base history-var format-path)
   "Copy FILES to a directory read in the minibuffer with PROMPT.
-The default destination is the most recent entry in HISTORY-VAR, else BASE.
+If another visible window is a `dired-mode' buffer on the target side
+\(local when copying from remote, or remote when copying from local\), its
+directory is suggested as the default destination; otherwise the most recent
+entry in HISTORY-VAR, else BASE.
 The destination paths, transformed by FORMAT-PATH, go on the kill ring."
   (let* ((history (symbol-value history-var))
-         (default-dest (or (car history) base))
+         (src-is-remote (file-remote-p default-directory))
+         (other-dired-dir
+          (dc-dired--other-window-dired-dir
+           (lambda (dir)
+             (if src-is-remote
+                 (not (file-remote-p dir))
+               (file-remote-p dir)))))
+         (default-dest (or other-dired-dir (car history) base))
          (target-dir
           (let ((file-name-history history)
                 (default-directory default-dest))
@@ -457,18 +496,21 @@ The destination paths, transformed by FORMAT-PATH, go on the kill ring."
 
     (dolist (file files)
       (let* ((filename (file-name-nondirectory file))
-             (dest (expand-file-name filename expanded-target)))
-        (message "Copying %s to %s..." filename expanded-target)
-        (if (file-directory-p file)
-            ;; copy-directory silently merges into an existing directory, so ask first.
-            (when (or (not (file-exists-p dest))
-                      (y-or-n-p (format "%s exists; merge into it? " dest)))
-              (copy-directory file dest nil t))
-          (copy-file file dest 1)) ;; 1 = ask confirmation if destination exists
-        (push (funcall format-path dest) copied-paths)))
+             (dest (expand-file-name filename expanded-target))
+             (is-dir (file-directory-p file))
+             (confirm-prompt (if is-dir
+                                 (format "%s exists; merge into it? " dest)
+                               (format "File %s already exists; overwrite? " dest))))
+        (when (or (not (file-exists-p dest))
+                  (y-or-n-p confirm-prompt))
+          (message "Copying %s to %s..." filename expanded-target)
+          (dc-dired--run-scp file expanded-target)
+          (message "Copying %s to %s...done" filename expanded-target)
+          (push (funcall format-path dest) copied-paths))))
 
     ;; Copy to kill-ring and system clipboard
-    (kill-new (string-join (nreverse copied-paths) "\n"))))
+    (when copied-paths
+      (kill-new (string-join (nreverse copied-paths) "\n")))))
 
 (defun dc-dired/scp-other-side ()
   "Copy the current file (or marked files) to the other side.

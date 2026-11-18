@@ -202,6 +202,7 @@
 (setq python-shell-interpreter "python") ;; not python3
 (setq-default show-trailing-whitespace t)
 (setq-default fill-column 80)
+(setq tramp-use-connection-share nil) ;; set this before tramp is loaded, to use settings from ~/.ssh/config
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -305,7 +306,11 @@
 (use-package dc-cloud
   :load-path "~/elisp"
   :pin manual
-  :defer t)
+  :commands (dc-cloud/gcloud-auth-print-access-token
+             dc-cloud/gcloud-auth-print-identity-token
+             dc-cloud/copy-value-from-key-into-killring
+             dc-cloud/buganizer-open
+             dc-cloud/create-github-repo))
 
 (use-package dc-xml
   :load-path "~/elisp"
