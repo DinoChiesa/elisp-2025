@@ -214,9 +214,6 @@
  '(region                          ((t (:background "gray19"))))
  '(tooltip                         ((t (:foreground "Navy" :background "khaki1"))))
  '(flycheck-error                  ((t (:background "firebrick4"))))
- '(dictionary-button-button        ((t (:family "Sans Serif"))))
- '(dictionary-button-face          ((t (:background "gray11" :foreground "LightSteelBlue"))))
- '(dictionary-word-definition-face ((t (:family "Sans Serif"))))
  '(font-lock-comment-face          ((t (:foreground "PaleVioletRed3"))))
  '(font-lock-keyword-face          ((t (:foreground "CadetBlue2"))))
  ;;'(font-lock-keyword-face        ((t (:foreground "Cyan1"))))
@@ -580,13 +577,7 @@
 
 ;; 20260704-1538
 ;; This supposedly supplants visible-auto-revert:
-(setq auto-revert-buffer-list-filter #'get-buffer-window)
-;; Optional: Ensure instant refresh when switching back to a Dired buffer
-(defun dino/autorevert-immediately-on-switch-to-dired ()
-  (when (eq major-mode 'dired-mode)
-    (auto-revert-handler)))
-
-(add-hook 'buffer-list-update-hook #'dino/autorevert-immediately-on-switch-to-dired)
+;; (Moved Dired auto-revert setup to dc-dired.el)
 
 ;; 20260704-1540
 ;; Removed in favor of a built-in configuration
@@ -1039,7 +1030,6 @@ eglot, especially with python files."
 
 
 (use-package eglot
-  :defer t
   :demand t
   :commands (eglot eglot-ensure)
   :bind (:map eglot-mode-map
@@ -1049,7 +1039,7 @@ eglot, especially with python files."
          ("C-c e f" . eglot-format)
          ("C-c e s" . eglot-shutdown)
          ("C-c e C-s" . eglot-shutdown-all)
-         ("C-c e r" . eglot-reconnect)
+         ("C-c e C-r" . eglot-reconnect)
          ("C-c e c" . completion-at-point)
          )
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
@@ -1375,7 +1365,7 @@ server program."
 
   (setq flymake-shellcheck-allow-external-files t) ;; pass -x to shellcheck
 
-  (let ((local-map (current-local-map))) ;; one of {python-mode-map, python-ts-mode-map}
+  (let ((local-map (current-local-map))) ;; one of {sh-mode-map, bash-ts-mode-map}
     (when local-map
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
@@ -1652,7 +1642,9 @@ then switch to the markdown output buffer."
 ;; (any suffix), while specifically excluding Dockerfile.zip. The existing rule
 ;; for archive-mode will take precedence.
 (add-to-list 'auto-mode-alist
-             '("\\(?:Dockerfile\\(?:\\.(?!zip\\b)[^./\\]+\\)?\\|\\.[Dd]ockerfile\\)\\'" . dockerfile-ts-mode))
+             '("\\(?:Dockerfile\\(?:\\..*\\)?\\|\\.[Dd]ockerfile\\)\\'" . dockerfile-ts-mode))
+(add-to-list 'auto-mode-alist
+             '("\\.zip\\'" . archive-mode))
 
 
 
@@ -1679,8 +1671,6 @@ then switch to the markdown output buffer."
 ;; fringe (between line numbers and buffer text)
 (setq-default left-fringe-width  10)
 (set-face-attribute 'fringe nil :background "black")
-
-(global-hl-line-mode)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1809,7 +1799,6 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
          ("\\(Iirf\\|iirf\\|IIRF\\)\\(Global\\)?\\.ini\\'"   . iirf-mode)
          ("\\.css\\'"                           . css-ts-mode)
          ("\\.\\(bashrc\\|profile\\|bash_aliases\\|bash_functions\\|bash_logout\\)\\'"  . bash-ts-mode)
-         ("\\.proto\\'"                         . protobuf-mode)
          ("\\.\\(php\\|module\\)\\'"            . php-mode)
          ("\\.md\\'"                            . markdown-mode) ;; fyi: there is a markdown-ts-mode
          ("\\.cs\\'"                            . csharp-ts-mode)
@@ -1821,7 +1810,6 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
          ;;("\\.s?html?\\'"                       . html-mode)
          ("\\.html\\'"                          . html-ts-mode)
          ("\\.htm\\'"                           . html-ts-mode)
-         ("\\.md\\'"                            . markdown-mode)
          ("\\.tf\\'"                            . terraform-mode)
          ("\\.py\\'"                            . python-ts-mode)
          ;;("\\.dart\\'"                          . dart-mode)
@@ -2067,19 +2055,19 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
   :config
   (add-to-list 'auto-mode-alist '("\\.ps1\\'" . powershell-mode))
   (add-to-list 'auto-mode-alist '("\\.psm1\\'" . powershell-mode))
+  (with-eval-after-load 'apheleia
+    ;; The following requires:
+    ;;  Install-Module -Name PSScriptAnalyzer -Force
+    (setf (alist-get 'pwsh-format apheleia-formatters)
+          `("pwsh" "-NoProfile" "-Command"
+            ,(concat "Invoke-Formatter "
+                     "-ScriptDefinition ($input | Out-String) "
+                     "-Settings @{IncludeDefaultRules=$true; "
+                     "Rules=@{PSUseConsistentIndentation=@{Enable=$true; IndentationSize=2}} }")))
+    (setf (alist-get 'powershell-mode apheleia-mode-alist) 'pwsh-format)
+    (setf (alist-get 'powershell-ts-mode apheleia-mode-alist) 'pwsh-format))
   (eval-after-load "hideshow"
     '(progn
-       ;; The following requires:
-       ;;  Install-Module -Name PSScriptAnalyzer -Force
-       (setf (alist-get 'pwsh-format apheleia-formatters)
-        `("pwsh" "-NoProfile" "-Command"
-          ,(concat "Invoke-Formatter "
-            "-ScriptDefinition ($input | Out-String) "
-            "-Settings @{IncludeDefaultRules=$true; "
-            "Rules=@{PSUseConsistentIndentation=@{Enable=$true; IndentationSize=2}} }")))
-       (setf (alist-get 'powershell-mode apheleia-mode-alist) 'pwsh-format)
-       (setf (alist-get 'powershell-ts-mode apheleia-mode-alist) 'pwsh-format)
-
        ;; hideshow for powershell
        (setq dpc-hs-settings-for-powershell-mode
         '(powershell-mode
@@ -2219,7 +2207,8 @@ more information."
   (add-to-list 'treesit-fold-range-alist
                `(html-mode . ,(dpc-treesit-fold-parsers-html))))
 
-(dpc-fixup-treesit-fold-for-html)
+(with-eval-after-load 'treesit-fold
+  (dpc-fixup-treesit-fold-for-html))
 (add-hook 'html-mode-hook 'dino-html-mode-fn)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2496,7 +2485,8 @@ more information."
 (use-package dictionary
   :defer t
   :commands (dictionary-lookup-definition dictionary-search)
-  :config (define-key global-map (kbd "C-c d d") #'dictionary-lookup-definition)
+  :bind (("C-c d d" . dictionary-lookup-definition))
+  :config
   (setq dictionary-use-single-buffer t)
   (setq dictionary-server "dict.org")
   (custom-set-faces
@@ -2608,7 +2598,7 @@ more information."
   ;; C-c C-v chatgpt-shell-swap-model
   :bind (:map  global-map
          ("C-c g !" . chatgpt-shell)
-         ("C-c g l" . chatgpt-shell-google-load-models)
+         ("C-c g m" . chatgpt-shell-google-load-models)
          ("C-c g p" . chatgpt-shell-prompt-compose)
          ("C-c g r" . chatgpt-shell-refactor-code)
          ("C-c g d" . chatgpt-shell-describe-code)
@@ -2693,7 +2683,7 @@ more information."
           ;; 20251011-1613 - patched version of gemini-cli
           (let ((patched-geminicli "c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js"))
             (if (file-exists-p patched-geminicli)
-                '("node" patched-geminicli "--experimental-acp")
+                (list "node" patched-geminicli "--experimental-acp")
               '("gemini" "--experimental-acp"))))
          (t
           ;; There is a gcli bug (#7549) that flushes cached creds when --experimental-acp
@@ -2734,8 +2724,8 @@ more information."
 ;; auto-insert - 20241206-0142
 ;;
 (use-package autoinsert
-  :defer t
   :config
+  (require 'auto-insert-plus)
   (auto-insert-mode 1);; global minor mode
   (setq auto-insert-query nil) ;; no prompt before auto-insertion
   (setq auto-insert-directory "~/elisp/auto-insert-content")
@@ -2779,11 +2769,6 @@ more information."
            ("\\.org$"                     .  "Template.org" )
            ) )))
 
-(use-package auto-insert-plus
-  :after (autoinsert)
-  :load-path "~/elisp"
-  :ensure nil)
-
 ;; xenodium's winpulse for pulsed visual indication of the active window
 (use-package winpulse
   :ensure t
@@ -2804,7 +2789,7 @@ more information."
           ( "C-c C-c" . dc-dired/copy-file-to-dir-in-other-window)
           ( "C-c C-m" . dc-dired/move-file-to-dir-in-other-window)
           ( "C-c s"   . dc-dired/scp-other-side)
-          ( "C-k"     . dc-sys/dired-copy-filename)
+          ( "C-k"     . dc-dired/copy-filename)
           ;;( "C-c C-s" . g4-status-or-magit)
           ;;( "C-x m" . magit-status)
           ;; converse of i (dired-maybe-insert-subdir)
@@ -2922,7 +2907,6 @@ just auto-corrects on common mis-spellings by me."
   (dino-define-global-abbrev-table)
   (display-line-numbers-mode)
   (define-key text-mode-map (kbd "C-c C-c")    #'center-paragraph)
-  (define-key text-mode-map (kbd "C-c i")      #'dc-edit/indent-line-to-current-column)
   (define-key text-mode-map (kbd "C-<insert>") #'uniline-mode)
   (define-key text-mode-map (kbd "C-c m d")    #'delete-trailing-whitespace)
   ;;(variable-pitch-mode)
@@ -2943,7 +2927,7 @@ just auto-corrects on common mis-spellings by me."
    (window-system
 
     ;; RETURN means newline-and-indent in any c-mode buffer
-    (local-set-key (kbd "RET") 'newline-and-indent)
+    (keymap-local-set "RET" #'newline-and-indent)
 
     ;; for re-tabbing a region or buffer of code:
     (keymap-local-set "ESC C-R"  #'indent-region)
@@ -2996,8 +2980,8 @@ just auto-corrects on common mis-spellings by me."
          (set (make-local-variable 'comment-start) "// ")
          (set (make-local-variable 'comment-end) "")
 
-         (local-set-key (kbd "\"") 'skeleton-pair-insert-maybe) ;; why?
-         (local-set-key (kbd "{") 'skeleton-pair-insert-maybe) ;; why?
+         (keymap-local-set "\"" #'skeleton-pair-insert-maybe) ;; why?
+         (keymap-local-set "{"  #'skeleton-pair-insert-maybe) ;; why?
          (set (make-local-variable 'skeleton-pair) t)
 
          ;; allow fill-paragraph to work on xml code doc
@@ -3026,60 +3010,10 @@ just auto-corrects on common mis-spellings by me."
 
 (fset 'dino-end-c-comment   " */")
 
+;; With point right after a closing `}', copy the block header from the
+;; matching `{' line and append it as a trailing `// ...' comment after `}'.
 (fset 'dino-end-block-comment
       [escape ?\C-b escape ?  ?\C-a ?\C-w ?\C-y escape ?\C-f ?  ?/ ?/ ?  ?\C-y ?\C-x ?\C-x ?\C-c ?1])
-
-
-(defun dino-c-get-value-from-comments (marker-string line-limit)
-  "gets a string from the header comments in the current buffer.
-
-This is used to extract the compile command from the comments. It
-could be used for other purposes too.
-
-It looks for \"marker-string:\" and returns the string that
-follows it, or returns nil if that string is not found.
-
-eg, when marker-string is \"compile\", and the following
-string is found at the top of the buffer:
-
-compile: cl.exe /I uthash
-
-...then this command will return the string
-
-\"cl.exe /I uthash\"
-
-It's ok to have whitespace between the marker and the following
-colon."
-  (let (start search-limit)
-    ;; determine what lines to look in
-    (save-excursion
-      (save-restriction
-        (widen)
-        (cond ((> line-limit 0)
-               (goto-char (setq start (point-min)))
-               (forward-line line-limit)
-               (setq search-limit (point)))
-              ((< line-limit 0)
-               (goto-char (setq search-limit (point-max)))
-               (forward-line line-limit)
-               (setq start (point)))
-              (t                        ;0 => no limit (use with care!)
-               (setq start (point-min))
-               (setq search-limit (point-max))))))
-
-    ;; look in those lines
-    (save-excursion
-      (save-restriction
-        (widen)
-        (let ((re-string
-               (concat "\\b" marker-string "[ \t]*:[ \t]*\\(.+\\)$")))
-          (if (and start
-                   (< (goto-char start) search-limit)
-                   (re-search-forward re-string search-limit 'move))
-
-              (buffer-substring-no-properties
-               (match-beginning 1)
-               (match-end 1))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -3200,16 +3134,16 @@ colon."
          (set (make-local-variable 'skeleton-pair) t)
          (setq comment-empty-lines t)
 
-         (local-set-key (kbd "(") #'skeleton-pair-insert-maybe)
-         (local-set-key (kbd "[") #'skeleton-pair-insert-maybe)
+         (keymap-local-set "("  #'skeleton-pair-insert-maybe)
+         (keymap-local-set "["  #'skeleton-pair-insert-maybe)
          ;;(local-set-key (kbd "\"") 'skeleton-pair-insert-maybe)
 
          ;; these allow typeover of matching brackets
-         (local-set-key (kbd "\"") #'dc-edit/skeleton-pair-end)
-         (local-set-key (kbd ")") #'dc-edit/skeleton-pair-end)
-         (local-set-key (kbd "]") #'dc-edit/skeleton-pair-end)
+         (keymap-local-set "\"" #'dc-edit/skeleton-pair-end)
+         (keymap-local-set ")"  #'dc-edit/skeleton-pair-end)
+         (keymap-local-set "]"  #'dc-edit/skeleton-pair-end)
 
-         (local-set-key (kbd "{") 'skeleton-pair-insert-maybe)
+         (keymap-local-set "{"  #'skeleton-pair-insert-maybe)
          ;;(local-set-key (kbd "{") 'dino-insert-open-brace)
 
          (require 'yasnippet)
@@ -3256,11 +3190,8 @@ colon."
   :when (not (dino-is-work-system))
   :ensure t
   :defer t
+  :mode "\\.proto\\'"
   :config
-  (setq auto-mode-alist
-        (append
-         '(("\\.proto\\'"                         . protobuf-mode))
-         auto-mode-alist ))
   (defconst my-protobuf-style
     '((c-basic-offset . 2)
       (indent-tabs-mode . nil)))
@@ -3496,25 +3427,15 @@ colon."
 
 
 ;; more for hideshow.el
-(unless (assoc 'csharp-ts-mode hs-special-modes-alist)
-  (push '(csharp-ts-mode
-
-          ;; "\\(^\\s*#\\s*region\\b\\)\\|{"       ; regexp for start block
-          "\\(^[ \\t]*#[ \\t]*region\\b\\)\\|{"    ; regexp for start block
-
-
-          ;; "\\(^\\s*#\\s*endregion\\b\\)\\|}"    ; regexp for end block
-          "\\(^[ \\t]*#[ \\t]*endregion\\b\\)\\|}" ; regexp for end block
-
-
-          "/[*/]"                                  ; regexp for comment start
-
-          csharp-hs-forward-sexp                   ; hs-forward-sexp-func
-
-          ;;csharp-hs-adjust-block-beginning       ; csharp adjust ?
-          hs-c-like-adjust-block-beginning         ; c-like adjust (1 char)
-          )
-        hs-special-modes-alist))
+(with-eval-after-load 'hideshow
+  (unless (assoc 'csharp-ts-mode hs-special-modes-alist)
+    (push '(csharp-ts-mode
+            "{"
+            "}"
+            "/[*/]"
+            forward-sexp
+            hs-c-like-adjust-block-beginning)
+          hs-special-modes-alist)))
 
 
 
@@ -3531,29 +3452,29 @@ colon."
          (keymap-local-set "ESC #"    #'dc-edit/indent-buffer)
          (keymap-local-set "C-c C-w"  #'compare-windows)
 
-         (local-set-key "\C-c\C-y"  'csharp-show-syntax-table-prop)
-         (local-set-key "\C-c\C-h"  'csharp-show-parse-state)
+         (keymap-local-set "C-c C-y" #'csharp-show-syntax-table-prop)
+         (keymap-local-set "C-c C-h" #'csharp-show-parse-state)
 
-         (local-set-key (kbd "C-<") 'csharp-move-back-to-beginning-of-defun)
-         (local-set-key (kbd "C->") 'csharp-move-fwd-to-end-of-defun)
+         (keymap-local-set "C-<"   #'csharp-move-back-to-beginning-of-defun)
+         (keymap-local-set "C->"   #'csharp-move-fwd-to-end-of-defun)
 
          ;; 20241228-2146 - this worked at one point. Not sure if still works.
-         (local-set-key (kbd "C-M-\<") 'csharp-move-back-to-beginning-of-class)
-         (local-set-key (kbd "C-M-\>") 'csharp-move-fwd-to-end-of-class)
+         (keymap-local-set "C-M-<" #'csharp-move-back-to-beginning-of-class)
+         (keymap-local-set "C-M->" #'csharp-move-fwd-to-end-of-class)
 
          ;; TODO: consider relying on electric-pair
-         (local-set-key (kbd "<") 'skeleton-pair-insert-maybe)
-         (local-set-key (kbd "(") 'skeleton-pair-insert-maybe)
-         (local-set-key (kbd "[") 'skeleton-pair-insert-maybe)
+         (keymap-local-set "<" #'skeleton-pair-insert-maybe)
+         (keymap-local-set "(" #'skeleton-pair-insert-maybe)
+         (keymap-local-set "[" #'skeleton-pair-insert-maybe)
 
          ;; insert a pair of quotes
-         (local-set-key (kbd "\"") #'dc-edit/insert-paired-quotes)
-         (local-set-key (kbd "'") #'dc-edit/insert-paired-quotes)
+         (keymap-local-set "\"" #'dc-edit/insert-paired-quotes)
+         (keymap-local-set "'"  #'dc-edit/insert-paired-quotes)
 
          ;; these allow typeover of matching brackets
-         (local-set-key (kbd ">") #'dc-edit/skeleton-pair-end)
-         (local-set-key (kbd ")") #'dc-edit/skeleton-pair-end)
-         (local-set-key (kbd "]") #'dc-edit/skeleton-pair-end)
+         (keymap-local-set ">" #'dc-edit/skeleton-pair-end)
+         (keymap-local-set ")" #'dc-edit/skeleton-pair-end)
+         (keymap-local-set "]" #'dc-edit/skeleton-pair-end)
 
          ;;(local-set-key (kbd "{") 'skeleton-pair-insert-maybe)
 
@@ -3604,33 +3525,11 @@ colon."
          ;; ;;(setq ac-auto-start 2)  ;;or 3?
          ;;(local-set-key "\M-\\"   'ac-complete-csharp)
 
-         (local-set-key "\M-\\"   'cscomp-complete-at-point)
+         (keymap-local-set "M-\\" #'cscomp-complete-at-point)
          ;;(local-set-key "\M-\\"   'cscomp-complete-at-point-menu)
-         (local-set-key "\M-\."   'cscomp-complete-at-point-menu)
+         (keymap-local-set "M-."  #'cscomp-complete-at-point-menu)
          (message "dino-csharp-mode-fn: done.")
          )))
-
-(eval-after-load "csharp-mode"
-  '(progn
-     (require 'compile)
-     (add-hook 'csharp-mode-hook 'dino-csharp-mode-fn 0 t)
-
-     ;; 20250126-1013 - adjustments for indentation.
-     ;; Discover these with treesit-explore-mode .
-     ;; This one is for the open curly for the using statement.
-     ;; (The using _directive_ (for import at top of file) is different.)
-     (setf (cdr (car csharp-ts-mode--indent-rules))
-      (cons
-       '((parent-is "using_statement") parent-bol 0)
-       (cdr (car csharp-ts-mode--indent-rules))))
-     ;; This rule is for the opening curly brace on anonymous lambdas, when the
-     ;; open curly is on a new line.
-     (setf (cdr (car csharp-ts-mode--indent-rules))
-      (cons
-       '((parent-is "lambda_expression") parent-bol 0)
-       (cdr (car csharp-ts-mode--indent-rules))))
-     (setq-local treesit-simple-indent-rules csharp-ts-mode--indent-rules)
-     ))
 
 (defun dino-csharpier-buffer ()
   "run csharpier on the current buffer."
@@ -3639,17 +3538,9 @@ colon."
          (if (eq system-type 'windows-nt)
              "dotnet csharpier --write-stdout"
            "dotnet-csharpier"))
-        (orig-point (point))
-        (output-goes-to-current-buffer t)
-        (output-replaces-current-content t))
-
+        (orig-point (point)))
     (message "dino-csharpier-buffer command: %s" command)
-    (save-excursion
-      (shell-command-on-region (point-min)
-                               (point-max)
-                               command
-                               output-goes-to-current-buffer
-                               output-replaces-current-content))
+    (dc-edit/shell-command-on-buffer command)
     (goto-char orig-point)))
 
 
@@ -3676,9 +3567,9 @@ colon."
   (keymap-local-set "C-x C-e"  #'compile)
 
   (require 'dccsharp)
-  (keymap-local-set "C-c i"    #'dccsharp-auto-add-using)
+  (keymap-local-set "C-c C-i"  #'dccsharp/auto-add-using)
   (keymap-local-set "C-c e"    #'eglot-code-actions)
-  (keymap-local-set "C-c C-s"  #'dccsharp-sort-using-statements)
+  (keymap-local-set "C-c C-s"  #'dccsharp/sort-using-statements)
 
   ;; 20241229-1756
   (electric-pair-local-mode 1)
@@ -3718,7 +3609,23 @@ colon."
 (eval-after-load "csharp-mode"
   '(progn
      (require 'compile)
-     (add-hook 'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn 0 t)
+     (add-hook 'csharp-mode-hook 'dino-csharp-mode-fn)
+     (add-hook 'csharp-ts-mode-hook 'dino-csharp-ts-mode-fn)
+
+     ;; 20250126-1013 - adjustments for indentation.
+     ;; Discover these with treesit-explore-mode .
+     ;; This one is for the open curly for the using statement.
+     ;; (The using _directive_ (for import at top of file) is different.)
+     (setf (cdr (car csharp-ts-mode--indent-rules))
+      (cons
+       '((parent-is "using_statement") parent-bol 0)
+       (cdr (car csharp-ts-mode--indent-rules))))
+     ;; This rule is for the opening curly brace on anonymous lambdas, when the
+     ;; open curly is on a new line.
+     (setf (cdr (car csharp-ts-mode--indent-rules))
+      (cons
+       '((parent-is "lambda_expression") parent-bol 0)
+       (cdr (car csharp-ts-mode--indent-rules))))
      ;; 20250223-1328 - this may not be necessary in emacs 30.1; bears further testing.
      ;; (if (fboundp 'apheleia-mode)
      ;;     (add-hook 'apheleia-post-format-hook #'dino-maybe-eglot-reconnect))
@@ -4010,7 +3917,7 @@ Does not consider word syntax tables.
   (keymap-local-set "C-<"     #'nxml-backward-element)
   (keymap-local-set "C->"     #'nxml-forward-element)
   (keymap-local-set "C-c C-c" #'dc-xml/comment-region)
-  (keymap-local-set "C-c C-f" #'fix-dependency-xml-formatting)
+  ;; (keymap-local-set "C-c C-f" #'fix-dependency-xml-formatting)
 
   (setq nxml-sexp-element-flag t
         nxml-child-indent 2
@@ -4104,7 +4011,7 @@ Does not consider word syntax tables.
 ;;
 
 (defun dino-elisp-mode-fn ()
-  (local-set-key "\r"          #'newline-and-indent)
+  (keymap-local-set "RET"      #'newline-and-indent)
   (keymap-local-set "C-c C-c"  #'comment-region)
   (keymap-local-set "ESC C-R"  #'indent-region)
   (keymap-local-set "C-c e"    #'eval-buffer)
@@ -4121,10 +4028,11 @@ Does not consider word syntax tables.
   (flycheck-mode)
   (setq flycheck-emacs-lisp-load-path 'inherit) ;;flycheck should use my load path
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t)
-  (require 'elisp-fix-indent)
-  (advice-add #'calculate-lisp-indent :override #'efi/calculate-lisp-indent)
   ;;(advice-remove 'calculate-lisp-indent #'efi~calculate-lisp-indent)
   )
+
+(require 'elisp-fix-indent)
+(advice-add #'calculate-lisp-indent :override #'efi/calculate-lisp-indent)
 
 
 ;; add (emacs-lisp-mode . lisp-indent) to apheleia-mode-alist
@@ -4146,12 +4054,11 @@ Does not consider word syntax tables.
   :hook (sh-mode . flymake-shellcheck-load))
 
 (use-package ibuffer-preview
-  :if (and (file-exists-p "~/elisp/ibuffer-preview.el")
-           (boundp 'ibuffer-mode-hook) )
+  :if (file-exists-p "~/elisp/ibuffer-preview.el")
+  :after ibuffer
   :load-path "~/elisp"
-  :config (defun ibpm-set-map()
-            (keymap-set ibuffer-mode-map "v" #'ibuffer-preview-mode))
-  (add-hook 'ibuffer-mode-hook #'ibpm-set-map))
+  :config
+  (keymap-set ibuffer-mode-map "v" #'ibuffer-preview-mode))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -4176,7 +4083,6 @@ Does not consider word syntax tables.
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("ESC C-R" . indent-region) ;; not sure if useful in python
               ("M-TAB"   . completion-at-point)
-              ("C-c i"   .  dc-edit/indent-line-to-current-column)
               ("ESC #"   . dc-edit/indent-buffer)
               ("C-c ! l" . dino/toggle-flymake-diagnostics)
               ("C-c p f" . dc-pe/format) ;; should be unnecessary with apheleia
@@ -4647,7 +4553,7 @@ counteracts that. "
 
 (when (boundp 'apheleia-formatters)
   (require 'dcjava)
-  (let ((gformat-command (dcjava-gformat-command
+  (let ((gformat-command (dcjava/gformat-command
                           (concat (getenv "HOME") "/bin"))))
     (if gformat-command
         ;; change the existing google-java-format in the builtin apheleia-formatters
@@ -4689,21 +4595,19 @@ counteracts that. "
       (mapc (lambda (binding)
               (define-key local-map (kbd (car binding)) (cdr binding)))
             '(("M-TAB"     . completion-at-point)
-              ("C-c p"     . dcjava-insert-inferred-package-name)
-              ("C-c i"     . dcjava-auto-add-import)
-              ("C-c C-i"   . dcjava-auto-add-import)
-              ("C-c C-l"   . dcjava-learn-new-import)
-              ("C-c i"     . dc-edit/indent-line-to-current-column)
-              ("C-c C-f"   . dcjava-find-wacapps-java-source-for-class-at-point)
-              ("C-c C-r"   . dcjava-reload-classlist)
+              ("C-c p"     . dcjava/insert-inferred-package-name)
+              ("C-c C-i"   . dcjava/auto-add-import)
+              ("C-c C-l"   . dcjava/learn-new-import)
+              ("C-c C-f"   . dcjava/find-wacapps-java-source-for-class-at-point)
+              ("C-c C-r"   . dcjava/reload-classlist)
               ("ESC #"     . dc-edit/indent-buffer)
               ("C-c ! l"   . dino/toggle-flymake-diagnostics)
               ("ESC C-R"   . indent-region)
-              ;;("C-c C-s" . dcjava-sort-import-statements) ;; obsolete with gformat+apheleia
+              ;;("C-c C-s" . dcjava/sort-import-statements) ;; obsolete with gformat+apheleia
               ("C-c C-c"   . comment-region)
               ("C-c C-s"   . magit-status)
-              ("C-c C-t"   . dcjava-apiplatform-swap-tree)
-              ("C-c C-g f" . dcjava-gformat-buffer) ;; not C-c C-g ? also, unnecessary with apheleia
+              ("C-c C-t"   . dcjava/apiplatform-swap-tree)
+              ("C-c C-g f" . dcjava/gformat-buffer) ;; not C-c C-g ? also, unnecessary with apheleia
               ))))
 
   (eval-after-load "smarter-compile"
@@ -4794,7 +4698,7 @@ counteracts that. "
 (use-package salted
   :defer t
   :load-path "~/elisp"
-  :commands (salted-encrypt-buffer-to-new-file salted-file-mode)
+  :commands (salted-save-buffer-to-new-encrypted-file salted-file-mode)
   :config
   (setq salted--salt-file-utility
         (dc-paths/find-executable-in-paths
@@ -5325,7 +5229,7 @@ Enable `recentf-mode' if it isn't already."
 (define-key global-map (kbd "C-x o")       #'other-window)
 (define-key global-map (kbd "C-c w")       #'where-is)
 (define-key global-map (kbd "C-c C-w")     #'compare-windows)
-(define-key global-map (kbd "C-c C-y")     #'dcjava-wacapps-intelligently-open-file)
+(define-key global-map (kbd "C-c C-y")     #'dcjava/wacapps-intelligently-open-file)
 (define-key global-map (kbd "C-c ~")       #'dc-edit/revert-buffer-unconditionally)
 (define-key global-map (kbd "C-x ~")       #'dc-edit/toggle-buffer-modified)
 (define-key global-map (kbd "C-x C-g")     #'auto-fill-mode)
@@ -5349,6 +5253,7 @@ Enable `recentf-mode' if it isn't already."
 ;;(define-key global-map (kbd "C-c j m")     #'json-minify-region)
 (define-key global-map (kbd "C-x c")     #'multiple-cursors-mode)
 (define-key global-map (kbd "<f2> SPC")    #'bm-toggle)
+(define-key global-map (kbd "C-c i")       #'dc-edit/indent-line-to-current-column)
 
 (define-key prog-mode-map (kbd "C-c g d")  #'chatgpt-shell-describe-code)
 (define-key prog-mode-map (kbd "C-c C-c")  #'comment-region)

@@ -1,4 +1,4 @@
-;;; csharp-ts-mode-navigation.el --- define some helpers for navigating in csharp-ts-mode
+;;; csharp-ts-mode-navigation.el --- define some helpers for navigating in csharp-ts-mode -*- coding: utf-8; lexical-binding: t; -*-
 ;;
 ;; Author: Dino Chiesa
 ;; Created: Sunday, 29 December 2024, 00:34

@@ -35,8 +35,7 @@
           (buffer-substring beg (point))))))
 
 (defun dino-netrc-parse-group ()
-  (let ((start (point))
-        (end (save-excursion
+  (let ((end (save-excursion
                (if (looking-at "machine\\>")
                    ;; Skip `machine' and the machine name that follows.
                    (progn
@@ -50,12 +49,10 @@
                (if (re-search-forward "machine\\>\\|default\\>" nil t)
                    (match-beginning 0)
                  (point-max))))
-        machine login password account
-        tuple)
+        machine login password)
     (setq machine  (dino-netrc-parse-token "machine"  end)
           login    (dino-netrc-parse-token "login"    end)
-          password (dino-netrc-parse-token "password" end)
-          account  (dino-netrc-parse-token "account"  end))
+          password (dino-netrc-parse-token "password" end))
     (goto-char end)
     (and
      machine login
@@ -97,7 +94,7 @@
       (skip-chars-forward " \t\r\n")
       (while (not (eobp))
         (and (setq element (dino-netrc-parse-group))
-             (add-to-list 'parse-alist element)))
+             (push element parse-alist)))
       (kill-buffer (current-buffer)))
     parse-alist))
 
@@ -126,16 +123,16 @@ or
            (concat username ":" password))))
 
 (defun dino-netrc-basic-auth-creds (machine-name)
-  "retrieve a (USERNAME . PASSWORD) from .netrc for the given MACHINE-NAME.
+  "Retrieve a (USERNAME PASSWORD) list from .netrc for MACHINE-NAME.
 
 A typical use might be:
-  (dino-netrc-basic-auth \"api.enterprise.apigee.com\")
+  (dino-netrc-basic-auth-creds \"api.enterprise.apigee.com\")
 "
   (cdr (dino-netrc-find machine-name)))
 
 
 (defun dino-netrc-find (machine)
-  "parse .netrc for the given machine, return cons of (username . login)"
+  "Parse .netrc for MACHINE and return a list of (MACHINE LOGIN PASSWORD)."
   (let ((tuples (dino-netrc-parse)))
     (assoc machine tuples)))
 

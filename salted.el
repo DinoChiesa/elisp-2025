@@ -29,7 +29,7 @@
 ;; or:
 ;;    (use-package salted
 ;;      :defer t
-;;      :commands (salted-encrypt-buffer-to-new-file salted-file-mode)
+;;      :commands (salted-save-buffer-to-new-encrypted-file salted-file-mode)
 ;;      :config
 ;;      (setq salted--salt-file-utility
 ;;            (executable-find

@@ -1,4 +1,4 @@
-;;; dc-sys.el --- System, Dired, Package Management, and Calendar utilities   -*- coding: utf-8; lexical-binding: t; -*-
+;;; dc-sys.el --- System, Package Management, and Calendar utilities   -*- coding: utf-8; lexical-binding: t; -*-
 
 ;; Author: Dino Chiesa
 ;; Created: Wed, 17 Jul 2013
@@ -7,7 +7,7 @@
 
 ;;; Commentary:
 
-;; System management, dired enhancements, package cleanup, window title, and calendar display.
+;; System management, package cleanup, window title, and calendar display.
 
 ;;; Code:
 
@@ -15,13 +15,8 @@
 (require 'cl-lib)
 (require 'ansi-color)
 (require 'package nil t)
-(require 'dired nil t)
 
 (defvar view-mode-map)
-(declare-function dired-move-to-filename "dired" (&optional raise-error eol))
-(declare-function dired-move-to-end-of-filename "dired" (&optional no-error))
-(declare-function dired-get-marked-files "dired" (&optional localp arg filter dist error))
-(declare-function dired-current-directory "dired" (&optional localp))
 (declare-function package--removable-packages "package" ())
 
 (defun dc-sys/toggle-frame-split ()
@@ -42,51 +37,6 @@ This works only when the frame is split into exactly two windows."
   (interactive)
   (set-frame-height (selected-frame) 68)
   (set-frame-width (selected-frame) 128))
-
-(defun dc-sys/dired-copy-filename (&optional arg)
-  "Copy filename or portion of filename into the kill ring.
-If the buffer is writable (e.g. WDired), acts as standard `kill-line'.
-If point is past the first character of the filename on the current line,
-copies only the remainder of the filename from point.
-Otherwise, copies the full basename (or marked files).
-With prefix (C-u), copies the fully-qualified path."
-  (interactive "P")
-  (if (or (not buffer-read-only)
-          (not (derived-mode-p 'dired-mode)))
-      (call-interactively #'kill-line)
-    (let* ((pt (point))
-           (file-beg (save-excursion (dired-move-to-filename)))
-           (file-end (save-excursion (when file-beg (dired-move-to-end-of-filename t)))))
-      (cond
-       ;; With prefix: copy full path (or marked files)
-       (arg
-        (let* ((paths (dired-get-marked-files nil))
-               (str (mapconcat #'identity paths " ")))
-          (kill-new str)
-          (message "%s" str)))
-
-       ;; Point is past the first character of the filename: copy remainder
-       ((and file-beg file-end (> pt file-beg) (<= pt file-end))
-        (let ((remainder (buffer-substring-no-properties pt file-end)))
-          (kill-new remainder)
-          (message "%s" remainder)))
-
-       ;; Point is at or before the first character: copy full basename(s)
-       (file-beg
-        (let* ((paths (dired-get-marked-files nil))
-               (basenames (mapcar #'file-name-nondirectory paths))
-               (str (mapconcat #'identity basenames " ")))
-          (kill-new str)
-          (message "%s" str)))
-
-       ;; Fallback on non-file lines (e.g. directory header line)
-       (t
-        (let ((dir (dired-current-directory)))
-          (if dir
-              (let ((name (file-name-nondirectory (directory-file-name dir))))
-                (kill-new name)
-                (message "%s" name))
-            (message "No file on this line"))))))))
 
 (defun dc-sys/fetch-latest (path &optional match)
   "Return the latest file in directory PATH, optionally matching regex MATCH."

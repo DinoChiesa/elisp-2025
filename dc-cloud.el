@@ -197,8 +197,6 @@ prompt for the directory. Otherwise, use the current `magit-toplevel`."
             (message "Successfully created and linked GitHub repo: %s/%s" user repo-name))
         (error (message "GitHub API Error: %s" (error-message-string err)))))))
 
-;; Backward compatibility aliases
-
 (provide 'dc-cloud)
 
 ;;; dc-cloud.el ends here

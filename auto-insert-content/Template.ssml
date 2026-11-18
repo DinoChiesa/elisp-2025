@@ -13,7 +13,7 @@
   <voice name='Anna' gender='female' age='32'>
     <p>
       <s>
-        @@DOT@@
+        @DOT@
       </s>
       <s>
         Hello.

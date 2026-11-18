@@ -1,4 +1,4 @@
-;;; dpc-jsonnet-mode-fixups.el --- some changes for jsonnet-mode
+;;; dpc-jsonnet-mode-fixups.el --- some changes for jsonnet-mode -*- coding: utf-8; lexical-binding: t; -*-
 ;;
 ;; Author: Dino Chiesa
 ;; Created: Wednesday,  1 January 2025, 02:49

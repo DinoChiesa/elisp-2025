@@ -51,7 +51,10 @@ ibuffer-preview-mode."
 
   (if ibuffer-preview-mode
       (when (eq major-mode 'ibuffer-mode)
-        (ibpm/setup-ibuffer))))
+        (ibpm/setup-ibuffer))
+    (when (eq major-mode 'ibuffer-mode)
+      (kill-local-variable 'display-buffer-alist)
+      (remove-hook 'post-command-hook #'ibpm/preview-buffer t))))
 
 (defun ibpm/preview-buffer ()
   "fn to attach to post-command-hook in ibuffer-mode.

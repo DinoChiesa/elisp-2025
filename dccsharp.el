@@ -19,11 +19,11 @@
 ;;
 ;; This module adds a few extra things to that basic set up:
 ;;
-;;  - `dccsharp-auto-add-using' adds a using statement to the current
-;;    file, if necessary, based on the short name of the class under
-;;    point. When using "IHttpClientFactory", the module will add a using
-;;    System.Net.Http.  TODO: If there are multiple classes by the given name,
-;;    the user will geta popup choice.
+;;  - `dccsharp/auto-add-using' adds a `using' directive for the symbol
+;;    at point via Eglot code actions (`eglot-code-actions').
+;;
+;;  - `dccsharp/sort-using-statements' sorts the `using' directives in
+;;    the current C# buffer.
 ;;
 
 ;;; License
@@ -115,7 +115,7 @@ Sorts alphabetically, but places comments and empty lines at the end."
     (delete-region beg end)
     (insert sorted-text)))
 
-(defun dccsharp-sort-using-statements ()
+(defun dccsharp/sort-using-statements ()
   "sorts the using statements in a file. This is sort-of not
 super useful, as csharpier includes this function implicitly,
 and apheleia-mode runs csharpier on save."
@@ -153,7 +153,7 @@ and apheleia-mode runs csharpier on save."
       (if (looking-at dccsharp--class-or-ns-regex)
           (list (match-beginning 0) (match-end 0))))))
 
-(defun dccsharp-auto-add-using ()
+(defun dccsharp/auto-add-using ()
   "Adds a using statement for the class or interface at point, if possible.
 Uses eglot and LSP to find the right action."
   (interactive)

@@ -47,7 +47,7 @@
 (defvar rego-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c C-b") 'rego-repl-show)
-    (define-key map (kbd "C-c C-f") 'rego-format-buffer)
+    ;; (define-key map (kbd "C-c C-f") 'rego-format-buffer)
     map)
   "Keymap for using `rego-mode'.")
 

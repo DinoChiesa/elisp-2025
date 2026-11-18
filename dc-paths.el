@@ -138,11 +138,10 @@ Prefers the Git usr/bin directory and the ~/bin directory."
      (dc-paths/filename-if-exists (concat (getenv "HOME") "\\AppData\\Roaming\\nvm"))))
    (t
     (or
-     (and (getenv "NVM_DIR")
-          (concat (getenv "NVM_DIR") "/versions/node"))
+     (dc-paths/filename-if-exists (getenv "NVM_DIR"))
      (and (getenv "HOME")
-          (dc-paths/filename-if-exists
-           (concat (getenv "HOME") "/.config/nvm/versions/node")))))))
+          (or (dc-paths/filename-if-exists (concat (getenv "HOME") "/.config/nvm"))
+              (dc-paths/filename-if-exists (concat (getenv "HOME") "/.nvm"))))))))
 
 (defun dc-paths/find-nvm-bin-dir ()
   "Find the NVM-managed nodejs bin directory by respecting default or active version.
@@ -156,22 +155,27 @@ Works on Windows (nvm4w) and Linux (nvm)."
             (file-name-as-directory (expand-file-name symlink-path))
           (message "NVM symlink not found at %s" symlink-path)
           nil)))
-     (t
-      (let ((default-alias (expand-file-name "alias/default" nvm-dir)))
-        (if (file-exists-p default-alias)
-            (let* ((version (with-temp-buffer
-                              (insert-file-contents default-alias)
-                              (string-trim (buffer-string))))
-                   (bin-path (expand-file-name
-                              (concat "versions/node/" version "/bin")
-                              nvm-dir)))
-              (if (file-exists-p bin-path)
-                  (file-name-as-directory bin-path)
-                nil))
-          (let ((current-path (expand-file-name "current/bin" nvm-dir)))
-            (if (file-exists-p current-path)
-                (file-name-as-directory current-path)
-              nil))))))))
+     (nvm-dir
+      (let* ((default-alias (expand-file-name "alias/default" nvm-dir))
+             (nodes-dir (expand-file-name "versions/node" nvm-dir))
+             (alias-ver (when (file-exists-p default-alias)
+                          (with-temp-buffer
+                            (insert-file-contents default-alias)
+                            (string-trim (buffer-string)))))
+             (ver-prefix (and alias-ver (string-remove-prefix "v" alias-ver)))
+             (matched-dir
+              (when (and ver-prefix (file-directory-p nodes-dir))
+                (car (last (directory-files
+                            nodes-dir t
+                            (concat "\\`v?" (regexp-quote ver-prefix) "\\(?:\\.\\|\\'\\)"))))))
+             (bin-path (and matched-dir (expand-file-name "bin" matched-dir)))
+             (current-path (expand-file-name "current/bin" nvm-dir)))
+        (cond
+         ((and bin-path (file-exists-p bin-path))
+          (file-name-as-directory bin-path))
+         ((file-exists-p current-path)
+          (file-name-as-directory current-path))
+         (t nil)))))))
 
 (defun dc-paths/fixup-dirs-for-exec-path (paths-file)
   "Read lines from PATHS-FILE and resolve them for inclusion in `exec-path'."
@@ -207,6 +211,7 @@ to `exec-path' and PATH environment variable, if the directory exists."
           (normalized-all-exec-paths (make-hash-table :test 'equal))
           (normalized-all-env-paths (make-hash-table :test 'equal)))
 
+      ;; Seed the counters with the number of duplicate entries removed during normalization.
       (setq exec-path-added-count (- exec-path-start-length (length initial-exec-path)))
       (setq path-env-added-count (- path-env-start-length (length initial-envvar-entries)))
 
@@ -247,11 +252,11 @@ to `exec-path' and PATH environment variable, if the directory exists."
 (defun dc-paths/setup-shmode-for-apheleia ()
   "Ensure shfmt is configured in `apheleia-formatters' and mode alists."
   (when (boundp 'apheleia-formatters)
-    (if-let* ((shfmt-cmd "~/go/bin/shfmt")
-              (_ (file-exists-p shfmt-cmd))
-              (cmd-string (car (alist-get 'shfmt apheleia-formatters))))
-        (unless (string= cmd-string shfmt-cmd)
-          (setcar (alist-get 'shfmt apheleia-formatters) shfmt-cmd))
+    (when-let* ((shfmt-cmd "~/go/bin/shfmt")
+                (_ (file-exists-p shfmt-cmd))
+                (cmd-string (car (alist-get 'shfmt apheleia-formatters))))
+      (unless (string= cmd-string shfmt-cmd)
+        (setcar (alist-get 'shfmt apheleia-formatters) shfmt-cmd))
       (unless (assq 'sh-mode apheleia-mode-alist)
         (push '(sh-mode . shfmt) apheleia-mode-alist))
       (unless (assq 'bash-ts-mode apheleia-mode-alist)
@@ -279,7 +284,8 @@ to `exec-path' and PATH environment variable, if the directory exists."
 
 (defun dc-paths/maybe-register-vscode-server-for-eglot (mode-or-modelist)
   "Register VSCode-provided language server into `eglot-server-programs', if available."
-  (if-let* ((relative-program-location (alist-get mode-or-modelist dc-paths--vscode-lang-server-programs))
+  (if-let* ((relative-program-location
+             (alist-get mode-or-modelist dc-paths--vscode-lang-server-programs nil nil #'equal))
             (vscode-server-program-fqpath
              (file-name-concat (if (eq system-type 'windows-nt)
                                    (file-name-concat (getenv "HOME")

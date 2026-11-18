@@ -10,7 +10,7 @@
 // ------------------------------------------------------------------
 //
 
-@LISP((dcjava-inferred-package-statement))@
+@LISP((dcjava/inferred-package-statement))@
 
 import java.util.Hashtable;
 import java.util.Enumeration;

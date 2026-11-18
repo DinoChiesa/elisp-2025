@@ -1,4 +1,4 @@
-;;; lorem.el --- insert lorem ipsum text at point
+;;; lorem.el --- insert lorem ipsum text at point -*- coding: utf-8; lexical-binding: t; -*-
 ;;
 ;; Author: Dino Chiesa
 ;; Version: 0.1

@@ -1,4 +1,4 @@
-;; image-dired-fixups.el
+;;; image-dired-fixups.el -*- coding: utf-8; lexical-binding: t; -*-
 ;;
 ;; image-dired.el did not work in MacOS for me.
 ;; So I added these fixups to get it to work.

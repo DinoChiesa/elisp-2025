@@ -42,7 +42,7 @@ argument then it is an error for the extension not to be present."
     ;;(message regexp)(sleep-for 10)
     (if (string-match regexp name)
         (substring name (match-beginning 1) (match-end 1))
-      (error "No extension" name) ) ) )
+      (error "No extension: %s" name) ) ) )
 
 
 (defvar aip/expandos-alist
@@ -82,15 +82,12 @@ argument then it is an error for the extension not to be present."
 
     ( "@@"              "@")
 
-    ;; eg:  <ProjectGuid>{@LISP((dino-insert-uuid))@}</ProjectGuid>
+    ;; eg:  <ProjectGuid>{@LISP((dc-edit/uuid-gen))@}</ProjectGuid>
     ( "@LISP(\\(.*\\))@"         (let ((sexp (match-string-no-properties 1)))
                                   (if sexp (eval (read sexp)) "")))
     )
-  "An alist specifying the variables to recognize and how to replace them.
-Elements look like (REGEXP LISP-CODE ...). When a variable is recognized,
-using dc-variable-delimiter, it is compared to the REGEXPs (if dc-fast-
--variable-handling is false) and once one is found, the associated forms
-are evaluated and the result replaces the occurrence of the variable." )
+  "Alist specifying template expandos and the forms that produce their replacement strings.
+Each element has the shape (REGEXP LISP-CODE ...).")
 
 
 (defun aip/expand-expandos ()
@@ -98,8 +95,9 @@ are evaluated and the result replaces the occurrence of the variable." )
 `aip/expandos-alist'.  The effect is to replace @KEYWORD@ by whatever
 the expansion is defined as, in a new file."
   (interactive (list 0))
-  (goto-char 0)
-  (let ((number-of-expanded-variables 0))
+  (goto-char (point-min))
+  (let ((number-of-expanded-variables 0)
+        (aip/initial-dot-position nil))
     (while (search-forward "@" nil t)
       (backward-char 1)
       (let ((l aip/expandos-alist))
@@ -120,6 +118,8 @@ the expansion is defined as, in a new file."
               (if (null l)
                   (forward-char 1) ) ) ) )))
 
+    (when aip/initial-dot-position
+      (goto-char aip/initial-dot-position))
     (message "Note: %s variable(s) expanded."
              number-of-expanded-variables ) ) )
 

@@ -192,13 +192,13 @@ if the model is current and supports \"generateContent\"."
                         (gethash "models" parsed-response)))))))
 
 (defun dc-gemini/list-models (&optional full-text)
-  "List the available Gemini models that have  \"generateContent\" as one of the
+  "List the available Gemini models that have \"generateContent\" as one of the
 members of supportedGenerationMethods.
 
 Optional arg FULL-TEXT says to return the full text of the response and
 do not filter by supportedGenerationMethods."
   (interactive "P")
-  (let* ((all-models (dc-gemini/get-generative-models))
+  (let* ((all-models (dc-gemini/get-generative-models (when full-text #'identity)))
          (buf (get-buffer-create "*gemini-models*")))
     (with-current-buffer buf
       (erase-buffer)
@@ -346,7 +346,7 @@ state of the region:
         ;; Append the instruction lines
         (goto-char (point-max))
         (insert "\n\n## Type your message above.\n")
-        (insert (format "##   C-c C-c to send to Gemin (%s)\n" dc-gemini-selected-model))
+        (insert (format "##   C-c C-c to send to Gemini (%s)\n" dc-gemini-selected-model))
         (insert "##   C-c C-k to cancel.\n")
         (goto-char (point-min)) ;; Move back to the beginning
         (keymap-local-set "C-c C-c"
@@ -360,15 +360,8 @@ state of the region:
         (font-lock-ensure) ;; i think this is required?
         (pop-to-buffer (current-buffer))
 
-        ;; Enter a recursive edit. Emacs will now wait for the user
-        ;; to edit and then press the key that calls `exit-recursive-edit`.
         (recursive-edit)
-        ;; After `exit-recursive-edit` is called, the code continues.
-        ;; The value of the `with-temp-buffer` block is the value of its
-        ;; last expression. We return the full contents of the buffer
-        ;; as a plain string, unless abandoned.
         (unless abandoned
-          ;; Extract buffer content, split into lines, filter lines starting with "##", and join back
           (s-trim
            (s-join "\n"
                    (seq-filter (lambda (line) (not (string-prefix-p "##" (s-trim line))))
@@ -380,6 +373,38 @@ state of the region:
       (read-string "Ask Gemini: " initial-input)))))
 
 
+(defun dc-gemini/generate-content (gem-prompt)
+  "Send GEM-PROMPT to the selected Gemini model and return the response text."
+  (unless dc-gemini-selected-model
+    (dc-gemini/read-settings-from-properties-file))
+  (let ((gem-url (concat dc-gemini-base-url "v1beta/models/" dc-gemini-selected-model ":generateContent")))
+    (message (concat "invoking " gem-url))
+    (dc-gemini/post-prompt gem-url gem-prompt)
+    (with-current-buffer "*gemini-response*"
+      (let* ((json-object-type 'hash-table)
+             (json-array-type 'list)
+             (json-key-type 'string)
+             (parsed-response
+              (json-read-from-string
+               (buffer-substring-no-properties (point-min) (point-max)))))
+        (cond
+         ((gethash "error" parsed-response)
+          (let ((error-obj (gethash "error" parsed-response)))
+            (error "Gemini API Error: %s (Code: %s)"
+                   (gethash "message" error-obj "Unknown error")
+                   (gethash "code" error-obj "N/A"))))
+         ((null (gethash "candidates" parsed-response))
+          (error "Gemini response missing 'candidates' field."))
+         (t
+          (if-let* ((candidates (gethash "candidates" parsed-response))
+                    (first-candidate (car candidates))
+                    (content (gethash "content" first-candidate))
+                    (parts (gethash "parts" content))
+                    (first-part (car parts))
+                    (text (gethash "text" first-part)))
+              text
+            (error "Could not extract text from Gemini response. Structure: %S" parsed-response))))))))
+
 ;;;###autoload
 (defun dc-gemini/ask-gemini ()
   "Retrieve a response from Gemini. Prompt the user for input.
@@ -388,41 +413,12 @@ If the region is active, use region content as suggested prompt."
   ;; read properties before referencing `dc-gemini-selected-model'
   (unless dc-gemini-selected-model
     (dc-gemini/read-settings-from-properties-file))
-  (if-let* ((gem-prompt (dc-gemini--compose-message))
-            (gem-url
-             (concat
-              dc-gemini-base-url "v1beta/models/" dc-gemini-selected-model ":generateContent")))
-      (progn
-        (message (concat "invoking " gem-url))
-        (dc-gemini/post-prompt gem-url gem-prompt)
+  (if-let* ((gem-prompt (dc-gemini--compose-message)))
+      (let ((text (dc-gemini/generate-content gem-prompt)))
         (pop-to-buffer "*gemini-response*")
-        (let* ((json-object-type 'hash-table)
-               (json-array-type 'list)
-               (json-key-type 'string)
-               (parsed-response
-                (json-read-from-string
-                 (buffer-substring-no-properties (point-min) (point-max)))))
-          (cond
-           ((gethash "error" parsed-response)
-            (let ((error-obj (gethash "error" parsed-response)))
-              (error "Gemini API Error: %s (Code: %s)"
-                     (gethash "message" error-obj "Unknown error")
-                     (gethash "code" error-obj "N/A"))))
-           ((null (gethash "candidates" parsed-response))
-            (error "Gemini response missing 'candidates' field."))
-           (t
-            (if-let* ((candidates (gethash "candidates" parsed-response))
-                      (first-candidate (car candidates))
-                      (content (gethash "content" first-candidate))
-                      (parts (gethash "parts" content))
-                      (first-part (car parts))
-                      (text (gethash "text" first-part)))
-                (if text
-                    (progn
-                      (delete-region (point-min) (point-max))
-                      (insert text)
-                      (dc-gemini/fill-paragraphs-intelligently))
-                  (error "Could not extract text from Gemini response. Structure: %S" parsed-response)))))))
+        (delete-region (point-min) (point-max))
+        (insert text)
+        (dc-gemini/fill-paragraphs-intelligently))
     (message "quit.")))
 
 
@@ -480,23 +476,18 @@ starting with #."
             (with-temp-buffer
               (insert-file-contents expanded-props-file)
               (setq dc-gemini--properties-cache
-                    ;; Filter out nil entries (lines that didn't match the format)
                     (delq nil
                           (mapcar
-                           ;; Split line into key/value pair, trimming whitespace
                            (lambda (line)
                              (when (string-match "^\\([^:]+\\): *\\(.*\\)$" line)
                                (cons (intern (downcase (s-trim (match-string 1 line))))
                                      (s-trim (match-string 2 line)))))
-                           ;; Split buffer into lines, filtering out empty and comment lines
                            (seq-filter (lambda (line)
                                          (and (> (length line) 0)
                                               (not (string-prefix-p "#" line))))
                                        (split-string (buffer-string) "\n" t))))
                     dc-gemini--properties-file-mtime new-mtime)))
-          ;; Return t if we processed (either by parsing or determining cache is fresh)
           t)
-      ;; File does not exist, clear cache and mtime to reflect its absence
       (setq dc-gemini--properties-cache nil
             dc-gemini--properties-file-mtime nil)
       nil)))
@@ -505,11 +496,7 @@ starting with #."
   "Retrieves a property value by PROPNAME (string) from the cached properties.
 PROPNAME is converted to a downcased symbol for lookup.
 Returns nil if not found, or if the file doesn't exist/can't be parsed."
-  ;; First, ensure the cache is populated and up-to-date.
-  ;; `dc-gemini--parse-properties-file-into-cache` will handle
-  ;; reading the file only when necessary.
   (when (dc-gemini--parse-properties-file-into-cache)
-    ;; Look up the property in the alist using a downcased symbol key
     (cdr (assoc (intern (downcase propname)) dc-gemini--properties-cache))))
 
 ;;;###autoload

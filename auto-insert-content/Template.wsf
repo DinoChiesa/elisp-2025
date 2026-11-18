@@ -1,4 +1,4 @@
 <job>
     <reference object="Scripting.FileSystemObject" />
-    <script language="JScript" src="@@DOT@@.js" />
+    <script language="JScript" src="@DOT@.js" />
 </job>

@@ -74,13 +74,7 @@ curl from the path.")
 ;;       (replace-match "" nil t))))
 
 
-(defun string/starts-with (s arg)
-  "returns t if string S starts with ARG.  Else nil."
-  (cond ((>= (length s) (length arg))
-         (string-equal (substring s 0 (length arg)) arg))
-        (t nil)))
-
-(defun string/last-index-of (s c)
+(defun httpget--last-index-of (s c)
   "Returns the index of the last occurrence of character C in string S.
 Returns nil if not found.
 
@@ -125,8 +119,8 @@ See also `browse-url-emacs', which is not related, but is similar."
            (cond
             ((and possible-url (stringp possible-url)
                   (or
-                   (string/starts-with possible-url "http://")
-                   (string/starts-with possible-url "https://")))
+                   (string-prefix-p "http://" possible-url)
+                   (string-prefix-p "https://" possible-url)))
              (format "url (%s) ? " possible-url))
             (t
              (setq possible-url nil)
@@ -138,7 +132,7 @@ See also `browse-url-emacs', which is not related, but is similar."
              (setq url possible-url)
            (error "no url!")))
 
-     (setq ix (string/last-index-of url ?/))
+     (setq ix (httpget--last-index-of url ?/))
      (setq suggested-bufname
            (if (and ix (< ix (1- (length url))))
                (concat (substring url (1+ ix)) ".out")

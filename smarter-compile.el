@@ -7,6 +7,7 @@
 ;; Keywords: tools, unix
 ;; Created: 1998-12-27
 ;; Version: 2012.4.9
+;; Requires: dc-edit.el
 ;; Compatibility: Emacs 23 or later
 ;; URL: http://cheeso.members.winisp.net/srcview.aspx?dir=emacs&file=smarter-compile.el
 
@@ -161,6 +162,7 @@
 ;;; Code:
 
 (require 'files)
+(require 'dc-edit)
 
 (defgroup smarter-compile nil
   "An interface to `compile'."
@@ -337,11 +339,6 @@ To add to this list, use something like this elisp:
   :type 'string
   :group 'smarter-compile)
 
-(defun string/ends-with (s ending)
-  "Return non-nil if string S ends with ENDING."
-  (string-suffix-p ending s))
-
-
 (defcustom smart-compile-comment-cmd-line-limit 64
   "The number of lines in the file to scan, for a comment that
 specifies the compile command. See also
@@ -412,37 +409,9 @@ It's ok to have whitespace between the marker and the following
 colon.
 
 "
-  (let ((line-limit (or line-limit smart-compile-comment-cmd-line-limit))
-        start search-limit)
-    ;; determine what lines to look in
-    (save-excursion
-      (save-restriction
-        (widen)
-        (cond ((> line-limit 0)
-               (goto-char (setq start (point-min)))
-               (forward-line line-limit)
-               (setq search-limit (point)))
-              ((< line-limit 0)
-               (goto-char (setq search-limit (point-max)))
-               (forward-line line-limit)
-               (setq start (point)))
-              (t                        ;0 => no limit (use with care!)
-               (setq start (point-min))
-               (setq search-limit (point-max))))))
-
-    ;; look in those lines
-    (save-excursion
-      (save-restriction
-        (widen)
-        (let ((re-string
-               (concat "\\b" marker-string "[ \t]*:[ \t]*\\(.+\\)$")))
-          (if (and start
-                   (< (goto-char start) search-limit)
-                   (re-search-forward re-string search-limit 'move))
-
-              (buffer-substring-no-properties
-               (match-beginning 1)
-               (match-end 1))))))))
+  (dc-edit/get-value-from-comments
+   marker-string
+   (or line-limit smart-compile-comment-cmd-line-limit)))
 
 
 (defun smart-compile-any (predicate sequence)
@@ -575,12 +544,12 @@ It does not call `compile'.
 
                (and (symbolp test)
                     (fboundp test)
-                    (string/ends-with (symbol-name test) "-mode")
+                    (string-suffix-p "-mode" (symbol-name test))
                     (eq test major-mode))
 
                (and (symbolp test)
                     (fboundp test)
-                    (not (string/ends-with (symbol-name test) "-mode"))
+                    (not (string-suffix-p "-mode" (symbol-name test)))
                     (funcall test))
 
                (and (stringp name)

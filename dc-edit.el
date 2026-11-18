@@ -15,6 +15,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 's)
+(require 'sort)
 (require 'url-util)
 
 ;;; Filename insertion and replacement
@@ -108,12 +109,15 @@ Optional prefix ARG replaces base filename with no extension."
   (interactive)
   (set-buffer-modified-p (not (buffer-modified-p))))
 
-(defun dc-edit/do-markdown ()
-  "Remove `delete-trailing-whitespace' from `before-save-hook'.
-Helpful when editing markdown files requiring trailing whitespace for linebreaks."
-  (interactive)
-  (remove-hook 'write-contents-functions 'delete-trailing-whitespace)
-  (remove-hook 'before-save-hook-functions 'delete-trailing-whitespace))
+;; 2026-11-17 I don't think this is being used.
+;; (defun dc-edit/do-markdown ()
+;;   "Remove `delete-trailing-whitespace' from `before-save-hook'.
+;; Helpful when editing markdown files requiring trailing whitespace for linebreaks."
+;;   (interactive)
+;;   (remove-hook 'write-contents-functions #'delete-trailing-whitespace)
+;;   (remove-hook 'write-contents-functions #'delete-trailing-whitespace t)
+;;   (remove-hook 'before-save-hook #'delete-trailing-whitespace)
+;;   (remove-hook 'before-save-hook #'delete-trailing-whitespace t))
 
 (defvar dc-edit-no-untabify-modes '(makefile-mode BSDmakefile salted-file-mode)
   "List of modes for which untabify is not desired on save.")
@@ -166,6 +170,8 @@ Helpful when editing markdown files requiring trailing whitespace for linebreaks
                                           (dc-edit/base64-encode-file fname-quoted))))
       (forward-char 1)
       (forward-char -1)
+      ;; Insert, kill, and yank so the base64 text is also on the kill-ring
+      ;; and remains highlighted between point and mark.
       (insert b64)
       (kill-region beg (point))
       (yank)
@@ -429,7 +435,37 @@ With prefix argument CASE-INSENSITIVE (C-u), sort is case-insensitive."
     (dotimes (_ len res)
       (setq res (concat res (char-to-string (elt chars (random l))))))))
 
-;;; Backward compatibility aliases for existing templates/callers
+(defun dc-edit/get-value-from-comments (marker-string line-limit)
+  "Extract the string following \"MARKER-STRING:\" in the current buffer.
+If LINE-LIMIT is positive, searches the first LINE-LIMIT lines.
+If LINE-LIMIT is negative, searches the final |LINE-LIMIT| lines.
+If LINE-LIMIT is 0, searches the entire buffer."
+  (let (start search-limit)
+    (save-excursion
+      (save-restriction
+        (widen)
+        (cond ((> line-limit 0)
+               (goto-char (setq start (point-min)))
+               (forward-line line-limit)
+               (setq search-limit (point)))
+              ((< line-limit 0)
+               (goto-char (setq search-limit (point-max)))
+               (forward-line line-limit)
+               (setq start (point)))
+              (t
+               (setq start (point-min))
+               (setq search-limit (point-max))))))
+    (save-excursion
+      (save-restriction
+        (widen)
+        (let ((re-string
+               (concat "\\b" marker-string "[ \t]*:[ \t]*\\(.+\\)$")))
+          (if (and start
+                   (< (goto-char start) search-limit)
+                   (re-search-forward re-string search-limit 'move))
+              (buffer-substring-no-properties
+               (match-beginning 1)
+               (match-end 1))))))))
 
 (provide 'dc-edit)
 

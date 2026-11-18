@@ -17,7 +17,7 @@
   description="WSC Component for @BASEFILENAMELESSEXTENSION@"
   progid="Ionic.Com.@BASEFILENAMELESSEXTENSION@"
   version="1.00"
-  classid="{@LISP((cheeso-uuid-gen))@}"
+  classid="{@LISP((dc-edit/uuid-gen))@}"
   remotable="False">
 
   <!-- boilerplate registration/unregistration logic -->

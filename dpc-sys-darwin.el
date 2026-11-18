@@ -1,4 +1,4 @@
-;;; dpc-sys-darwin.el --- functions for MacOS, for Dino.
+;;; dpc-sys-darwin.el --- functions for MacOS, for Dino. -*- coding: utf-8; lexical-binding: t; -*-
 ;;
 ;; Author: Dino Chiesa
 ;; Created: Saturday,  5 April 2025, 20:28

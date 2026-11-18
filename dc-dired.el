@@ -26,6 +26,7 @@
 ;;   (setq ls-lisp-verbosity '(links uid)))
 
 
+(require 'autorevert)
 (require 'dired)
 (require 'dired-aux)
 (require 'ls-lisp)
@@ -142,13 +143,15 @@ initial sort."
                       result)
                   (while (and (< n L) (not result))
                     (let ((cur-switch (nth n dc-dired-sort-switches-to-cycle)))
-
                       (if (and (not (string= cur-switch ""))
                                (string-match (concat " -" cur-switch "\\'") switches-without-time-format))
-                          (setq result
-                                (concat
-                                 (substring switches-without-time-format 0 (match-beginning 0))
-                                 " -" (dc-dired-next-sorting-switch cur-switch))))))
+                          (let ((next-switch (dc-dired-next-sorting-switch cur-switch))
+                                (prefix (substring switches-without-time-format 0 (match-beginning 0))))
+                            (setq result
+                                  (if (string= next-switch "")
+                                      prefix
+                                    (concat prefix " -" next-switch))))))
+                    (setq n (1+ n)))
                   (or result
                       (concat switches-without-time-format " -t"))))
 
@@ -303,31 +306,44 @@ and quit."
   (dc-dired-copy-or-move-other-window 'COPY))
 
 
-;; Auto-update dired buffers with a timer.
+;; 20260704-1538: Use built-in auto-revert-mode on visible buffers,
+;; and refresh immediately when switching back to a Dired buffer.
+(setq auto-revert-buffer-list-filter #'get-buffer-window)
 
-(defvar dc-dired--file-modification-hash (make-hash-table :test 'equal))
+(defun dc-dired--autorevert-on-switch ()
+  "Immediately run `auto-revert-handler' when switching to a Dired buffer."
+  (when (and (eq major-mode 'dired-mode)
+             (bound-and-true-p auto-revert-mode))
+    (auto-revert-handler)))
 
-(defun dc-dired--maybe-revert-dired-buffers ()
-  (walk-windows
-   #'(lambda (win)
-       (with-selected-window win
-        (when (eq major-mode 'dired-mode)
-         (if (file-attributes default-directory)
-             ;; there are attributes, the dir exists
-             (let ((mod (gethash default-directory dc-dired--file-modification-hash)))
-              (unless (and mod
-                       (equal mod (nth 5 (file-attributes
-                                          default-directory))))
-               (setq mod (nth 5 (file-attributes default-directory)))
-               (puthash default-directory mod dc-dired--file-modification-hash)
-               (dired-revert)))
-           ;; else, the dired buffer points to a dir that no longer exists
-           (let ((zombie-buffer (window-buffer win)))
-            (kill-buffer zombie-buffer))))))
-   ;;(condition-case nil (delete-window win) (error nil)))))))
-   'no-mini 'all-frames))
+(add-hook 'buffer-list-update-hook #'dc-dired--autorevert-on-switch)
 
-(run-with-idle-timer 1 t 'dc-dired--maybe-revert-dired-buffers)
+;; 2026-11-17 Superseded by built-in `auto-revert-mode' + `dc-dired--autorevert-on-switch' above.
+;; ;; Auto-update dired buffers with a timer.
+;;
+;; (defvar dc-dired--file-modification-hash (make-hash-table :test 'equal))
+;;
+;; (defun dc-dired--maybe-revert-dired-buffers ()
+;;   (walk-windows
+;;    #'(lambda (win)
+;;        (with-selected-window win
+;;         (when (eq major-mode 'dired-mode)
+;;          (if (file-attributes default-directory)
+;;              ;; there are attributes, the dir exists
+;;              (let ((mod (gethash default-directory dc-dired--file-modification-hash)))
+;;               (unless (and mod
+;;                        (equal mod (nth 5 (file-attributes
+;;                                           default-directory))))
+;;                (setq mod (nth 5 (file-attributes default-directory)))
+;;                (puthash default-directory mod dc-dired--file-modification-hash)
+;;                (dired-revert)))
+;;            ;; else, the dired buffer points to a dir that no longer exists
+;;            (let ((zombie-buffer (window-buffer win)))
+;;             (kill-buffer zombie-buffer))))))
+;;    ;;(condition-case nil (delete-window win) (error nil)))))))
+;;    'no-mini 'all-frames))
+;;
+;; (run-with-idle-timer 1 t 'dc-dired--maybe-revert-dired-buffers)
 
 
 ;; When opening a file from dired, it will use the command guessed here.  A
@@ -393,6 +409,51 @@ OSes, calls `dired-do-symlink`."
                       (revert-buffer))))
                 (window-list))))
     (dired-do-symlink arg)))
+
+(defun dc-dired/copy-filename (&optional arg)
+  "Copy filename or portion of filename into the kill ring.
+If the buffer is writable (e.g. WDired), acts as standard `kill-line'.
+If point is past the first character of the filename on the current line,
+copies only the remainder of the filename from point.
+Otherwise, copies the full basename (or marked files).
+With prefix (C-u), copies the fully-qualified path."
+  (interactive "P")
+  (if (or (not buffer-read-only)
+          (not (derived-mode-p 'dired-mode)))
+      (call-interactively #'kill-line)
+    (let* ((pt (point))
+           (file-beg (save-excursion (dired-move-to-filename)))
+           (file-end (save-excursion (when file-beg (dired-move-to-end-of-filename t)))))
+      (cond
+       ;; With prefix: copy full path (or marked files)
+       (arg
+        (let* ((paths (dired-get-marked-files nil))
+               (str (mapconcat #'identity paths " ")))
+          (kill-new str)
+          (message "%s" str)))
+
+       ;; Point is past the first character of the filename: copy remainder
+       ((and file-beg file-end (> pt file-beg) (<= pt file-end))
+        (let ((remainder (buffer-substring-no-properties pt file-end)))
+          (kill-new remainder)
+          (message "%s" remainder)))
+
+       ;; Point is at or before the first character: copy full basename(s)
+       (file-beg
+        (let* ((paths (dired-get-marked-files nil))
+               (basenames (mapcar #'file-name-nondirectory paths))
+               (str (mapconcat #'identity basenames " ")))
+          (kill-new str)
+          (message "%s" str)))
+
+       ;; Fallback on non-file lines (e.g. directory header line)
+       (t
+        (let ((dir (dired-current-directory)))
+          (if dir
+              (let ((name (file-name-nondirectory (directory-file-name dir))))
+                (kill-new name)
+                (message "%s" name))
+            (message "No file on this line"))))))))
 
 (defun dc-dired/kill-new-file-contents (&optional arg)
   "Copies the contents of the marked file into the kill-ring"

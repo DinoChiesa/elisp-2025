@@ -9,7 +9,7 @@
 // last saved: <2025-June-10 16:38:20>
 // ------------------------------------------------------------------
 //
-@INSERTFILE(~/auto-insert-content/Copyright.txt)@//
+@INSERTFILE(~/elisp/auto-insert-content/Copyright.txt)@//
 // ------------------------------------------------------------------
 
 using System;

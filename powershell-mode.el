@@ -1,4 +1,4 @@
-;;; powershell-mode.el --- Mode for editing Powershell scripts
+;;; powershell-mode.el --- Mode for editing Powershell scripts -*- coding: utf-8; lexical-binding: t; -*-
 
 ;; Copyright (C) 2009, 2010 Frédéric Perrin
 ;; Copyright (C) 2012 Richard Bielawski rbielaws-at-i1-dot-net
@@ -508,10 +508,10 @@ characters that can't be set by the syntax-table alone.")
     (modify-syntax-entry ?\\ "_" powershell-mode-syntax-table)
     (modify-syntax-entry ?{ "(}" powershell-mode-syntax-table)
     (modify-syntax-entry ?} "){" powershell-mode-syntax-table)
-    (modify-syntax-entry ?[ "(]" powershell-mode-syntax-table)
-                         (modify-syntax-entry ?] ")[" powershell-mode-syntax-table)
-    (modify-syntax-entry ?( "()" powershell-mode-syntax-table)
-                         (modify-syntax-entry ?) ")(" powershell-mode-syntax-table)
+    (modify-syntax-entry ?\[ "(]" powershell-mode-syntax-table)
+    (modify-syntax-entry ?\] ")[" powershell-mode-syntax-table)
+    (modify-syntax-entry ?\( "()" powershell-mode-syntax-table)
+    (modify-syntax-entry ?\) ")(" powershell-mode-syntax-table)
     (modify-syntax-entry ?` "\\" powershell-mode-syntax-table)
     (modify-syntax-entry ?_  "w" powershell-mode-syntax-table)
     (modify-syntax-entry ?=  "." powershell-mode-syntax-table)

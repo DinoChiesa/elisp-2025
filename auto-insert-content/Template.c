@@ -1,9 +1,9 @@
 /*
- * @@BASEFILENAME@@
+ * @BASEFILENAME@
  *
  * Description goes here...
- * Author:  @@AUTHOR@@
- * Created:  @@DATE@@
+ * Author:  @AUTHOR@
+ * Created:  @DATE@
  *
  * Last updated: <2013-March-19 12:39:36>
  * ------------------------------------------------------------------
@@ -21,7 +21,7 @@
 
 void Usage(char *appname)
 {
-    printf("\n@@BASEFILENAMELESSEXTENSION@@.exe\n");
+    printf("\n@BASEFILENAMELESSEXTENSION@.exe\n");
     printf("  do something...\n\n");
     printf("usage:\n");
     printf("  %s -x <option>\n\n", appname);
@@ -32,7 +32,7 @@ void Usage(char *appname)
 
 int main(int argc, char **argv)
 {
-    @@DOT@@
+    @DOT@
 
     if (argc==3)
     {

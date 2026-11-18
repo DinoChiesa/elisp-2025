@@ -486,11 +486,11 @@ For internal use."
   "Remove surrounding quotes from STR if it begins and ends with them.
 Returns the original string if conditions aren't met."
   (if (and (stringp str)
-           (>= (length str) 2)                ; Ensure length is at least 2 ("")
-           (string-prefix-p "\"" str)         ; Check if starts with "
-           (string-suffix-p "\"" str))        ; Check if ends with "
-      (substring str 1 -1)                    ; Return content between indices
-    str))                                     ; Return original string otherwise
+           (>= (length str) 2)
+           (string-prefix-p "\"" str)
+           (string-suffix-p "\"" str))
+      (substring str 1 -1)
+    str))
 
 
 (defun restclient--process-extract-commands (commands)

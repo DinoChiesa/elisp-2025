@@ -1,9 +1,9 @@
-' @@BASEFILENAME@@
+' @BASEFILENAME@
 '
 ' Description goes here...
 '
-' Author: @@AUTHOR@@
-' Created: @@DATE@@
+' Author: @AUTHOR@
+' Created: @DATE@
 '
 ' last saved:
 ' Time-stamp: <2010-January-14 15:19:45>
@@ -22,7 +22,7 @@ Imports Ionic.Zip
 Namespace Ionic.Tests.Something
 
 
-Public Class @@BASEFILENAMELESSEXTENSION@@
+Public Class @BASEFILENAMELESSEXTENSION@
 
     ' ==================================================================
     ' Fields
@@ -94,18 +94,18 @@ Public Class @@BASEFILENAMELESSEXTENSION@@
 
     Public Sub Run()
 
-      @@DOT@@
+      @DOT@
 
     End Sub
 
 
     Public Shared Sub Main(ByVal args As String())
         'If (args.Length < 2) Then
-        '     @@BASEFILENAMELESSEXTENSION@@.Usage
+        '     @BASEFILENAMELESSEXTENSION@.Usage
         'End If
 
         Try
-            Dim X as New @@BASEFILENAMELESSEXTENSION@@()
+            Dim X as New @BASEFILENAMELESSEXTENSION@()
             X.Run
         Catch exc1 As Exception
             Console.WriteLine("Exception: {0}", exc1.ToString)
@@ -114,7 +114,7 @@ Public Class @@BASEFILENAMELESSEXTENSION@@
 
 
     Private Shared Sub Usage()
-        Console.WriteLine("usage:" & ChrW(10) & "  @@BASEFILENAMELESSEXTENSION@@ <arg1> [<arg2> | <arg3> ...]")
+        Console.WriteLine("usage:" & ChrW(10) & "  @BASEFILENAMELESSEXTENSION@ <arg1> [<arg2> | <arg3> ...]")
         Environment.Exit(1)
     End Sub
 

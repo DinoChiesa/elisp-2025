@@ -1,4 +1,4 @@
-;;; yaml-pretty-mode.el
+;;; yaml-pretty-mode.el -*- coding: utf-8; lexical-binding: t; -*-
 ;;
 ;; compose-region can be used to replace a region of text with a different character
 ;; This works from within font-lock to display leading whitespace differently.

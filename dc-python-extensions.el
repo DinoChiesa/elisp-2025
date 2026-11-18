@@ -270,7 +270,7 @@ allows gpylint to report the correct filename in its output."
   (let ((gpylint (executable-find "gpylint")))
     (unless gpylint
       (error "Cannot find gpylint executable"))
-    (dc-pe/--flymake-run-pylint report-fn (list gpylint "--mode=base"))))
+    (dc-pe--flymake-run-pylint report-fn (list gpylint "--mode=base"))))
 
 (defun dc-pe/flymake-pylint (report-fn &rest _args)
   "Flymake backend for open-source pylint.
@@ -281,13 +281,13 @@ visited file, if any. Otherwise pylint finds its own config."
                      (locate-dominating-file buffer-file-name ".pylintrc"))))
     (unless pylint
       (error "Cannot find pylint executable"))
-    (dc-pe/--flymake-run-pylint
+    (dc-pe--flymake-run-pylint
      report-fn
      (if rc-dir
          (list pylint (concat "--rcfile=" (expand-file-name ".pylintrc" rc-dir)))
        (list pylint)))))
 
-(defun dc-pe/--flymake-run-pylint (report-fn command-prefix)
+(defun dc-pe--flymake-run-pylint (report-fn command-prefix)
   "Run COMMAND-PREFIX, a pylint-compatible command, on the buffer via stdin.
 Parse the output into flymake diagnostics and pass them to REPORT-FN."
   (let ((file-name (buffer-file-name)))
@@ -468,13 +468,6 @@ existence."
                 (goto-char end-of-import)))))))
     (message "Refactored %d import block(s)." count)))
 
-
-;; ### Key Changes:
-;; 1.  **Regex**: Removed the trailing `(` from the search regex to match any `from ... import` statement.
-;; 2.  **Detection**: Used `(looking-at "(")` to determine if the import uses parentheses.
-;; 3.  **Extraction**: If no parentheses are found, it grabs the remainder of the current line.
-;; 4.  **Guard**: Added `(if (> (length symbols) 1) ...)` to ensure it only refactors lines actually containing multiple symbols, preventing infinite loops or redundant replacements.
-
 (defun dc-pe/extract-python-imports ()
   "Scan the current buffer and extract Python import statements.
 Verifies that the buffer is in ='python-mode'= or ='python-ts-mode'=.
@@ -513,27 +506,11 @@ Returns the inferred list of modules as a string like \"[ \"mod1\", \"mod2\" ]\"
                   imports "\n"
                   "<IMPORTS END>\n\n"
                   "Return your response as a python list, of quoted module names.  For example the result could take this form:\n\n"
-                  "  [ \"requests\", \"python-dotenv\" ]")))
-    (unless dc-gemini-selected-model
-      (dc-gemini/read-settings-from-properties-file))
-    (let ((gem-url (concat dc-gemini-base-url "v1beta/models/" dc-gemini-selected-model ":generateContent")))
-      (dc-gemini/post-prompt gem-url prompt)
-      (save-excursion
-        (with-current-buffer "*gemini-response*"
-          (let* ((json-object-type 'hash-table)
-                 (json-array-type 'list)
-                 (json-key-type 'string)
-                 (parsed-response (json-read-from-string (buffer-substring-no-properties (point-min) (point-max)))))
-            (if-let* ((candidates (gethash "candidates" parsed-response))
-                      (first-candidate (car candidates))
-                      (content (gethash "content" first-candidate))
-                      (parts (gethash "parts" content))
-                      (first-part (car parts))
-                      (text (gethash "text" first-part)))
-                (if (string-match "\\[[[:space:]\n]*\"[^\"]+\"\\(?:[[:space:]\n]*,[[:space:]\n]*\"[^\"]+\"\\)*[[:space:]\n]*\\]" text)
-                    (match-string 0 text)
-                  (error "Could not find a dependency list in Gemini's response: %s" text))
-              (error "Unexpected response format from Gemini"))))))))
+                  "  [ \"requests\", \"python-dotenv\" ]"))
+         (text (dc-gemini/generate-content prompt)))
+    (if (string-match "\\[[[:space:]\n]*\"[^\"]+\"\\(?:[[:space:]\n]*,[[:space:]\n]*\"[^\"]+\"\\)*[[:space:]\n]*\\]" text)
+        (match-string 0 text)
+      (error "Could not find a dependency list in Gemini's response: %s" text))))
 
 
 (defun dc-pe/py-column-width ()
@@ -541,7 +518,7 @@ Returns the inferred list of modules as a string like \"[ \"mod1\", \"mod2\" ]\"
 buffer max line length."
   (if (bound-and-true-p fill-column) fill-column 86))
 
-(defun dc-pe/_tool-label (key name)
+(defun dc-pe--tool-label (key name)
   "Return NAME with KEY bracketed at its first occurrence, eg \"py[i]nk\"."
   (let ((pos (string-match (regexp-quote (char-to-string key)) name)))
     (if pos
@@ -549,7 +526,7 @@ buffer max line length."
                 (substring name (1+ pos)))
       (format "[%c]%s" key name))))
 
-(defun dc-pe/_prefer-tool (available preferred)
+(defun dc-pe--prefer-tool (available preferred)
   "Return AVAILABLE with the entry named PREFERRED (a symbol) moved first.
 This makes a project's `dc-pe-linter' the no-prefix default."
   (let ((hit (and preferred (rassoc (symbol-name preferred) available))))
@@ -557,14 +534,14 @@ This makes a project's `dc-pe-linter' the no-prefix default."
         (cons hit (delq hit (copy-sequence available)))
       available)))
 
-(defun dc-pe/_determine-tool-choice (action available prompt-prefix)
+(defun dc-pe--determine-tool-choice (action available prompt-prefix)
   "Determine which tool to use from AVAILABLE options.
 ACTION is a string like \"Format\" or \"Lint\" used in the prompt.
 AVAILABLE is an alist mapping character keys to tool name strings.
 PROMPT-PREFIX is non-nil if we should prompt the user for the choice."
   (if prompt-prefix
       (let* ((prompt-parts (mapcar (lambda (item)
-                                     (dc-pe/_tool-label (car item) (cdr item)))
+                                     (dc-pe--tool-label (car item) (cdr item)))
                                    available))
              (prompt (concat action " with " (mapconcat 'identity prompt-parts ", ") "? "))
              (allowed (apply 'append
@@ -589,7 +566,7 @@ With a prefix ARG, prompt the user to select which linter to use."
              (pylint (executable-find "pylint"))
              (ruff (executable-find "ruff"))
              (file-name (shell-quote-argument buffer-file-name))
-             (available (dc-pe/_prefer-tool
+             (available (dc-pe--prefer-tool
                          (delq nil
                                (list (when gpylint '(?g . "gpylint"))
                                      (when pylint  '(?l . "pylint"))
@@ -597,7 +574,7 @@ With a prefix ARG, prompt the user to select which linter to use."
                          (bound-and-true-p dc-pe-linter))))
         (if (not available)
             (error "Could not find 'gpylint', 'pylint', or 'ruff' executable")
-          (let ((choice (dc-pe/_determine-tool-choice "Lint" available arg)))
+          (let ((choice (dc-pe--determine-tool-choice "Lint" available arg)))
             (cond
              ((eq choice ?g)
               (compilation-start
@@ -625,7 +602,7 @@ With a prefix ARG, prompt the user to select which linter to use."
   "Apheleia formatter names that `dc-pe/format' offers for python buffers.
 Each is a key in `apheleia-formatters'. pyink added by my own emacs init.")
 
-(defun dc-pe/_installed-apheleia-formatters ()
+(defun dc-pe--installed-apheleia-formatters ()
   "Return the names in `dc-pe/python-apheleia-formatters' that are usable.
 A name is usable if it has an entry in `apheleia-formatters' and the
 program that entry runs is installed."
@@ -657,7 +634,7 @@ apheleia-mode is enabled. If apheleia misbehaves, use
              (intern
               (completing-read
                "Format with: "
-               (mapcar #'symbol-name (dc-pe/_installed-apheleia-formatters))
+               (mapcar #'symbol-name (dc-pe--installed-apheleia-formatters))
                nil t nil nil
                (and (symbolp apheleia-formatter) apheleia-formatter
                     (symbol-name apheleia-formatter))))
@@ -693,7 +670,7 @@ With a prefix ARG, prompt the user to select which formatter to use."
                                     (when ruff     '(?r . "ruff"))))))
         (if (not available)
             (error "Could not find any of 'pyformat', 'pyink', 'black', or 'ruff' executables")
-          (let ((choice (dc-pe/_determine-tool-choice "Format" available arg)))
+          (let ((choice (dc-pe--determine-tool-choice "Format" available arg)))
             (cond
              ((eq choice ?p)
               (compilation-start (concat pyformat " -s 2 -i " file-name)))

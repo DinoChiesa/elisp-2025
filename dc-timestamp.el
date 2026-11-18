@@ -142,18 +142,17 @@ formatted like: \"2019-02-12T14:32:33\". Otherwise, ARG is a string;
 parse it with that regex, and return the time in emacs internal time
 format, eg (sec-high sec-low).
 "
-  (let ((regex "\\(\\(19\\|20\\)[0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)T\\([0-9]\\{2\\}\\):\\([0-9]\\{2\\}\\):\\([0-9]\\{2\\}\\)" )
-        (dt (decode-time (current-time))))
+  (let ((regex "\\(\\(19\\|20\\)[0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)T\\([0-9]\\{2\\}\\):\\([0-9]\\{2\\}\\):\\([0-9]\\{2\\}\\)" ))
 
     (if (booleanp arg)
         regex
       (when (string-match regex arg 0)
         (let ((year (string-to-number (match-string 1 arg)))
-              (month (string-to-number (match-string 2 arg)))
-              (day (string-to-number (match-string 3 arg)))
-              (hour (string-to-number (match-string 4 arg)))
-              (minute (string-to-number (match-string 5 arg)))
-              (seconds (string-to-number (match-string 6 arg)))
+              (month (string-to-number (match-string 3 arg)))
+              (day (string-to-number (match-string 4 arg)))
+              (hour (string-to-number (match-string 5 arg)))
+              (minute (string-to-number (match-string 6 arg)))
+              (seconds (string-to-number (match-string 7 arg)))
               tz)
           (apply 'encode-time
                  (list seconds minute hour day month year tz)))))))
@@ -229,7 +228,7 @@ formats, eg:
    Tuesday, 20 August 2013, 08:48
    2013 August 20
    08:48:03
-   2019-02-12T08:48:03Z
+   2019-02-12T08:48:03
 
 It will continue to cycle. Point is placed at the beginning of the newly
 inserted timestamp.

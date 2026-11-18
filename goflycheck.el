@@ -1,12 +1,14 @@
-;;; goflycheck.el --- a flycheck checker for the Go Language
+;;; goflycheck.el --- a flycheck checker for the Go Language -*- coding: utf-8; lexical-binding: t; -*-
 
 ;; Author: Dino Chiesa <dpchiesa@hotmail.com>
+;; Requires: go-mode.el, dc-edit.el
 
 ;;; Commentary:
 
 ;;; Code:
 
 (require 'go-mode)
+(require 'dc-edit)
 
 
 ;;;###autoload
@@ -25,71 +27,6 @@ everywhere in the file.
 The line should appear in a comment inside the Go buffer."
   :type 'integer
   :group 'goflycheck)
-
-
-(defun goflycheck-get-value-from-comments (marker-string line-limit)
-  "Gets a string from the header comments in the current buffer.
-
-This is used to extract the flycheck command and the compile
-command from the comments.
-
-It looks for the MARKER-STRING followed by a colon, and returns
-the string that follows it, or returns nil if that string is not
-found.  It searches in the top LINE-LIMIT lines if LINE-LIMIT is
-positive.  If negative, then it searches in the final LINE-LIMIT
-lines.  If zero then it searches the entire file, which may take
-extra time.  This search runs every time the flycheck occurs, so
-be careful uzing zero.
-
-Example: when MARKER-STRING is \"flycheck\", LINE-LIMIT is 25,
-and the following string is found on the 8th line of the buffer:
-
-     // flycheck: go test foo.go
-
-...then this command will return the string
-
-     \"go test foo.go\"
-
-It's ok to have whitespace between the marker and the following
-colon.  This function is intended for internal use.  goflycheck
-automatically attaches it as a flycheck hook.
-
-You need to make sure that the command you specify can be found
-in one of the directories in `exec-path'.  To do so, you may want
-something like this in your init.el or .emacs file:
-
-  (setq exec-path (append exec-path '(\"/usr/local/go/bin\")))"
-
-  (let (start search-limit found)
-    ;; determine what lines to look in
-    (save-excursion
-      (save-restriction
-        (widen)
-        (cond ((> line-limit 0)
-               (goto-char (setq start (point-min)))
-               (forward-line line-limit)
-               (setq search-limit (point)))
-              ((< line-limit 0)
-               (goto-char (setq search-limit (point-max)))
-               (forward-line line-limit)
-               (setq start (point)))
-              (t                        ;0 => no limit (use with care!)
-               (setq start (point-min))
-               (setq search-limit (point-max))))))
-
-    ;; look in those lines
-    (save-excursion
-      (save-restriction
-        (widen)
-        (let ((re-string
-               (concat "\\b" marker-string "[ \t]*:[ \t]*\\(.+\\)$")))
-          (if (and start
-                   (< (goto-char start) search-limit)
-                   (re-search-forward re-string search-limit 'move))
-              (buffer-substring-no-properties
-               (match-beginning 1)
-               (match-end 1))))))))
-
 
 
 (defun goflycheck-set-flycheck-command ()
@@ -113,7 +50,7 @@ automatically when flycheck loads."
 
   (and (eq major-mode 'go-mode)
        (let ((cmd-string
-              (goflycheck-get-value-from-comments "flycheck" goflycheck-cmd-line-limit)))
+              (dc-edit/get-value-from-comments "flycheck" goflycheck-cmd-line-limit)))
          (and cmd-string
               (not (eq cmd-string ""))
               (and (boundp 'flycheck-log-level)
