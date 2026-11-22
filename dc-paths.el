@@ -2,7 +2,7 @@
 
 ;; Author: Dino Chiesa
 ;; Created: Wed, 17 Jul 2013
-;; Version: 2026.10.24
+;; Version: 2026.11.22
 ;; Keywords: utility path environment
 ;; License: New BSD
 
@@ -47,7 +47,8 @@ Path directories are added only if the path exists, and is not already present."
     (file-name-directory (directory-file-name dir))))
 
 (defun dc-paths--find-file-in-tree (current-dir fname)
-  "Search for a file named FNAME upwards through directory hierarchy starting at CURRENT-DIR."
+  "Search for a file named FNAME upwards through directory hierarchy
+starting at CURRENT-DIR."
   (let ((file (concat current-dir fname))
         (parent (dc-paths--parent-directory (expand-file-name current-dir))))
     (if (file-exists-p file)
@@ -83,8 +84,9 @@ preserving original drive letter casing."
     path))
 
 (defun dc-paths/normalize-and-dedupe (path-list for-exec-path)
-  "Normalize and deduplicate a list of paths, preserving order (first occurrence wins).
-Filters out non-existent directories. Uses `dc-paths/normalize-path' for comparison."
+  "Normalize and deduplicate a list of paths, preserving order (first occurrence
+wins). Filters out non-existent directories. Uses `dc-paths/normalize-path' for
+comparison."
   (let ((seen-normalized-paths (make-hash-table :test 'equal))
         (result-paths '())
         (reversed-input (reverse path-list)))
@@ -119,7 +121,8 @@ Prefers the Git usr/bin directory and the ~/bin directory."
        (string-match-p (regexp-quote home-bin) entry)))))
 
 (defun dc-paths/maybe-reorder-exec-path-entries ()
-  "Reorder `exec-path' entries to ensure preferred directories take precedence on Windows."
+  "Reorder `exec-path' entries to ensure preferred directories take precedence on
+Windows."
   (setq exec-path (dc-paths/reorder-list exec-path (dc-paths--preferred-path-entry))))
 
 (defun dc-paths/filename-if-exists (file-or-dir-name)
@@ -144,8 +147,8 @@ Prefers the Git usr/bin directory and the ~/bin directory."
               (dc-paths/filename-if-exists (concat (getenv "HOME") "/.nvm"))))))))
 
 (defun dc-paths/find-nvm-bin-dir ()
-  "Find the NVM-managed nodejs bin directory by respecting default or active version.
-Works on Windows (nvm4w) and Linux (nvm)."
+  "Find the NVM-managed nodejs bin directory by respecting default or active
+version. Works on Windows (nvm4w) and Linux (nvm)."
   (let ((nvm-dir (dc-paths--get-or-guess-nvm-dir)))
     (cond
      ((eq system-type 'windows-nt)
@@ -267,7 +270,7 @@ to `exec-path' and PATH environment variable, if the directory exists."
   (let ((expanded-fname (expand-file-name env-filename)))
     (if (file-exists-p expanded-fname)
         (with-temp-buffer
-          (insert-file-contents env-filename)
+          (insert-file-contents expanded-fname)
           (keep-lines keyname (point-min) (point-max))
           (let* ((pattern-to-check (concat "^" keyname "\\s*[:=]\\s*\\(.*\\)"))
                  (value
