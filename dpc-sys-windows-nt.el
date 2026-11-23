@@ -13,6 +13,12 @@
 
 (require 's)
 
+(defvar archive-zip-use-pkzip)
+(defvar archive-zip-extract)
+(defvar explicit-shell-file-name)
+(defvar explicit-pwsh.exe-args)
+(declare-function grep-apply-setting "grep" (symbol value))
+
 (defun dpc-windows-nt-shortpath (s)
   "Resolves paths containing spaces (like paths starting from \"c:\\program files\")
 into the short-path form on windows. This makes it easier for emacs to execute
@@ -39,6 +45,7 @@ commands in such directories."
 
 Git ships with unix-ish tools that actually work, so let's use the grep
 there (and xargs, etc)."
+  (require 'grep)
   (let* ((git-cmd (executable-find "git"))
          (git-bin-dir (and git-cmd
                            (dpc-windows-nt-shortpath

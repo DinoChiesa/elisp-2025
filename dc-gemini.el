@@ -55,6 +55,8 @@
 (require 'subr-x)
 (require 'dc-sane-sorting)
 
+(declare-function chatgpt-shell-google-make-model "chatgpt-shell-google" (&rest args))
+
 ;;; Code:
 
 (defgroup dc-gemini nil
@@ -224,7 +226,7 @@ do not filter by supportedGenerationMethods."
 ;; 20250308-1828
 ;; This, and anything related to chatgpt-shell mode in this module,
 ;; will become obsolete if my PR is accepted and merged.
-(defun dc-gemini/chapgpt-shell-converter (api-response)
+(defun dc-gemini/chatgpt-shell-converter (api-response)
   "Convert between the API-RESPONSE returned by Gemini, and
 the model description needed by chatgpt-shell."
   (let* ((model-name (gethash "name" api-response))

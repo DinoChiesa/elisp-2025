@@ -54,48 +54,79 @@
 
 (require 'cl-lib)
 
-(defun dino/prettierd--get-command-line (pid)
-  "Retrieve the command line for PID using wmic or pwsh.
-This is necessary on Windows where ='process-attributes'= may return
-nil for the ='args'= attribute."
-  (let ((wmic-path (or (executable-find "wmic") "C:\\Windows\\System32\\wbem\\wmic.exe"))
-        (ps-path (or (executable-find "pwsh.exe") (executable-find "powershell.exe"))))
-    (let ((wmic-result (let ((cmd (shell-command-to-string
-                                   (format "\"%s\" process where processid=%d get commandline /format:list" wmic-path pid))))
-                         (if (string-match "CommandLine=\\(.+\\)" cmd)
-                             (match-string 1 cmd)
-                           nil))))
-      (if wmic-result
-          wmic-result
-        ;; Try PowerShell as backup
-        (when ps-path
-          (let ((cmd (shell-command-to-string
-                      (format "\"%s\" -NoProfile -Command \"(Get-CimInstance Win32_Process -Filter 'ProcessId = %d').CommandLine\"" ps-path pid))))
-            (if (and cmd (not (string-empty-p (string-trim cmd))))
-                (string-trim cmd)
-              nil)))))))
+(defun dino/is-prettierd-process-p (attrs)
+  "Return non-nil if ATTRS describes a prettierd daemon process.
+ATTRS is an alist of process attributes as returned by
+`process-attributes'.
 
-(defun dino/is-prettierd-process-p (pid attrs)
-  "Return non-nil if PID with ATTRS is a prettierd daemon.
-PID is the process ID. ATTRS is an alist of process attributes as
-returned by ='process-attributes'=.
-
-Checks for ='node'= in the command and ='prettierd'= + ='daemon.js'= in
+Checks for `node' in the command and `prettierd' + `daemon.js' in
 the arguments."
-
-  (let* ((comm (cdr (assoc 'comm attrs)))
-         (is-node-comm (and comm (string-match-p "node" comm)))
-         (args (cdr (assoc 'args attrs)))
-         (full-args (if (and (null args) (eq system-type 'windows-nt) is-node-comm)
-                        (dino/prettierd--get-command-line pid)
-                      args)))
-    (when (and full-args (not (string-empty-p (format "%s" full-args))))
-      (let* ((full-args-str (if (listp full-args) (mapconcat 'identity full-args " ") (format "%s" full-args)))
+  (let ((args (cdr (assoc 'args attrs))))
+    (when (and args (not (string-empty-p (format "%s" args))))
+      (let* ((full-args-str (if (listp args)
+                                (mapconcat #'identity args " ")
+                              (format "%s" args)))
              ;; Tight check: must be node and must be the prettierd daemon
              (is-node (string-match-p "node\\(\\.exe\\)? " full-args-str))
              (is-prettierd (and (string-match-p "prettierd" full-args-str)
                                 (string-match-p "daemon\\.js" full-args-str))))
         (and is-node is-prettierd)))))
+
+(defun dino/prettierd--kill-pids (pids any-parent dry-run interactive-p)
+  "Kill prettierd PIDS (or log if DRY-RUN) and report results."
+  (let ((killed-count 0))
+    (dolist (pid pids)
+      (if dry-run
+          (message "[DRY-RUN] Would kill prettierd process: %d" pid)
+        (message "Killing prettierd process: %d" pid)
+        (signal-process pid 'sigkill)) ;; sigterm does not work
+      (setq killed-count (1+ killed-count)))
+    (if (> killed-count 0)
+        (message "%s %d prettierd processes%s."
+                 (if dry-run "Would have cleaned up" "Cleaned up")
+                 killed-count
+                 (if any-parent " (system-wide)" ""))
+      (when interactive-p
+        (message "No prettierd processes found to kill.")))))
+
+(defun dino/prettierd--kill-windows-async (emacs-pid any-parent dry-run interactive-p)
+  "Find and kill prettierd daemons on Windows via a single async PowerShell call."
+  (let ((ps-path (or (executable-find "pwsh.exe")
+                     (executable-find "powershell.exe"))))
+    (if (not ps-path)
+        (when interactive-p
+          (message "Neither pwsh.exe nor powershell.exe found in PATH."))
+      (let* ((buf (generate-new-buffer " *prettierd-cleanup*"))
+             (ps-script
+              (concat
+               "Get-CimInstance Win32_Process -Filter \"Name = 'node.exe'\" "
+               "| Where-Object { $_.CommandLine -match 'prettierd' -and $_.CommandLine -match 'daemon\\.js' } "
+               "| ForEach-Object { \"$($_.ProcessId) $($_.ParentProcessId)\" }")))
+        (make-process
+         :name "prettierd-cleanup"
+         :buffer buf
+         :noquery t
+         :connection-type 'pipe
+         :command (list ps-path "-NoProfile" "-NonInteractive" "-Command" ps-script)
+         :sentinel
+         (lambda (proc _event)
+           (when (memq (process-status proc) '(exit signal))
+             (unwind-protect
+                 (when (zerop (process-exit-status proc))
+                   (let (matching-pids)
+                     (with-current-buffer buf
+                       (dolist (line (split-string (buffer-string) "\r?\n" t "[ \t]+"))
+                         (let ((parts (split-string line)))
+                           (when (>= (length parts) 2)
+                             (let ((pid (string-to-number (nth 0 parts)))
+                                   (ppid (string-to-number (nth 1 parts))))
+                               (when (and (> pid 0)
+                                          (or any-parent (eq ppid emacs-pid)))
+                                 (push pid matching-pids)))))))
+                     (dino/prettierd--kill-pids
+                      (nreverse matching-pids) any-parent dry-run interactive-p)))
+               (when (buffer-live-p buf)
+                 (kill-buffer buf))))))))))
 
 (defun dino/kill-prettierd-daemons (&optional any-parent dry-run)
   "Kill prettierd daemon processes started by this Emacs instance.
@@ -105,24 +136,18 @@ If DRY-RUN is non-nil (or called with a prefix arg), only log actions."
   (interactive (list (y-or-n-p "Kill ALL prettierd processes (regardless of parent)? ")
                      current-prefix-arg))
   (let ((emacs-pid (emacs-pid))
-        (killed-count 0))
-    (dolist (pid (list-system-processes))
-      (let* ((attrs (process-attributes pid))
-             (ppid (cdr (assoc 'ppid attrs))))
-        (when (or any-parent (eq ppid emacs-pid))
-          (when (dino/is-prettierd-process-p pid attrs)
-            (if dry-run
-                (message "[DRY-RUN] Would kill prettierd process: %d" pid)
-              (message "Killing prettierd process: %d" pid)
-              (signal-process pid 'sigkill)) ;; sigterm does not work
-            (setq killed-count (1+ killed-count))))))
-    (if (> killed-count 0)
-        (message "%s %d prettierd processes%s."
-                 (if dry-run "Would have cleaned up" "Cleaned up")
-                 killed-count
-                 (if any-parent " (system-wide)" ""))
-      (when (called-interactively-p 'any)
-        (message "No prettierd processes found to kill.")))))
+        (interactive-p (called-interactively-p 'any)))
+    (if (eq system-type 'windows-nt)
+        (dino/prettierd--kill-windows-async emacs-pid any-parent dry-run interactive-p)
+      (let (matching-pids)
+        (dolist (pid (list-system-processes))
+          (let* ((attrs (process-attributes pid))
+                 (ppid (cdr (assoc 'ppid attrs))))
+            (when (and (or any-parent (eq ppid emacs-pid))
+                       (dino/is-prettierd-process-p attrs))
+              (push pid matching-pids))))
+        (dino/prettierd--kill-pids
+         (nreverse matching-pids) any-parent dry-run interactive-p)))))
 
 ;;;###autoload
 (defvar dino/prettierd-cleanup-timer

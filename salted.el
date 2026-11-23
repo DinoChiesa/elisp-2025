@@ -55,6 +55,7 @@
 ;;; Code:
 
 (require 'simple)
+(require 'subr-x)
 
 (defvar salted--salt-file-utility
   (if (eq system-type 'windows-nt)
@@ -75,6 +76,36 @@
 ;;     (call-process-region (point-min) (point-max) salted--salt-file-utility
 ;;                          t t nil "-in" buffer-file-name "-out" "-" "-passphrase" passwd "-decrypt")))
 
+(defun salted--run (passphrase replace-buffer &rest args)
+  "Run `salted--salt-file-utility' on the current buffer with ARGS.
+Passes PASSPHRASE via the SALT_FILE_PASSPHRASE environment variable.
+When REPLACE-BUFFER is non-nil, replaces the current buffer with stdout
+only if the utility exits with status 0."
+  (let* ((source-buf (current-buffer))
+         (source-multibyte enable-multibyte-characters)
+         (coding-system-for-write 'no-conversion)
+         (coding-system-for-read 'no-conversion)
+         (process-environment
+          (cons (concat "SALT_FILE_PASSPHRASE=" passphrase)
+                process-environment)))
+    (with-temp-buffer
+      (set-buffer-multibyte source-multibyte)
+      (let* ((out-buf (current-buffer))
+             (exit-code
+              (with-current-buffer source-buf
+                (apply #'call-process-region
+                       (point-min) (point-max)
+                       (expand-file-name salted--salt-file-utility)
+                       nil out-buf nil
+                       args))))
+        (unless (zerop exit-code)
+          (error "salt_file failed (exit %d): %s"
+                 exit-code (string-trim (buffer-string))))
+        (when replace-buffer
+          (with-current-buffer source-buf
+            (erase-buffer)
+            (insert-buffer-substring out-buf)))))))
+
 (defun salted-decrypt-buffer (&optional passphrase)
   "decrypt the buffer"
   (interactive (list (if current-prefix-arg
@@ -88,10 +119,7 @@
   (unless (stringp passphrase)
     (setq passphrase (read-passwd "passphrase: ")))
 
-  (let ((coding-system-for-write 'no-conversion)
-        (coding-system-for-read 'no-conversion))
-    (call-process-region (point-min) (point-max) salted--salt-file-utility
-                         t t nil "-in" "-" "-out" "-" "-passphrase" passphrase "-decrypt")))
+  (salted--run passphrase t "-in" "-" "-out" "-" "-decrypt"))
 
 (defun salted-encrypt-buffer-to-file (&optional passphrase)
   "encrypt the buffer"
@@ -107,10 +135,7 @@
     (setq passphrase (read-passwd "passphrase: ")))
 
   (message "encrypting to (%s)" buffer-file-name)
-  (let ((coding-system-for-write 'no-conversion)
-        (coding-system-for-read 'no-conversion))
-    (call-process-region (point-min) (point-max) salted--salt-file-utility
-                         t t nil "-in" "-" "-out" "-" "-passphrase" passphrase)))
+  (salted--run passphrase t "-in" "-" "-out" "-"))
 
 (defun salted-save-buffer-to-new-encrypted-file (&optional passphrase)
   "save the buffer in encrypted form to a new .salted file"
@@ -130,11 +155,7 @@
             (setq passphrase (read-passwd "passphrase: ")))
 
           (message "encrypting to (%s)" out-file-path)
-          (let ((coding-system-for-write 'no-conversion)
-                (coding-system-for-read 'no-conversion))
-            (call-process-region (point-min) (point-max) salted--salt-file-utility
-                                 t t nil "-in" "-" "-out"
-                                 out-file-path "-passphrase" passphrase)))
+          (salted--run passphrase nil "-in" "-" "-out" out-file-path))
       (message "buffer is not visiting a file - cannot encrypt"))))
 
 

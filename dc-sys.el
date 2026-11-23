@@ -56,10 +56,7 @@ This works only when the frame is split into exactly two windows."
 
 (defun dc-sys/is-directory (dir-name)
   "Test whether DIR-NAME refers to an existing directory."
-  (and (file-exists-p dir-name)
-       (let ((attrs (file-attributes dir-name)))
-         (and (car attrs)
-              (not (stringp (car attrs)))))))
+  (file-directory-p dir-name))
 
 (defvar dc-sys-move-timer-list nil
   "List of timers for `dc-sys/move-whenever'.")
@@ -84,7 +81,7 @@ This works only when the frame is split into exactly two windows."
     testname))
 
 (defun dc-sys/check-files-and-move (src targ)
-  "Check SRC directory and move any files there to TARG directory with unique names."
+  "Move files from SRC directory to TARG directory with unique names."
   (unless (dc-sys/is-directory src)
     (error "%s is not a directory" src))
   (unless (dc-sys/is-directory targ)
@@ -113,17 +110,19 @@ This works only when the frame is split into exactly two windows."
 (defun dc-sys/rename-file-and-buffer (new-name)
   "Rename both current buffer and file it visits to NEW-NAME."
   (interactive "sNew name: ")
-  (let ((name (buffer-name))
-        (filename (buffer-file-name)))
+  (let* ((name (buffer-name))
+         (filename (buffer-file-name))
+         (new-path (and filename
+                        (expand-file-name new-name (file-name-directory filename))))
+         (new-buf-name (and new-path (file-name-nondirectory new-path))))
     (cond
      ((not filename)
       (message "Buffer '%s' is not visiting a file!" name))
-     ((get-buffer new-name)
-      (message "A buffer named '%s' already exists!" new-name))
+     ((get-buffer new-buf-name)
+      (message "A buffer named '%s' already exists!" new-buf-name))
      (t
-      (rename-file name new-name 1)
-      (rename-buffer new-name)
-      (set-visited-file-name new-name)
+      (rename-file filename new-path 1)
+      (set-visited-file-name new-path t t)
       (set-buffer-modified-p nil)))))
 
 (defun dc-sys/find-file-with-line-number (original-fn &rest args)
@@ -142,11 +141,12 @@ This works only when the frame is split into exactly two windows."
         (pop args)
         (push new-path args))
       (let ((result (apply original-fn args)))
-        (when line-no
-          (goto-char (point-min))
-          (forward-line (1- line-no))
-          (when (> col-no 0)
-            (forward-char (1- col-no))))
+        (when (and line-no (bufferp result))
+          (with-current-buffer result
+            (goto-char (point-min))
+            (forward-line (1- line-no))
+            (when (> col-no 0)
+              (forward-char (1- col-no)))))
         result))))
 
 (defun dc-sys/setup-find-file-advice ()
@@ -292,9 +292,9 @@ By default operates on `package-user-dir`."
   "Override `calendar' with `dc-sys/display-full-year-calendar'."
   (advice-add 'calendar :override #'dc-sys/display-full-year-calendar))
 
-(defun dc-sys/update-os-window-title ()
+(defun dc-sys/update-os-window-title (&optional frame)
   "Update terminal tab/window title to emacs: user@host via OSC sequences."
-  (unless (display-graphic-p)
+  (unless (display-graphic-p frame)
     (when-let* ((sysname-parts (string-split (system-name) "\\."))
                 (sysname
                  (if (and (eq (length sysname-parts) 4)
@@ -302,11 +302,13 @@ By default operates on `package-user-dir`."
                      "cloudtop"
                    (system-name)))
                 (title (format "emacs: %s@%s" (user-login-name) sysname)))
-      (send-string-to-terminal (format "\033]0;%s\007" title)))))
+      (send-string-to-terminal (format "\033]0;%s\007" title) frame))))
 
 (defun dc-sys/setup-window-title-hook ()
-  "Attach `dc-sys/update-os-window-title' to window configuration changes."
-  (add-hook 'window-configuration-change-hook #'dc-sys/update-os-window-title))
+  "Set the terminal window title now, on new tty frames, and on resume."
+  (dc-sys/update-os-window-title)
+  (add-hook 'after-make-frame-functions #'dc-sys/update-os-window-title)
+  (add-hook 'suspend-resume-hook #'dc-sys/update-os-window-title))
 
 (provide 'dc-sys)
 

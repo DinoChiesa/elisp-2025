@@ -55,6 +55,11 @@
 (require 'dc-gemini)
 (require 'json)
 
+(defvar apheleia-formatters)
+(defvar apheleia-formatter)
+(declare-function apheleia-format-buffer "apheleia" (formatter &optional callback))
+(declare-function flymake-ruff--run-checker "flymake-ruff" (report-fn &rest _args))
+
 ;; (defvar dc-pe/original-python-contact nil
 ;;   "Storage for the original eglot-server-programs entry for Python.
 ;; Will be set on first run.")
@@ -606,12 +611,13 @@ Each is a key in `apheleia-formatters'. pyink added by my own emacs init.")
   "Return the names in `dc-pe/python-apheleia-formatters' that are usable.
 A name is usable if it has an entry in `apheleia-formatters' and the
 program that entry runs is installed."
-  (seq-filter (lambda (name)
-                (let ((command (alist-get name apheleia-formatters)))
-                  (and command
-                       (stringp (car command))
-                       (executable-find (car command)))))
-              dc-pe/python-apheleia-formatters))
+  (when (boundp 'apheleia-formatters)
+    (seq-filter (lambda (name)
+                  (let ((command (alist-get name apheleia-formatters)))
+                    (and command
+                         (stringp (car command))
+                         (executable-find (car command)))))
+                dc-pe/python-apheleia-formatters)))
 
 (defun dc-pe/format (&optional arg)
   "Format the current python buffer with apheleia.
@@ -750,9 +756,10 @@ Honors `dc-pe-formatter' and `dc-pe-linter' when set."
     ('pylint
      (add-hook 'flymake-diagnostic-functions #'dc-pe/flymake-pylint nil t))
     ('ruff
-     (require 'flymake-ruff)
-     ;; Insert settings into ruff.toml in the project root.
-     (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t))))
+     (if (require 'flymake-ruff nil t)
+         ;; Insert settings into ruff.toml in the project root.
+         (add-hook 'flymake-diagnostic-functions #'flymake-ruff--run-checker nil t)
+       (message "dc-pe/select-tools: flymake-ruff is not installed")))))
 
 (provide 'dc-python-extensions)
 

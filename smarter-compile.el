@@ -469,7 +469,7 @@ comment that specifies the compile command, then it returns non-nil.
 to test presence of a msbuild project file.
 "
   (smart-compile-any
-   '(lambda (elt) (file-expand-wildcards elt t))
+   #'(lambda (elt) (file-expand-wildcards elt t))
    '("*.csproj" "*.vcproj" "*.vbproj" "*.wixproj" "*.shfbproj" "*.sln")))
 
 
@@ -539,31 +539,30 @@ It does not call `compile'.
       (while (and alist not-done)
         (let* ((item (car alist))
                (test (car item))
-               (cmd (cdr item)))
-          (if (or
+               (cmd (cdr item))
+               (test-result
+                (or
+                 (and (symbolp test)
+                      (fboundp test)
+                      (string-suffix-p "-mode" (symbol-name test))
+                      (eq test major-mode))
 
-               (and (symbolp test)
-                    (fboundp test)
-                    (string-suffix-p "-mode" (symbol-name test))
-                    (eq test major-mode))
+                 (and (symbolp test)
+                      (fboundp test)
+                      (not (string-suffix-p "-mode" (symbol-name test)))
+                      (funcall test))
 
-               (and (symbolp test)
-                    (fboundp test)
-                    (not (string-suffix-p "-mode" (symbol-name test)))
-                    (funcall test))
+                 (and (stringp name)
+                      (stringp test)
+                      (string-match test name))
 
-               (and (stringp name)
-                    (stringp test)
-                    (string-match test name))
-
-               (and (not (symbolp test))
-                    (not (stringp test))
-                    (list test)
-                    (eval test)))
-
-              (progn
-                (smart-compile-set-compile-command-to-resolved-value (or cmd test))
-                (setq not-done nil))))
+                 (and (not (symbolp test))
+                      (not (stringp test))
+                      (listp test)
+                      (eval test)))))
+          (when test-result
+            (smart-compile-set-compile-command-to-resolved-value (or cmd test-result))
+            (setq not-done nil)))
 
         (setq alist (cdr alist))))
 

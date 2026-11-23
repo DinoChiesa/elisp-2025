@@ -42,6 +42,11 @@ to determine if we need to rotate through various formats.")
 ;;                              ("%H:%M:%S" . dino-parse-hms-time)
 ;;                              ))
 
+;; The parsers below fill any fields omitted by a format (e.g. seconds in
+;; YYYYMMDD-HHMM, or H:M:S in YBe) from `current-time'. This is intentional:
+;; `dc-ts/insert-timeofday' checks whether a parsed timestamp is within 10s
+;; of now to decide whether repeated invocations should cycle to the next
+;; format; defaulting missing seconds to 0 would break cycling past :10.
 (defun dc-ts--parse-YYYYMMDDHHMM-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
 in format YYYYMMDD-HHMM. Example: \"20130820-0848\". Otherwise, ARG is a
@@ -58,10 +63,8 @@ time format, eg (sec-high sec-low).
               (day (string-to-number (match-string 4 arg)))
               (hour (string-to-number (match-string 5 arg)))
               (minute (string-to-number (match-string 6 arg)))
-              (seconds (nth 0 dt))
-              tz)
-          (apply 'encode-time
-                 (list seconds minute hour day month year tz)))))))
+              (seconds (nth 0 dt)))
+          (encode-time (list seconds minute hour day month year)))))))
 
 (defun dc-ts--monthname-to-number (monthname)
   "Maps a monthname to a number, starting with 1 for January.
@@ -86,10 +89,8 @@ emacs internal time format, eg (sec-high sec-low).
               (year (string-to-number (match-string 4 arg)))
               (hour (string-to-number (match-string 6 arg)))
               (minute (string-to-number (match-string 7 arg)))
-              (seconds (nth 0 dt))
-              tz)
-          (apply 'encode-time
-                 (list seconds minute hour day month year tz)))))))
+              (seconds (nth 0 dt)))
+          (encode-time (list seconds minute hour day month year)))))))
 
 (defun dc-ts--parse-YBe-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
@@ -108,10 +109,8 @@ format, eg (sec-high sec-low).
               (day (string-to-number (match-string 4 arg)))
               (hour (nth 2 dt))
               (minute (nth 1 dt))
-              (seconds (nth 0 dt))
-              tz)
-          (apply 'encode-time
-                 (list seconds minute hour day month year tz)))))))
+              (seconds (nth 0 dt)))
+          (encode-time (list seconds minute hour day month year)))))))
 
 (defun dc-ts--parse-HMS-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
@@ -131,10 +130,8 @@ eg (sec-high sec-low).
               (seconds (string-to-number (match-string 3 arg)))
               (year (nth 5 dt))
               (month (nth 4 dt))
-              (day (nth 3 dt))
-              tz)
-          (apply 'encode-time
-                 (list seconds minute hour day month year tz)))))))
+              (day (nth 3 dt)))
+          (encode-time (list seconds minute hour day month year)))))))
 
 (defun dc-ts--parse-YmdHMS-time (arg)
   "If ARG is a boolean, then return a regex to match a time string
@@ -152,10 +149,8 @@ format, eg (sec-high sec-low).
               (day (string-to-number (match-string 4 arg)))
               (hour (string-to-number (match-string 5 arg)))
               (minute (string-to-number (match-string 6 arg)))
-              (seconds (string-to-number (match-string 7 arg)))
-              tz)
-          (apply 'encode-time
-                 (list seconds minute hour day month year tz)))))))
+              (seconds (string-to-number (match-string 7 arg))))
+          (encode-time (list seconds minute hour day month year)))))))
 
 
 

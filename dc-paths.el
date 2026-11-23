@@ -19,6 +19,10 @@
 (require 'seq)
 (require 'cl-lib)
 
+(defvar apheleia-formatters)
+(defvar apheleia-mode-alist)
+(defvar eglot-server-programs)
+
 (defun dc-paths/find-executable-in-paths (filename search-paths)
   "Find FILENAME in one of the given SEARCH-PATHS.
 Return the fully-qualified path if found, or nil otherwise."
@@ -254,7 +258,8 @@ to `exec-path' and PATH environment variable, if the directory exists."
 
 (defun dc-paths/setup-shmode-for-apheleia ()
   "Ensure shfmt is configured in `apheleia-formatters' and mode alists."
-  (when (boundp 'apheleia-formatters)
+  (when (and (boundp 'apheleia-formatters)
+             (boundp 'apheleia-mode-alist))
     (when-let* ((shfmt-cmd "~/go/bin/shfmt")
                 (_ (file-exists-p shfmt-cmd))
                 (cmd-string (car (alist-get 'shfmt apheleia-formatters))))
@@ -272,11 +277,10 @@ to `exec-path' and PATH environment variable, if the directory exists."
         (with-temp-buffer
           (insert-file-contents expanded-fname)
           (keep-lines keyname (point-min) (point-max))
-          (let* ((pattern-to-check (concat "^" keyname "\\s*[:=]\\s*\\(.*\\)"))
-                 (value
-                  (when (string-match pattern-to-check (buffer-string))
-                    (match-string 1 (buffer-string)))))
-            value))
+          (let ((pattern-to-check (concat "^" keyname "\\s*[:=]\\s*\\(.*\\)"))
+                (contents (buffer-string)))
+            (when (string-match pattern-to-check contents)
+              (match-string 1 contents))))
       (error "Cannot find that file: %s" env-filename))))
 
 (defvar dc-paths--vscode-lang-server-programs
@@ -286,20 +290,21 @@ to `exec-path' and PATH environment variable, if the directory exists."
   "Alist of relative locations of language servers in the VSCode install.")
 
 (defun dc-paths/maybe-register-vscode-server-for-eglot (mode-or-modelist)
-  "Register VSCode-provided language server into `eglot-server-programs', if available."
-  (if-let* ((relative-program-location
-             (alist-get mode-or-modelist dc-paths--vscode-lang-server-programs nil nil #'equal))
-            (vscode-server-program-fqpath
-             (file-name-concat (if (eq system-type 'windows-nt)
-                                   (file-name-concat (getenv "HOME")
-                                                     "AppData/Local/Programs/Microsoft VS Code")
-                                 "/usr/share/code")
-                               "resources/app/extensions"
-                               relative-program-location)))
-      (when (file-exists-p vscode-server-program-fqpath)
-        (add-to-list 'eglot-server-programs
-                     `(,mode-or-modelist
-                       . ,(list "node" vscode-server-program-fqpath "--stdio"))))))
+  "Register a VSCode language server in `eglot-server-programs', if available."
+  (when (boundp 'eglot-server-programs)
+    (if-let* ((relative-program-location
+               (alist-get mode-or-modelist dc-paths--vscode-lang-server-programs nil nil #'equal))
+              (vscode-server-program-fqpath
+               (file-name-concat (if (eq system-type 'windows-nt)
+                                     (file-name-concat (getenv "HOME")
+                                                       "AppData/Local/Programs/Microsoft VS Code")
+                                   "/usr/share/code")
+                                 "resources/app/extensions"
+                                 relative-program-location)))
+        (when (file-exists-p vscode-server-program-fqpath)
+          (add-to-list 'eglot-server-programs
+                       `(,mode-or-modelist
+                         . ,(list "node" vscode-server-program-fqpath "--stdio")))))))
 
 (provide 'dc-paths)
 

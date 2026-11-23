@@ -80,40 +80,32 @@
 ;;     ad-do-it))
 ;; (ad-activate 'url-cache-extract)
 
-(defvar success nil
-  "placeholder to allow the advice below to not throw warnings")
-
-
 ;; The following disables the interactive request for user name and
 ;; password should an API call encounter a permission-denied response.
 ;; This API is meant to be usable without constant asking for username
 ;; and password.
-(defadvice url-http-handle-authentication (around restclient-fix)
-  (let ((have-success (boundp 'success)))
-    (if restclient-within-call
-        (setq success t ad-return-value t)
-      ad-do-it)))
-
-(ad-activate 'url-http-handle-authentication)
-
-(defadvice url-cache-extract (around restclient-fix-2)
+(defun restclient--url-http-handle-authentication (orig-fn &rest args)
   (if restclient-within-call
-      (setq success t)
-    ad-do-it))
-(ad-activate 'url-cache-extract)
+      t
+    (apply orig-fn args)))
+(advice-add 'url-http-handle-authentication :around #'restclient--url-http-handle-authentication)
 
-(defadvice url-http-user-agent-string (around restclient-fix-3)
+(defun restclient--url-cache-extract (orig-fn &rest args)
+  (unless restclient-within-call
+    (apply orig-fn args)))
+(advice-add 'url-cache-extract :around #'restclient--url-cache-extract)
+
+(defun restclient--url-http-user-agent-string (orig-fn &rest args)
   (if restclient-within-call
-      (setq ad-return-value nil)
-    ad-do-it))
-(ad-activate 'url-http-user-agent-string)
+      nil
+    (apply orig-fn args)))
+(advice-add 'url-http-user-agent-string :around #'restclient--url-http-user-agent-string)
 
 (defun restclient-restore-header-variables ()
-  (url-set-mime-charset-string)
+  (setq url-mime-charset-string (url-mime-charset-string))
   (setq url-mime-language-string nil)
   (setq url-mime-encoding-string nil)
-  (setq url-mime-accept-string nil)
-  (setq url-personal-mail-address nil))
+  (setq url-mime-accept-string nil))
 
 (defun restclient-http-do (method url headers entity &rest handle-args)
   "Send ENTITY and HEADERS to URL as a METHOD request."
@@ -126,8 +118,7 @@
     (restclient-restore-header-variables)
     (dolist (header headers)
       (let* ((mapped (assoc-string (downcase (car header))
-                                   '(("from" . url-personal-mail-address)
-                                     ("accept-encoding" . url-mime-encoding-string)
+                                   '(("accept-encoding" . url-mime-encoding-string)
                                      ("accept-charset" . url-mime-charset-string)
                                      ("accept-language" . url-mime-language-string)
                                      ("accept" . url-mime-accept-string)))))
@@ -202,7 +193,9 @@
                        (re-search-forward "^data: " (+ (point) 23) t))
               (delete-region start (point))
               (save-excursion
-                (replace-string "\r" "" nil (point-min) (point-max)))
+                (goto-char (point-min))
+                (while (search-forward "\r" nil t)
+                  (replace-match "" t t)))
               (setq guessed-mode 'json-mode)))
 
           (unless (eq guessed-mode 'image-mode)
@@ -267,7 +260,8 @@ The buffer contains the raw HTTP response sent by the server."
           (switch-to-buffer-other-window (current-buffer)))))))
 
 (defun restclient-decode-response (raw-http-response-buffer target-buffer-name same-name)
-  "Decode the HTTP response using the charset (encoding) specified in the Content-Type header. If no charset is specified, default to UTF-8."
+  "Decode the HTTP response using the charset (encoding) specified in the
+Content-Type header. If no charset is specified, default to UTF-8."
   (let* ((charset-regexp "Content-Type.*charset=\\([-A-Za-z0-9]+\\)")
          (image? (save-excursion
                    (search-forward-regexp "Content-Type.*[Ii]mage" nil t)))
@@ -321,15 +315,15 @@ The buffer contains the raw HTTP response sent by the server."
     (beginning-of-line)
     (if (looking-at "^#")
         (if (re-search-forward "^[^#]" (point-max) t)
-            (point-at-bol) (point-max))
+            (line-beginning-position) (point-max))
       (if (re-search-backward "^#" (point-min) t)
-          (point-at-bol 2)
+          (line-beginning-position 2)
         (point-min)))))
 
 (defun restclient-current-max ()
   (save-excursion
     (if (re-search-forward "^#" (point-max) t)
-        (max (- (point-at-bol) 1) 1)
+        (max (- (line-beginning-position) 1) 1)
       (point-max))))
 
 (defun restclient-replace-all-in-string (replacements s)
@@ -409,7 +403,7 @@ For internal use."
             (url (buffer-substring-no-properties (match-beginning 2) (match-end 2)))
             (headers '()))
         (forward-line)
-        (while (re-search-forward restclient-header-regexp (point-at-eol) t)
+        (while (re-search-forward restclient-header-regexp (line-end-position) t)
           (setq headers (cons (cons (buffer-substring-no-properties (match-beginning 1) (match-end 1))
                                     (buffer-substring-no-properties (match-beginning 2) (match-end 2)))
                               headers))
@@ -547,7 +541,8 @@ Optional argument STAY-IN-WINDOW do not move focus to response buffer if t."
 
 ;;;###autoload
 (defun restclient-http-send-current-raw ()
-  "Sends current request and get raw result (no reformatting or syntax highlight of XML, JSON or images)."
+  "Sends current request and get raw result (no reformatting or syntax
+highlight of XML, JSON or images)."
   (interactive)
   (restclient-http-send-current t))
 

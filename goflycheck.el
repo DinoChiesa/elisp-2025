@@ -10,6 +10,8 @@
 (require 'go-mode)
 (require 'dc-edit)
 
+(defvar flycheck-log-level)
+
 
 ;;;###autoload
 (defcustom goflycheck-cmd-line-limit 28
@@ -35,7 +37,8 @@ The line should appear in a comment inside the Go buffer."
 This function is intended for use as a before-syntax-check-hook with
 flycheck.  Use it like this:
 
-    (add-hook 'flycheck-before-syntax-check-hook  #'goflycheck-set-flycheck-command)
+    (add-hook \='flycheck-before-syntax-check-hook
+              #\='goflycheck-set-flycheck-command)
 
 Then, in your go file, specify this in the comments near the top
 of the file.  (See `goflycheck-cmd-line-limit' for details.)
@@ -48,18 +51,18 @@ the source file name.
 This function is intended for internal use.  The goflycheck adds this hook
 automatically when flycheck loads."
 
-  (and (eq major-mode 'go-mode)
-       (let ((cmd-string
-              (dc-edit/get-value-from-comments "flycheck" goflycheck-cmd-line-limit)))
-         (and cmd-string
-              (not (eq cmd-string ""))
-              (and (boundp 'flycheck-log-level)
-                   (> flycheck-log-level 2)
-                   (message "found command: %s" cmd-string))
-              (let* ((cmd (split-string cmd-string " "))
-                     (ferf (member "%f" cmd)))
-                (and ferf (setcar ferf 'source))
-                (put 'go :flycheck-command cmd))))))
+  (when (eq major-mode 'go-mode)
+    (let ((cmd-string
+           (dc-edit/get-value-from-comments "flycheck" goflycheck-cmd-line-limit)))
+      (when (and cmd-string
+                 (not (string-empty-p cmd-string)))
+        (when (and (boundp 'flycheck-log-level)
+                   (> flycheck-log-level 2))
+          (message "found command: %s" cmd-string))
+        (let* ((cmd (split-string cmd-string " "))
+               (ferf (member "%f" cmd)))
+          (when ferf (setcar ferf 'source))
+          (put 'go :flycheck-command cmd))))))
 
 
 (eval-after-load "flycheck"
@@ -73,7 +76,7 @@ If you would like to use a different compiler, see
        ;; ex43.go:6:4: expected 'STRING', found newline
        ((error line-start (file-name) ":" line ":" column ": " (message) line-end))
        :modes go-mode)
-     (add-hook 'flycheck-before-syntax-check-hook  #'goflycheck-set-flycheck-command)
+     (add-hook 'flycheck-before-syntax-check-hook #'goflycheck-set-flycheck-command)
      (setq flycheck-log-level 0)))
 
 

@@ -78,7 +78,8 @@ the kill ring instead of inserting. Also works in Dired buffers."
     found))
 
 (defun dc-edit/replace-filename (&optional arg)
-  "Insert the name of the file behind the buffer at point, replacing existing filename.
+  "Insert the name of the file behind the buffer at point, replacing existing
+filename.
 Optional prefix ARG replaces base filename with no extension."
   (interactive "P")
   (let* ((no-extension arg)
@@ -324,13 +325,20 @@ Optional prefix ARG replaces base filename with no extension."
 (defun dc-edit/camel-to-snakecase-word-at-point ()
   "Convert camelCase to snake_case for the word at point."
   (interactive)
-  (save-excursion
-    (let* ((bounds (bounds-of-thing-at-point 'word))
-           (start (car bounds))
-           (end (cdr bounds)))
-      (replace-regexp "\\([A-Z]\\)" "_\\1" nil start end)
-      (goto-char (1- end))
-      (downcase-region start (cdr (bounds-of-thing-at-point 'word))))))
+  (when-let* ((bounds (bounds-of-thing-at-point 'word)))
+    (save-excursion
+      (let ((start (car bounds))
+            (end (copy-marker (cdr bounds)))
+            (case-fold-search nil))
+        (unwind-protect
+            (progn
+              (goto-char start)
+              (while (re-search-forward "\\([A-Z]\\)" end t)
+                (replace-match
+                 (concat (if (> (match-beginning 0) start) "_" "")
+                         (downcase (match-string 1)))
+                 t t)))
+          (set-marker end nil))))))
 
 (defun dc-edit/snake-to-camelcase-word-at-point ()
   "Convert snake_case to camelCase for the word at point."
@@ -348,18 +356,19 @@ Optional prefix ARG replaces base filename with no extension."
   "Sort words in region between BEGIN and END.
 With prefix argument CASE-INSENSITIVE (C-u), sort is case-insensitive."
   (interactive "r\nP")
-  (let* ((case-fold (if case-insensitive t nil))
-         (region-string (buffer-substring-no-properties begin end))
+  (let* ((region-string (buffer-substring-no-properties begin end))
          (words (split-string region-string "[[:space:]]+" t))
-         (sorted-words (if case-fold
-                           (sort words #'string-lessp)
-                         (sort words #'string<)))
+         (sorted-words (sort words
+                             (if case-insensitive
+                                 (lambda (a b) (string< (downcase a) (downcase b)))
+                               #'string<)))
          (new-string (string-join sorted-words " ")))
     (delete-region begin end)
     (insert new-string)))
 
 (defun dc-edit/indent-line-to-current-column ()
-  "Indent the current line so its first non-whitespace character begins at point's column."
+  "Indent the current line so its first non-whitespace character begins at
+point's column."
   (interactive)
   (indent-line-to (current-column)))
 

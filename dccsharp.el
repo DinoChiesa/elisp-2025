@@ -63,6 +63,9 @@
 (require 's) ;; magnars' long lost string library
 (require 'cl-seq) ;; for cl-remove-if-not
 
+(declare-function eglot-code-actions "eglot" (beg &optional end action-kind interactive))
+(declare-function eglot-execute "eglot" (server action))
+
 (defvar dccsharp--load-path (or load-file-name "~/elisp/dccsharp.el")
   "For internal use only. ")
 
@@ -121,7 +124,7 @@ super useful, as csharpier includes this function implicitly,
 and apheleia-mode runs csharpier on save."
   (interactive)
   (save-excursion
-    (beginning-of-buffer)
+    (goto-char (point-min))
     (if (re-search-forward dccsharp--using-stmt-regex nil t)
         (let ((start nil))
           (beginning-of-line)

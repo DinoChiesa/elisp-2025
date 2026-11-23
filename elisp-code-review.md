@@ -9,15 +9,28 @@
 
 ## 1. Executive Summary
 
-This review provides a comprehensive technical analysis of `emacs.el` and all local Emacs Lisp modules maintained in `~/elisp`. The configuration reflects a mature, multi-platform development environment spanning Unix, macOS, and Windows NT, coordinating Language Server Protocol (`eglot`), code formatting (`apheleia`), on-the-fly linting (`flymake` and `flycheck`), version control (`magit`, `gerrit`), and custom productivity tooling for Apigee, CitC (Google G3), Gemini AI, Java, C#, Python, and more.
+This review provides a comprehensive technical analysis of `emacs.el` and all local Emacs Lisp
+modules maintained in `~/elisp`. The configuration reflects a mature, multi-platform development
+environment spanning Unix, macOS, and Windows NT, coordinating Language Server Protocol (`eglot`),
+code formatting (`apheleia`), on-the-fly linting (`flymake` and `flycheck`), version control
+(`magit`, `gerrit`), and custom productivity tooling for Apigee, CitC (Google G3), Gemini AI, Java,
+C#, Python, and more.
 
 ### Key Evaluation Findings
 
-| Dimension | Assessment | Summary of Critical Observations |
-| :--- | :--- | :--- |
-| **Correctness** | **Defects Found** | Fatal load-time failure in `apigee/apigee.el`; runtime type crash in `emacs.el` Magit invocation; literal string `eq` check bug in `goflycheck.el`; invalid 1-argument `looking-back` calls in `web-mode` and `powershell-mode`; security exposure of plain passwords via process CLI args in `salted.el`; session-wide TLS downgrade in `dc-cloud.el`; uninitialized `tz` variables in `dc-timestamp.el`; double-prompting loop and predicate bug in `smarter-compile.el`. |
-| **Coherence** | **Needs Consolidation** | Namespace fragmentation across 7+ prefixes (`dc-`, `dpc-`, `dino-`, `dinoch-`, `ctsn/`, `efi/`, `aip/`); startup deferral violations in `use-package` (`jsonnet-mode`); duplicate library loads (`dc-sane-sorting`, `dcjava`); mix of deprecated Emacs 19 `defadvice` and modern `advice-add`. |
-| **Commenting** | **Inconsistent** | Pervasive Emacs byte-compiler docstring violations (lines > 80 columns, unescaped single quotes); large blocks of stale dead code; conversational scratchpads and frustration notes; outdated version references (Emacs 23/24/29 vs current runtime 31.1). |
+| Dimension       | Assessment              | Summary of Critical Observations                                                                     |
+|:----------------|:------------------------|:-----------------------------------------------------------------------------------------------------|
+| **Correctness** | **Defects Found**       | Fatal load-time failure in `apigee/apigee.el`; runtime type crash in `emacs.el` Magit invocation;    |
+:                 :                         : literal string `eq` check bug in `goflycheck.el`; invalid 1-argument `looking-back` calls in         :
+:                 :                         : `web-mode` and `powershell-mode`; security exposure of plain passwords via process CLI args in       :
+:                 :                         : `salted.el`; session-wide TLS downgrade in `dc-cloud.el`; uninitialized `tz` variables in            :
+:                 :                         : `dc-timestamp.el`; double-prompting loop and predicate bug in `smarter-compile.el`.                  :
+| **Coherence**   | **Needs Consolidation** | Namespace fragmentation across 7+ prefixes (`dc-`, `dpc-`, `dino-`, `dinoch-`, `ctsn/`, `efi/`,      |
+:                 :                         : `aip/`); startup deferral violations in `use-package` (`jsonnet-mode`); duplicate library loads      :
+:                 :                         : (`dc-sane-sorting`, `dcjava`); mix of deprecated Emacs 19 `defadvice` and modern `advice-add`.       :
+| **Commenting**  | **Inconsistent**        | Pervasive Emacs byte-compiler docstring violations (lines > 80 columns, unescaped single quotes);    |
+:                 :                         : large blocks of stale dead code; conversational scratchpads and frustration notes; outdated version  :
+:                 :                         : references (Emacs 23/24/29 vs current runtime 31.1).                                                 :
 
 ---
 
@@ -65,7 +78,7 @@ Local packages are incorporated using a hybrid of `use-package`, direct `require
 
    Across `emacs.el`, there are roughly 15 occurrences checking `(file-exists-p "~/elisp/foo.el")`
    prior to loading (e.g. `peggy-mode`, `rego-mode`, `markdown-mode`, `powershell-mode`, `citc`, `php-mode`).
-   
+
    While this is syntactically valid and successfully guards against missing files, hardcoding
    the absolute path `~/elisp/...` has two drawbacks:
    - **Portability**: If the repository or elisp directory is relocated (or shared across environments
@@ -82,19 +95,33 @@ Local packages are incorporated using a hybrid of `use-package`, direct `require
    ```elisp
    (setq case-fold-search nil)
    ```
-   *Impact*: In Emacs, `case-fold-search` defaults to `t`, enabling smart case-insensitive searches and completions unless uppercase characters are typed. Setting this to `nil` globally breaks user expectations across search buffers, `isearch`, minibuffer completions, and third-party package heuristics. It should be buffer-local or mode-specific.
+
+   *Impact*: In Emacs, `case-fold-search` defaults to `t`, enabling smart case-insensitive searches
+   and completions unless uppercase characters are typed. Setting this to `nil` globally breaks user
+   expectations across search buffers, `isearch`, minibuffer completions, and third-party package
+   heuristics. It should be buffer-local or mode-specific.
+
 2. **Window Splitting Disabled Globally** (`emacs.el:196`):
    ```elisp
    (setq split-height-threshold nil
          split-width-threshold nil)
    ```
-   *Impact*: This completely prevents `split-window-sensibly` from creating new vertical or horizontal splits. Any command invoking `display-buffer` or `pop-to-buffer` (such as `compile`, `occur`, or `magit`) is forced to hijack existing windows instead of opening an adjacent split.
+
+   *Impact*: This completely prevents `split-window-sensibly` from creating new vertical or
+   horizontal splits. Any command invoking `display-buffer` or `pop-to-buffer` (such as `compile`,
+   `occur`, or `magit`) is forced to hijack existing windows instead of opening an adjacent split.
+
 3. **Hardcoded Unix `/tmp` on Windows** (`emacs.el:374`):
    ```elisp
    (setq temporary-file-directory "/tmp")
    ```
-   *Impact*: On Windows NT, `/tmp` does not exist by default unless mapped to `C:\tmp`. Emacs natively identifies `%TEMP%` or `%TMP%` (e.g. `C:/Users/dpchi/AppData/Local/Temp/`). Forcing `/tmp` triggers I/O failures in external processes and temporary buffer tools.
+
+   *Impact*: On Windows NT, `/tmp` does not exist by default unless mapped to `C:\tmp`. Emacs
+   natively identifies `%TEMP%` or `%TMP%` (e.g. `C:/Users/dpchi/AppData/Local/Temp/`). Forcing
+   `/tmp` triggers I/O failures in external processes and temporary buffer tools.
+
 4. **Macro-Generated Compiler Warnings from `polymode`** (`emacs.el:340-345`):
+
    When compiling the `(define-polymode poly-peggy-mode ...)` macro form, `polymode` internally expands to:
    - `make-variable-buffer-local` inside an un-toplevel expression.
    - An obsolete call to `easy-mmode-define-keymap` (deprecated since Emacs 29.1).
@@ -106,10 +133,17 @@ Local packages are incorporated using a hybrid of `use-package`, direct `require
     (message "found git at %s" magit-git-executable)
   (error (format "git executable (%s) cannot be found" magit-git-executable)))
 ```
-*Bug*: The block intends to verify that Git is installed and provide a helpful error message if it is missing. However, if Git is not installed or not in `exec-path`, `(executable-find magit-git-executable)` returns `nil`. Passing `nil` to `(file-exists-p nil)` throws:
+
+*Bug*: The block intends to verify that Git is installed and provide a helpful error message if it
+is missing. However, if Git is not installed or not in `exec-path`, `(executable-find
+magit-git-executable)` returns `nil`. Passing `nil` to `(file-exists-p nil)` throws:
 `wrong-type-argument stringp nil`
-Because `file-exists-p` requires a string argument, it raises an unhandled type error immediately, preventing the `else` branch with your friendly error message from ever running.
+
+Because `file-exists-p` requires a string argument, it raises an unhandled type error immediately,
+preventing the `else` branch with your friendly error message from ever running.
+
 *Remediation*:
+
 ```elisp
 (if-let* ((git-path (executable-find magit-git-executable)))
     (message "found git at %s" git-path)
@@ -199,14 +233,25 @@ The compiler warnings reveal several deprecations introduced in Emacs 30-32:
        (not (eq cmd-string ""))
        ...)
   ```
-  *Bug*: `eq` tests for Lisp object identity. Comparing a dynamically read string against the literal `""` with `eq` evaluates to `nil` in Emacs Lisp because they are different string instances. As a result, non-empty commands can be skipped or misidentified.
+
+  *Bug*: `eq` tests for Lisp object identity. Comparing a dynamically read string against the
+  literal `""` with `eq` evaluates to `nil` in Emacs Lisp because they are different string
+  instances. As a result, non-empty commands can be skipped or misidentified.
+
   *Remediation*: Replace `(not (eq cmd-string ""))` with `(not (string-empty-p cmd-string))` or `(not (string= cmd-string ""))`.
+
 - **Compiler Warnings**: Assignment to free variable `flycheck-log-level`.
 
 #### `smarter-compile.el`
 - **Correctness**:
+
   - Double Prompt Bug (`smart-compile-select-compile-command`):
-    The alist entry `(smart-compile-consider-makefile . nil)` calls `smart-compile-consider-makefile`, which prompts the user with `y-or-n-p`. Because `cmd` is `nil`, the resolved value logic calls `(or cmd test)`, re-invoking `smart-compile-consider-makefile` and prompting the user a **second time**.
+
+    The alist entry `(smart-compile-consider-makefile . nil)` calls
+    `smart-compile-consider-makefile`, which prompts the user with `y-or-n-p`. Because `cmd` is
+    `nil`, the resolved value logic calls `(or cmd test)`, re-invoking
+    `smart-compile-consider-makefile` and prompting the user a **second time**.
+
   - Logic Flaw in `smart-compile-select-compile-command`:
     ```elisp
     (and (not (symbolp test))

@@ -1527,6 +1527,7 @@ server program."
   (auto-fill-mode -1))
 
 (use-package web-mode
+  :ensure t
   :defer t
   :hook (web-mode . dino-web-mode-fn))
 
