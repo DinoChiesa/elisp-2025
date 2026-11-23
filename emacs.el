@@ -163,7 +163,7 @@
                             (sit-for 0.001)
                             (set-face-background 'default "black")))
 
-
+(setq emacs-lisp-docstring-fill-column 80)
 (setq scroll-error-top-bottom t) ;; move cursor when scrolling not possible
 (setq user-mail-address "dpchiesa@hotmail.com")
 (setq comment-style 'indent) ;; see doc for variable comment-styles
@@ -321,7 +321,7 @@
 ;;
 (use-package peggy-mode
   :load-path "~/elisp"
-  :if (file-exists-p "~/elisp/peggy-mode.el")
+  :if (locate-library "peggy-mode")
   :pin manual
   :commands (peggy-mode))
 
@@ -369,8 +369,9 @@
 
 (custom-set-variables
  '(ls-lisp-format-time-list (quote ("%Y-%m-%d %H:%M" "%Y-%m-%d %H:%M")))
- '(ls-lisp-use-localized-time-format t)
- '(temporary-file-directory "/tmp"))
+ '(ls-lisp-use-localized-time-format t))
+
+(setq temporary-file-directory (if (eq system-type 'windows-nt) "c:/tmp" "/tmp"))
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;; To make sure we transmit kill to clipboard, and yank from clipboard.
@@ -650,21 +651,22 @@
              (alist-get 'rego-mode apheleia-mode-alist))
     (apheleia-mode)))
 
-(when (file-exists-p "~/elisp/rego-mode.el")
-  (use-package rego-mode
-    ;; OPA configuration language. As of 20250312-0217,
-    ;; rego-mode on MELPA is out of date and unmaintained.
-    :load-path "~/elisp"
-    ;;:init
-    :hook dino-rego-mode-fn
-    :pin manual
-    :defer t
-    :commands (rego-repl-show rego-mode)
-    :config
-    (add-hook 'rego-mode-hook #'dino-rego-mode-fn)
-    (when (boundp 'apheleia-formatters)
-      (setf (alist-get 'opa-fmt apheleia-formatters) '("opa" "fmt"))
-      (setf (alist-get 'rego-mode apheleia-mode-alist) 'opa-fmt)) ))
+
+(use-package rego-mode
+  ;; OPA configuration language. As of 20250312-0217,
+  ;; rego-mode on MELPA is out of date and unmaintained.
+  :if (file-exists-p "~/elisp/rego-mode.el")
+  :load-path "~/elisp"
+  ;;:init
+  :hook dino-rego-mode-fn
+  :pin manual
+  :defer t
+  :commands (rego-repl-show rego-mode)
+  :config
+  (add-hook 'rego-mode-hook #'dino-rego-mode-fn)
+  (when (boundp 'apheleia-formatters)
+    (setf (alist-get 'opa-fmt apheleia-formatters) '("opa" "fmt"))
+    (setf (alist-get 'rego-mode apheleia-mode-alist) 'opa-fmt)) )
 
 (use-package treesit
   :defer t
@@ -880,12 +882,12 @@
       (error "variable 'magit-git-executable' is not bound")
     (if (not magit-git-executable)
         (error "variable 'magit-git-executable' is not set"))
-    (if (file-exists-p (executable-find magit-git-executable))
-        (message "found git at %s" magit-git-executable)
+    (if-let* ((git-path (executable-find magit-git-executable)))
+        (message "found git at %s" git-path)
       (error (format "git executable (%s) cannot be found" magit-git-executable)))
     )
 
-  (require 'dc-magit-gerrit))
+  (require 'dc-magit-gerrit nil t))
 
 (defun dino-git-commit-mode-fn ()
   "Setup logic for the git commit message buffer.
@@ -1033,9 +1035,9 @@ eglot, especially with python files."
   :demand t
   :commands (eglot eglot-ensure)
   :bind (:map eglot-mode-map
-         ("C-c e a" . eglot-code-actions)
+         ("C-c e a" . refactor)
          ("C-c e o" . eglot-code-actions-organize-imports)
-         ("C-c e r" . eglot-rename)
+         ("C-c e r" . refactor-rename)
          ("C-c e f" . eglot-format)
          ("C-c e s" . eglot-shutdown)
          ("C-c e C-s" . eglot-shutdown-all)
@@ -1044,9 +1046,9 @@ eglot, especially with python files."
          )
   ;;:hook (csharp-mode . dino-start-eglot-unless-remote)
   :config
-  (setq flymake-show-diagnostics-at-end-of-line t
+  (setq flymake-inline-diagnostics 'eol
         eglot-autoshutdown t
-        eglot-code-action-indications '(eldoc-hint margin))
+        refactor-indications '(eldoc-hint left-fringe margin))
 
   ;; Add this hook to the absolute front of the project-find-functions list
   (add-hook 'project-find-functions #'dino/project-find-nested-root-bottom-up -10)
@@ -1127,7 +1129,8 @@ eglot, especially with python files."
   ;;
   ;; Also, running both flycheck and eglot on a jsonnet buffer makes for
   ;; too much feedback when I'm trying to do completion.
-  (flycheck-mode -1)
+  (when (fboundp 'flycheck-mode)
+    (flycheck-mode -1))
 
   ;; 20250406 At one point I believed that eglot worked reliably, only locally,
   ;; eg not when editing a remote file via tramp. Now I am not so sure, but I
@@ -1227,27 +1230,19 @@ server program."
 
 
 (use-package jsonnet-mode
-  ;; NB: the requires keyword is the same as :if - it does not load dependencies!
-  :init (progn (require 'flycheck) (require 'eglot) )
-  ;;:ensure t
   :defer t
   :commands (jsonnet-eval-buffer jsonnet-mode jsonnet-reformat-buffer)
   :config
-  (when  (file-exists-p "~/elisp/dpc-jsonnet-mode-fixups.el")
-    (require 'dpc-jsonnet-mode-fixups)
-    (dino-jsonnet-package-config))
-  :mode (
-         ("\\.libjsonnet\\'" . jsonnet-mode)
-         ("\\.jsonnet\\'" . jsonnet-mode)
-         ("\\.jsonnet.TEMPLATE\\'" . jsonnet-mode)
-         )
+  (progn
+    (require 'eglot)
+    (when (locate-library "dpc-jsonnet-mode-fixups")
+      (require 'dpc-jsonnet-mode-fixups)
+      (dino-jsonnet-package-config)))
+  :mode (("\\.libjsonnet\\'" . jsonnet-mode)
+         ("\\.jsonnet\\'"    . jsonnet-mode)
+         ("\\.jsonnet\\.TEMPLATE\\'" . jsonnet-mode))
   :hook (jsonnet-mode . dino-jsonnet-mode-fn))
 
-;; (use-package dpc-jsonnet-mode-fixups
-;;   :defer t
-;;   :if (file-exists-p "~/elisp/dpc-jsonnet-mode-fixups.el")
-;;   :load-path "~/elisp"
-;;   :pin manual)
 
 (use-package expand-region
   ;; Tips from https://www.youtube.com/watch?v=p3Te_a-AGqM
@@ -2061,9 +2056,9 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
     (setf (alist-get 'pwsh-format apheleia-formatters)
           `("pwsh" "-NoProfile" "-Command"
             ,(concat "Invoke-Formatter "
-                     "-ScriptDefinition ($input | Out-String) "
-                     "-Settings @{IncludeDefaultRules=$true; "
-                     "Rules=@{PSUseConsistentIndentation=@{Enable=$true; IndentationSize=2}} }")))
+              "-ScriptDefinition ($input | Out-String) "
+              "-Settings @{IncludeDefaultRules=$true; "
+              "Rules=@{PSUseConsistentIndentation=@{Enable=$true; IndentationSize=2}} }")))
     (setf (alist-get 'powershell-mode apheleia-mode-alist) 'pwsh-format)
     (setf (alist-get 'powershell-ts-mode apheleia-mode-alist) 'pwsh-format))
   (eval-after-load "hideshow"
@@ -3568,7 +3563,7 @@ just auto-corrects on common mis-spellings by me."
 
   (require 'dccsharp)
   (keymap-local-set "C-c C-i"  #'dccsharp/auto-add-using)
-  (keymap-local-set "C-c e"    #'eglot-code-actions)
+  (keymap-local-set "C-c e"    #'refactor)
   (keymap-local-set "C-c C-s"  #'dccsharp/sort-using-statements)
 
   ;; 20241229-1756
@@ -4054,7 +4049,7 @@ Does not consider word syntax tables.
   :hook (sh-mode . flymake-shellcheck-load))
 
 (use-package ibuffer-preview
-  :if (file-exists-p "~/elisp/ibuffer-preview.el")
+  :if (locate-library "ibuffer-preview")
   :after ibuffer
   :load-path "~/elisp"
   :config
