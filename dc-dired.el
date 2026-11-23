@@ -540,14 +540,19 @@ The destination paths, transformed by FORMAT-PATH, go on the kill ring."
                (file-remote-p dir)))))
          (default-dest (or other-dired-dir (car history) base))
          (target-dir
-          (let ((file-name-history history)
-                (default-directory default-dest))
-            (read-directory-name
-             (format prompt (length files))
-             ;;dc-dired-cloudtop-base
-             default-dest
-             default-dest
-             t)))
+          (progn
+            (when (and (file-remote-p default-dest)
+                       (not (file-remote-p default-dest nil t)))
+              (message "Connecting to %s..." (file-remote-p default-dest 'host))
+              (file-directory-p default-dest))
+            (let ((file-name-history history)
+                  (default-directory default-dest))
+              (read-directory-name
+               (format prompt (length files))
+               ;;dc-dired-cloudtop-base
+               default-dest
+               default-dest
+               t))))
          (expanded-target (file-name-as-directory (expand-file-name target-dir base)))
          copied-paths)
 
