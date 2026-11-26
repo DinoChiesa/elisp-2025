@@ -20,7 +20,7 @@
 ;;    -or-
 
 ;;   (require 'dc-gemini)
-;;   (setq dc-gemini-properties-file "~/path/to/.google-gemini-properties")
+;;   (setq dc-gemini-properties-file "~/.config/google-gemini.properties")
 ;;   (dc-gemini/read-settings-from-properties-file)
 
 ;; Optionally, set a key binding:
@@ -75,24 +75,24 @@ Get one by visiting  https://aistudio.google.com/app/apikey"
   :type 'string
   :group 'dc-gemini)
 
-(defcustom dc-gemini-properties-file  "~/.google-gemini-properties"
+(defcustom dc-gemini-properties-file "~/.config/google-gemini.properties"
   "File in which to find gemini-related properties like the API key to use
 and the default model, etc. The file should be structured as a properties file.
 Eg,
 
   apikey: something
-  default-model: gemini-2.5-flash-preview-05-20
+  default-model: gemini-4-neon
   other-setting: blah-blah
 "
   :type 'string
   :group 'dc-gemini)
 
-(defvar dc-gemini-selected-model "gemini-flash-latest"
+(defvar dc-gemini-selected-model "gemini-4-hydrogen"
   "The model key for Gemini. This package uses the specified model, and other
 packages may choose to reference this, too.
 
 examples: \"gemini-flash-latest\",
-\"gemini-pro-latest\", \"gemini-3-pro-preview\"
+\"gemini-pro-latest\", \"gemini-4-hydrogen\"
 See also `dc-gemini/list-models'")
 
 (defvar dc-gemini--properties-cache nil

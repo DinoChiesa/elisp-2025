@@ -2512,7 +2512,7 @@ more information."
          ("C-c g l" . dc-gemini/list-models)
          ("C-c g s" . dc-gemini/select-model))
   :config
-  (setq dc-gemini-properties-file "~/.google-gemini-properties"))
+  (setq dc-gemini-properties-file  "~/.config/google-gemini.properties"))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
