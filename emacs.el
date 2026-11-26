@@ -2587,7 +2587,7 @@ more information."
       (setq agent-shell-antigravity-authentication
             (agent-shell-antigravity-make-authentication :api-key api-key)
             agent-shell-antigravity-default-config-options
-            '(("model" . default-model)))
+            `(("model" . ,default-model)))
     (message "No settings found for Gemini")) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
