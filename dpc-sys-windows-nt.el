@@ -114,4 +114,19 @@ there (and xargs, etc)."
           (message "dpc-sys-windows-nt: DejaVu Sans Mono not found; using %s. Consider installing DejaVu Sans Mono for full Unicode/SVG support." font)))
     (message "dpc-sys-windows-nt: None of %S found; using Emacs default font." preferred-fonts)))
 
+
+;; sometimes agent-shell shows elisp ⧉. this allows it to resolve to the right glyph.
+(when (find-font (font-spec :name "Segoe UI Symbol"))
+  (set-fontset-font t 'symbol (font-spec :family "Segoe UI Symbol") nil 'append))
+
+
+;; Emoji for rendering flags and etc. This is used in the time-zone package,
+;; which includes country flags for the specific timezones. NB: Microsoft's
+;; Segoe UI Emoji intentionally omits country flag glyphs - they will render as
+;; two-letter country codes (US, GB) rather than colored flags. If you want
+;; actual flag icons on Windows, install a font like Noto Color Emoji or Twemoji
+;; and prepend that font family before Segoe UI Emoji to get flags.
+(when (find-font (font-spec :name "Segoe UI Emoji"))
+  (set-fontset-font t 'emoji (font-spec :family "Segoe UI Emoji") nil 'prepend))
+
 (provide 'dpc-sys-windows-nt)

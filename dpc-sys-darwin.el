@@ -75,6 +75,9 @@
            when (dpcmac/font-available-p font)
            return (set-face-attribute 'default nil :family font :height 120 :weight 'normal)))
 
+(when (dpcmac/font-available-p "Apple Color Emoji")
+  (set-fontset-font t 'emoji (font-spec :family "Apple Color Emoji") nil 'prepend))
+
 
 (setq initial-frame-alist
       '((top . 10) (left . 10)

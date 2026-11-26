@@ -14,5 +14,9 @@
         (height . 42) (width . 148)))
 (set-frame-font "Noto Mono 11" nil t)
 
+(when-let* ((emoji-font (seq-find (lambda (f) (find-font (font-spec :name f)))
+                                  '("Noto Color Emoji" "Symbola"))))
+  (set-fontset-font t 'emoji (font-spec :family emoji-font) nil 'prepend))
+
 (provide 'dpc-sys-gnu-linux)
 ;;; dpc-sys-gnu-linux.el ends here

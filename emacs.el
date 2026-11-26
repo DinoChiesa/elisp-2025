@@ -2536,13 +2536,17 @@ more information."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; time zones
 ;;
-;; ui in emacs to translate timezones. I forget how to use this now!
+;; ui in emacs to translate timezones. M-x time-zones
 ;;
+;; (use-package time-zones
+;;   :vc (:url "https://github.com/xenodium/time-zones"
+;;        :rev :newest
+;;        :main-file "time-zones.el"
+;;        :branch "main"))
 (use-package time-zones
-  :vc (:url "https://github.com/xenodium/time-zones"
-       :rev :newest
-       :main-file "time-zones.el"
-       :branch "main"))
+  :ensure t
+  :defer t
+  :hook (time-zones-mode . (lambda () (setq-local show-trailing-whitespace nil))))
 
 
 ;; ;; With :vc, these get loaded from github; not sure if they are ever updated
@@ -2568,6 +2572,7 @@ more information."
          ("C-c g p" . agent-shell-prompt-compose)
          ("C-c g r" . agent-shell-send-region))
 
+  :hook (agent-shell-mode . (lambda () (setq-local show-trailing-whitespace nil)))
   :config
   ;;(setq acp-logging-enabled t)
   (setq agent-shell-markdown-image-max-width 1.0
