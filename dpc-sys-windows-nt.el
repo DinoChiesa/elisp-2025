@@ -101,15 +101,17 @@ there (and xargs, etc)."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(cond
- ((eq system-type 'windows-nt)
-  (dpc-windows-nt-configure-external-utilities)
-  )
- (t   ;; not windows-nt
-  (eval-after-load "grep"
-    '(progn
-       (grep-apply-setting 'grep-command "grep -H -i -n " )
-       ;; (setq-default grep-command "grep -H -i -n ")
-       ))))
+(dpc-windows-nt-configure-external-utilities)
+
+(setq initial-frame-alist
+      '((top . 80) (left . 400)
+        (height . 54) (width . 212)))
+(let ((preferred-fonts '("DejaVu Sans Mono" "Cascadia Mono" "Consolas")))
+  (if-let* ((font (seq-find (lambda (f) (find-font (font-spec :name f))) preferred-fonts)))
+      (progn
+        (set-frame-font (concat font " 14") nil t)
+        (unless (string= font "DejaVu Sans Mono")
+          (message "dpc-sys-windows-nt: DejaVu Sans Mono not found; using %s. Consider installing DejaVu Sans Mono for full Unicode/SVG support." font)))
+    (message "dpc-sys-windows-nt: None of %S found; using Emacs default font." preferred-fonts)))
 
 (provide 'dpc-sys-windows-nt)

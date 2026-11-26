@@ -76,4 +76,8 @@
            return (set-face-attribute 'default nil :family font :height 120 :weight 'normal)))
 
 
+(setq initial-frame-alist
+      '((top . 10) (left . 10)
+        (height . 42) (width . 148)))
+
 (provide 'dpc-sys-darwin)

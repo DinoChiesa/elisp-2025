@@ -355,6 +355,10 @@
   :pin manual
   :commands (dc-ts/insert-currentTimeMillis dc-ts/insert-timeofday))
 
+(eval-after-load "grep"
+  '(progn
+     (grep-apply-setting 'grep-command "grep -H -i -n ")))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Some configuration specific for system-types.
 ;; Loads system-type config; e.g.
@@ -1730,47 +1734,11 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
         )
       )
 
-
-;; initial frame size and position
-;; 20241227-0355
-;;
-;; Supposedly, setting `initial-frame-alist' is ineffectual here, and it must be placed in
-;; the ~/.emacs.d/early-init.el file, which is evaluated before the first frame is created.
-;; https://emacs.stackexchange.com/a/62051/3856
-;;
-;; But, the emacs documentation states that "Emacs creates the initial frame
-;; before it reads your init file. After reading that file, Emacs checks
-;; initial-frame-alist, and applies the parameter settings in the altered value to the
-;; already created initial frame."
-;; https://www.gnu.org/software/emacs/manual/html_node/elisp/Initial-Parameters.html
-;;
-;; So I think I misinterpreted the SO answer. Setting i-f-a here, is fine.
-;; But there are quirks. In my experience,
-;; - on Windows NT, setting `initial-frame-alist' here works just fine.
-;; - on gLinux chromebook, setting `initial-frame-alist' in either place was ineffectual.
-(cond
- ((eq system-type 'windows-nt)
-  (setq initial-frame-alist
-        '( (top . 80) (left . 400)
-           (height . 54) (width . 212)
-           ))
-  (set-frame-font "Consolas 14" nil t))
- (t
-  (setq initial-frame-alist
-        '( (top . 10) (left . 10)
-           (height . 42) (width . 148)))
-  (cond
-   ((eq system-type 'darwin)
-    (set-frame-font "Andale Mono 11" nil t))
-   (t
-    (set-frame-font "Noto Mono 11" nil t))  )))
-
 ;; what should a frame look like
 (setq frame-title-format '("%f [mode: %m]" )    ; "filename [mode]" in title bar
       icon-title-format '("emacs: %b"))   ; "emacs: buffername" in icon
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (if (file-exists-p abbrev-file-name)
     (quietly-read-abbrev-file))
@@ -2602,10 +2570,14 @@ more information."
 
   :config
   ;;(setq acp-logging-enabled t)
-
-  ;; Use antigravity by default, and don't ask
-  (setq agent-shell-preferred-agent-config
+  (setq agent-shell-markdown-image-max-width 1.0
+        ;; Use antigravity by default, and don't ask
+        agent-shell-preferred-agent-config
         (agent-shell-antigravity-make-agent-config))
+
+  ;; agent-shell remaps yank to to agent-shell-yank-dwim (lines 10354–10370);
+  ;; This makes it very slow on windows. undoing that returns it to normal.
+  (define-key agent-shell-mode-map [remap yank] nil)
 
   ;; To set up default model and api key. This is a little strange;
   ;; there are two different variables, one for the model and one for
