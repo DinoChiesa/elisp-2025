@@ -2564,67 +2564,6 @@ more information."
   :commands (gptel-send gptel-rewrite)
   :config (dpc-gptel-setup) )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; chatgpt-shell
-;;
-;; A chatbot interface to various LLMs, including Gemini, OpenAI/ChatGPT,
-;; Anthropic Claude, DeepSeek Chat, and others via comint in emacs.
-;;
-
-;; 20250405-2235
-;;
-;; NB. In `use-package', The :requires keyword specifies a dependency, but does
-;; not force load it as in nodejs require.  Instead, within use-package,
-;; requires prevents loading of the package unless the required feature is
-;; already loaded.
-
-(use-package chatgpt-shell
-  :defer t
-  ;; 20250331-1721 - it is not possible to have load-path be dynamically evaluated.
-  ;; The value must be known at compile time.
-  ;; see https://github.com/jwiegley/use-package/issues/500#issuecomment-335037197
-  ;;
-  ;; but maybe not? See https://jwiegley.github.io/use-package/keywords/#load-path
-  ;;
-  ;;:load-path "~/dev/elisp-projects/chatgpt-shell" ;; windows
-  ;;:load-path "~/newdev/elisp-projects/chatgpt-shell" ;; linux
-  :commands (chatgpt-shell)
-  :ensure t ;; restore this later if loading from (M)ELPA
-  :hook dino-chatgpt-shell-mode-fn
-  ;; C-c C-v chatgpt-shell-swap-model
-  :bind (:map  global-map
-         ("C-c g !" . chatgpt-shell)
-         ("C-c g m" . chatgpt-shell-google-load-models)
-         ("C-c g p" . chatgpt-shell-prompt-compose)
-         ("C-c g r" . chatgpt-shell-refactor-code)
-         ("C-c g d" . chatgpt-shell-describe-code)
-         ("C-c g f" . chatgpt-shell-proofread-region))
-
-  :init
-  ;; avoid flycheck warning about the following functions? This seems dumb.
-  (declare-function chatgpt-shell-google-toggle-grounding-with-google-search "ext:chatgpt-shell-google")
-
-  (defun dino-chatgpt-shell-mode-fn ()
-    "this used to have keybindings, now it is empty."
-    t)
-
-  :config
-  (require 'dc-sane-sorting)
-  (setq chatgpt-shell-google-key (dc-gemini/get-config-property "apikey"))
-  ;; 20250823-1212 - chatgpt-shell currently has builtin support for latest Gemini models.
-  ;; Consider re-adding this when gemini-3.0 is released.
-  ;; (chatgpt-shell-google-load-models) ;; CGS does not include complete list of Google models
-  (setq chatgpt-shell-model-version (dc-gemini/get-config-property "default-model"))
-
-  (setq chatgpt-shell-swap-model-selector
-        (lambda (candidates)
-          (completing-read "Swap to: "
-                           (dc-ss/completion-fn candidates 'sorted-sanely) nil t)))
-
-  :catch
-  (lambda (_keyword err)
-    (message (format "chatgpt-shell use: %s" (error-message-string err)))))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; time zones
@@ -2638,83 +2577,46 @@ more information."
        :branch "main"))
 
 
+;; ;; With :vc, these get loaded from github; not sure if they are ever updated
+;; ;; after initial clone. Doc seems to suggest so.
+;; (use-package acp
+;;   :vc (:url "https://github.com/xenodium/acp.el"
+;;        :rev :newest
+;;        :main-file "acp.el"
+;;        :branch "main"))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; agent-shell - 20250927-1558
+;; agent-shell - 20261126-1007
 ;;
-;; On Windows, to make this work, with a patched version of gemini cli, I had to :
-;;
-;; (setq agent-shell-google-gemini-command '("node"
-;;       "c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js" "--experimental-acp"))
-;;
-;; As of v0.9.0, this will be no longer necessary as the fix for
-;; handling EOL vs \n was merged into that release of the CLI.
-;;
-
-(use-package shell-maker
-  :ensure t)
-;; With :vc, these get loaded from github; not sure if they are ever updated
-;; after initial clone. Doc seems to suggest so.
-(use-package acp
-  :vc (:url "https://github.com/xenodium/acp.el"
-       :rev :newest
-       :main-file "acp.el"
-       :branch "main"))
-
 (use-package agent-shell
-  :vc (:url "https://github.com/xenodium/agent-shell" :rev :newest)
+  ;; agent-shell depends on shell-maker and acp, and will require them.
+  :ensure t
+  :defer t
+  ;;:vc (:url "https://github.com/xenodium/agent-shell" :rev :newest)
+
+  :bind (:map  global-map
+         ("C-c g !" . agent-shell)
+         ("C-c g p" . agent-shell-prompt-compose)
+         ("C-c g r" . agent-shell-send-region))
 
   :config
-  (setq acp-logging-enabled t) ;; helpful while it's new / evolving
+  ;;(setq acp-logging-enabled t)
 
-  ;; Auth via API key
-  (let ((api-key (dc-gemini/get-config-property "apikey")))
-    (if api-key
-        (setq agent-shell-google-authentication
-              (agent-shell-google-make-authentication :api-key api-key))
-      (message "No APIKey found for Google Gemini")))
+  ;; Use antigravity by default, and don't ask
+  (setq agent-shell-preferred-agent-config
+        (agent-shell-antigravity-make-agent-config))
 
-  (setq agent-shell-google-gemini-command
-        (cond
-         ((eq system-type 'windows-nt)
-          ;; 20251011-1613 - patched version of gemini-cli
-          (let ((patched-geminicli "c:\\users\\dpchi\\dev\\gemini-cli\\bundle\\gemini.js"))
-            (if (file-exists-p patched-geminicli)
-                (list "node" patched-geminicli "--experimental-acp")
-              '("gemini" "--experimental-acp"))))
-         (t
-          ;; There is a gcli bug (#7549) that flushes cached creds when --experimental-acp
-          ;; is enabled. As a result the user must ALWAYS re-authenticate. On a text
-          ;; terminal that causes a hang.  This forcibly unsets the project, and uses API
-          ;; key, to allow prompt-free startup.
-          `("env" "GOOGLE_CLOUD_PROJECT=\"\"" "gemini" "--experimental-acp"))))
-
-  ;; re-define this to trim the noise...
-  (defun agent-shell-google--gemini-welcome-message (_config)
-    "Return Gemini CLI ASCII art as per own repo using `shell-maker' CONFIG."
-    (let ((art (agent-shell--indent-string 4 (agent-shell-google--gemini-ascii-art))))
-      (concat "\n\n\n" art "\n\n      Welcome to Gemini within Emacs...\n\n")))
-
-  ;; API Key auth is necessary, at least at the moment.
-  ;; What I found: using the `:login t' approach starts Gemini, which then
-  ;; shows a URL in stderr, telling the user to login. In a graphical
-  ;; environment, the gemini client would just open up a URL in the browser, but
-  ;; that doesn't work with my tty.  So gemini-cli waits forever for the paste
-  ;; of an authz-code.
-  ;;
-  ;; This doesn't work; need to use API key auth or a graphical emacs.
-  ;;
-  ;; In theory the agent-shell could look at stderr and propagate the message to
-  ;; "open this URL and paste in the code".  But that's not happening right now.
-  ;;
-  ;; Diagnosing this required
-  ;;    M-x agent-shell-toggle-logging or (setq acp-logging-enabled t)
-  ;;
-  ;; Then you get buffers like this:
-  ;;  *acp-(gemini)-10 log*                  165 Fundamental
-  ;;  *acp-(gemini)-10 traffic*               39 ACP-traffic
-  ;;
-  ;; And in the log buffer you can see gemini cli I/O.
-  )
+  ;; To set up default model and api key. This is a little strange;
+  ;; there are two different variables, one for the model and one for
+  ;; the API key, but apparently this is the way it works.
+  (if-let* ((default-model (dc-gemini/get-config-property "default-model"))
+            (api-key (dc-gemini/get-config-property "apikey")))
+      (setq agent-shell-antigravity-authentication
+            (agent-shell-antigravity-make-authentication :api-key api-key)
+            agent-shell-antigravity-default-config-options
+            '(("model" . default-model)))
+    (message "No settings found for Gemini")) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; auto-insert - 20241206-0142
@@ -5250,13 +5152,10 @@ Enable `recentf-mode' if it isn't already."
 (define-key global-map (kbd "C-x c")     #'multiple-cursors-mode)
 (define-key global-map (kbd "<f2> SPC")    #'bm-toggle)
 (define-key global-map (kbd "C-c i")       #'dc-edit/indent-line-to-current-column)
-
-(define-key prog-mode-map (kbd "C-c g d")  #'chatgpt-shell-describe-code)
 (define-key prog-mode-map (kbd "C-c C-c")  #'comment-region)
 
 ;; To see what key bindings exist, across all keymaps, for a prefix:
 ;; (describe-bindings (kbd  "C-c"))
-
 
 ;; unicode helpers
 ;; C-x 8 RET to get prompted for the code point in hex.

@@ -7,7 +7,7 @@
 ;; Package-Requires: (json.el seq.el subr-x.el s.el)
 ;; URL:
 ;; X-URL:
-;; Version: 2025.06.21
+;; Version: 2026.11.26
 ;; Keywords: gemini llm
 ;; License: New BSD
 
@@ -29,6 +29,9 @@
 ;;
 ;;; Revisions:
 ;;
+;; 2026.11.26  Dino Chiesa
+;;    removed helpers and workarounds for `chatgpt-shell'
+;;    Moved the properties file default location to ~/.config
 ;; 2025.05.25  Dino Chiesa
 ;;    removed `dc-gemini/set-api-key-from-file' in favor of `dc-gemini/read-settings-from-properties-file'
 ;;    And the new `dc-gemini-properties-file' variable.
@@ -46,7 +49,7 @@
 
 ;;; License
 ;;
-;; Copyright (c) 2024-2025, Google LLC
+;; Copyright (c) 2024-2026, Google LLC
 ;;
 
 (require 'json)
@@ -54,8 +57,6 @@
 (require 's)
 (require 'subr-x)
 (require 'dc-sane-sorting)
-
-(declare-function chatgpt-shell-google-make-model "chatgpt-shell-google" (&rest args))
 
 ;;; Code:
 
@@ -221,24 +222,6 @@ do not filter by supportedGenerationMethods."
           (insert (mapconcat 'identity modelnames "\n  "))
           (insert "\n"))))
     (pop-to-buffer buf)))
-
-
-;; 20250308-1828
-;; This, and anything related to chatgpt-shell mode in this module,
-;; will become obsolete if my PR is accepted and merged.
-(defun dc-gemini/chatgpt-shell-converter (api-response)
-  "Convert between the API-RESPONSE returned by Gemini, and
-the model description needed by chatgpt-shell."
-  (let* ((model-name (gethash "name" api-response))
-         (model-version (string-remove-prefix "models/" model-name))
-         (model-shortversion (string-remove-prefix "gemini-" model-version))
-         (model-urlpath (concat "/v1beta/" model-name))
-         (model-cwindow (gethash "inputTokenLimit" api-response)))
-    (chatgpt-shell-google-make-model :version model-version
-                                     :short-version model-shortversion
-                                     :path model-urlpath
-                                     :token-width 4
-                                     :context-window model-cwindow)))
 
 
 (defun dc-gemini/looking-at-three-backticks ()
