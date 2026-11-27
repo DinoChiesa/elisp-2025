@@ -175,6 +175,43 @@ ty or pylsp."
 python-mode-hook before `eglot-ensure'."
   (setq-default eglot-workspace-configuration #'dc-pe/basedpyright-workspace-config))
 
+;; Eglot server switching between `basedpyright' and `ty'.
+;;
+;; `ty' (Astral's Python type checker/LSP) supports PEP 723 inline script
+;; metadata natively when `experimental.useUv' is set to "scripts" (requires
+;; ty >= 0.0.76 and uv >= 0.12.3). `dc-pe/switch-python-lsp' lets you toggle
+;; between `basedpyright' and `ty' on the fly—useful for comparing diagnostics
+;; or matching a project's CI—and restarts Eglot automatically.
+
+(defvar dc-pe/python-lsp-server 'basedpyright
+  "Which Python language server to use with Eglot: `basedpyright' or `ty'.")
+
+(defun dc-pe/python-lsp-command (_interactive _project)
+  "Return the Eglot LSP command based on `dc-pe/python-lsp-server'."
+  (pcase dc-pe/python-lsp-server
+    ('ty (if (dc-pe--ty-uv-supported-p)
+             '("ty" "server" :initializationOptions (:experimental (:useUv "scripts")))
+           '("ty" "server")))
+    ('basedpyright '("basedpyright-langserver" "--stdio"
+                     :initializationOptions (:basedpyright ())))))
+
+(defun dc-pe/switch-python-lsp ()
+  "Toggle `dc-pe/python-lsp-server' between `basedpyright' and `ty',
+and restart Eglot if it is active in the current buffer."
+  (interactive)
+  (setq dc-pe/python-lsp-server
+        (if (eq dc-pe/python-lsp-server 'ty) 'basedpyright 'ty))
+  (when (eglot-managed-p)
+    (ignore-errors (eglot-shutdown (eglot-current-server)))
+    (sleep-for 0.5)
+    (eglot-ensure))
+  (message "Switched Python LSP to %s" dc-pe/python-lsp-server))
+
+(with-eval-after-load 'eglot
+  (setf (alist-get '(python-mode python-ts-mode) eglot-server-programs
+                   nil nil #'equal)
+        #'dc-pe/python-lsp-command))
+
 
 ;; (defun dc-pe/python-script-project-finder (dir)
 ;;   "If the file has PEP 723 markup, treat its directory as a transient project root.
@@ -400,6 +437,64 @@ existence."
                     basedpyright python-path)
           basedpyright))
     "ruff check"))
+
+(defun dc-pe--ty-uv-supported-p ()
+  "Return non-nil if `ty' (>= 0.0.76) and `uv' (>= 0.12.3) are installed
+and support PEP 723 `TY_UV=scripts' integration."
+  (when-let* ((ty (executable-find "ty"))
+              (uv (executable-find "uv")))
+    (let* ((get-version
+            (lambda (exe)
+              (with-temp-buffer
+                (when (zerop (call-process exe nil t nil "--version"))
+                  (goto-char (point-min))
+                  (when (re-search-forward "\\([0-9]+\\.[0-9]+\\.[0-9]+\\)" nil t)
+                    (match-string 1))))))
+           (ty-ver (funcall get-version ty))
+           (uv-ver (funcall get-version uv)))
+      (and ty-ver uv-ver
+           (version<= "0.0.76" ty-ver)
+           (version<= "0.12.3" uv-ver)))))
+
+(defun dc-pe/ty-check-command ()
+  "Get the python check command using `ty' for the current file.
+Enables PEP 723 script dependency resolution via `TY_UV=scripts' when
+`ty' (>= 0.0.76) and `uv' (>= 0.12.3) are available.
+Falls back to `ruff check' if `ty' is not installed."
+  (if-let* ((ty (executable-find "ty")))
+      (let ((use-uv (dc-pe--ty-uv-supported-p)))
+        (if (eq system-type 'windows-nt)
+            (if use-uv
+                (format "pwsh.exe -NonInteractive -Command $env:TY_UV='scripts'; & %s check "
+                        (shell-quote-argument ty))
+              (format "%s check " (shell-quote-argument ty)))
+          (if use-uv
+              (format "TY_UV=scripts %s check " (shell-quote-argument ty))
+            (format "%s check " (shell-quote-argument ty)))))
+    "ruff check"))
+
+(defun dc-pe/check (&optional arg)
+  "Run a Python type/lint check on the current buffer's file.
+Defaults to `basedpyright' (when installed), falling back to `ty' or `ruff'.
+With a prefix ARG, prompt to choose between installed checkers."
+  (interactive "P")
+  (unless (and buffer-file-name (derived-mode-p 'python-base-mode))
+    (error "Buffer is not visiting a file, or not in a Python mode"))
+  (let* ((basedpyright (dc-pe/find-basedpyright))
+         (ty (executable-find "ty"))
+         (ruff (executable-find "ruff"))
+         (available (delq nil
+                          (list (when basedpyright '(?b . "basedpyright"))
+                                (when ty           '(?t . "ty"))
+                                (when ruff         '(?r . "ruff"))))))
+    (unless available
+      (error "Could not find 'basedpyright', 'ty', or 'ruff' executable"))
+    (let* ((choice (dc-pe--determine-tool-choice "Check" available arg))
+           (cmd (cond
+                 ((eq choice ?b) (dc-pe/basedpyright-check-command))
+                 ((eq choice ?t) (dc-pe/ty-check-command))
+                 ((eq choice ?r) (concat (shell-quote-argument ruff) " check ")))))
+      (python-check (concat cmd (shell-quote-argument buffer-file-name))))))
 
 ;; (defun dc-pe/refactor-multiline-imports ()
 ;;   "Refactor multiline imports \"from ... import (...)\" into multiple single-

@@ -3957,26 +3957,6 @@ Does not consider word syntax tables.
   ;; python-mode is not a prog-mode!
   (require 'dc-python-extensions)
   (customize-set-variable 'python-indent-offset 2)
-  (let ((local-map (current-local-map))) ;; one of {python-mode-map, python-ts-mode-map}
-    (when local-map
-      (mapc (lambda (binding)
-              (define-key local-map (kbd (car binding)) (cdr binding)))
-            '(("ESC C-R" . indent-region) ;; not sure if useful in python
-              ("M-TAB"   . completion-at-point)
-              ("ESC #"   . dc-edit/indent-buffer)
-              ("C-c ! l" . dino/toggle-flymake-diagnostics)
-              ("C-c p f" . dc-pe/format) ;; should be unnecessary with apheleia
-              ("C-c p l" . dc-pe/lint)   ;; should be unnecessary with flymake
-              ("C-c p r" . dc-pe/refactor-multiline-imports)
-              ("C-c p u" . dc-pe/uv-run)
-              ;; TODO: add in "p4 edit FILENAME" as another command
-              ("C-c C-c" . comment-region)
-              ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
-              ("C-c C-w" . compare-windows)
-              ;; making underscore be "word syntax" obviates these next two bindings:
-              ;;("M-f"     . forward-symbol)
-              ;;("M-b"     . (lambda () (interactive) (forward-symbol -1)))
-              ))))
 
   (modify-syntax-entry ?_ "w")
   (set (make-local-variable 'indent-tabs-mode) nil)
@@ -4111,14 +4091,26 @@ Does not consider word syntax tables.
 ;;                         (string-split "uvx --from git+https://github.com/joaotavora/rassumfrassum.git python -m rassumfrassum python")))
 
 
-;; 20251213-1844
-;; not sure if I also need this:
-;; (setq eglot-server-programs
-;;       (delq (assoc '(python-mode python-ts-mode) eglot-server-programs)
-;;             eglot-server-programs))
 
-
-(add-hook 'python-base-mode-hook #'dino-python-mode-fn)
+(use-package python
+  :hook (python-base-mode . dino-python-mode-fn)
+  :bind (:map python-base-mode-map
+         ("ESC C-R" . indent-region) ;; not sure if useful in python
+         ("M-TAB"   . completion-at-point)
+         ;; indent-buffer is probably unnecessary, given dc-pe/format
+         ("ESC #"   . dc-edit/indent-buffer)
+         ("C-c ! l" . dino/toggle-flymake-diagnostics)
+         ;; apheleia runs format automatically on save, this allows
+         ;; explicit formats
+         ("C-c p f" . dc-pe/format)
+         ("C-c p l" . dc-pe/lint)
+         ("C-c p c" . dc-pe/check)
+         ("C-c p s" . dc-pe/switch-python-lsp)
+         ("C-c p r" . dc-pe/refactor-multiline-imports)
+         ("C-c p u" . dc-pe/uv-run)
+         ("C-c C-c" . comment-region)
+         ;; python-mode resets \C-c\C-w to  `python-check'.  Silly.
+         ("C-c C-w" . compare-windows)))
 
 (with-eval-after-load 'apheleia
   ;; 20251025-1309
