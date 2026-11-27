@@ -569,7 +569,7 @@
   (setq corfu-popupinfo-delay '(0.5 . 0.2)))
 
 (use-package indent-bars
-  ;; helpful for yaml and json and etc.
+  ;; helpful for yaml, elisp, json and etc.
   :defer 19
   :ensure t )
 
@@ -1368,12 +1368,12 @@ server program."
   :ensure nil
   :hook (sh-base-mode . dino-sh-mode-fn)
   :bind (:map sh-base-mode-map
-              ("M-TAB"   . completion-at-point)
-              ("C-c :"   . sh-set-shell)
-              ("ESC #"   . dc-edit/indent-buffer)
-              ("C-c ! l" . dino/toggle-flymake-diagnostics)
-              ("C-c C-g" . dc-edit/shfmt-buffer) ;; theoretically unnecessary with apheleia
-              ("C-c C-c" . comment-region)))
+         ("M-TAB"   . completion-at-point)
+         ("C-c :"   . sh-set-shell)
+         ("ESC #"   . dc-edit/indent-buffer)
+         ("C-c ! l" . dino/toggle-flymake-diagnostics)
+         ("C-c C-g" . dc-edit/shfmt-buffer) ;; theoretically unnecessary with apheleia
+         ("C-c C-c" . comment-region)))
 
 (add-hook 'after-save-hook
           #'executable-make-buffer-file-executable-if-script-p)
@@ -1945,6 +1945,7 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
 
 (use-package yaml-mode
   :defer t
+  :ensure t
   :init (defun dino-yaml-mode-fn ()
           "My hook for YAML mode"
           (interactive)
@@ -1955,12 +1956,8 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
           (define-key yaml-mode-map (kbd "C-c C-c")  #'comment-region)
           ;;(make-local-variable 'indent-tabs-mode)
           (setq indent-tabs-mode nil))
+  :config (require 'yaml-pretty-mode)
   :hook  dino-yaml-mode-fn )
-
-(use-package yaml-pretty-mode
-  :defer t
-  :load-path "~/elisp"
-  :commands (yaml-pretty-mode))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Typescript
@@ -2237,12 +2234,12 @@ more information."
   :defer t
   :ensure nil
   :bind (:map css-base-mode-map
-              ("ESC C-R" . indent-region)
-              ("ESC #"   . dc-edit/indent-buffer)
-              ("C-c C-c" . comment-region)
-              ("C-c C-w" . compare-windows)
-              ("ESC ."   . completion-at-point)
-              ("ESC C-i" . completion-at-point))
+         ("ESC C-R" . indent-region)
+         ("ESC #"   . dc-edit/indent-buffer)
+         ("C-c C-c" . comment-region)
+         ("C-c C-w" . compare-windows)
+         ("ESC ."   . completion-at-point)
+         ("ESC C-i" . completion-at-point))
   :init (defun dino-css-mode-fn ()
           "My hook for CSS mode"
           (interactive)
@@ -3885,13 +3882,14 @@ Does not consider word syntax tables.
 ;;
 
 (defun dino-elisp-mode-fn ()
-  (keymap-local-set "RET"      #'newline-and-indent)
-  (keymap-local-set "C-c C-c"  #'comment-region)
-  (keymap-local-set "ESC C-R"  #'indent-region)
-  (keymap-local-set "C-c e"    #'eval-buffer)
-  (keymap-local-set "C-c C-e"  #'eval-last-sexp) ;; trying something new
-  ;; (keymap-local-set "C-c C-e"  #'eval-region)
-  (keymap-local-set "C-x C-e"  #'byte-compile-file)
+  (dolist (binding '(("RET"     . newline-and-indent)
+                     ("C-c C-c" . comment-region)
+                     ("ESC C-R" . indent-region)
+                     ("C-c e"   . eval-buffer)
+                     ("C-c C-e" . eval-last-sexp) ;; trying something new
+                     ;; ("C-c C-e" . eval-region)
+                     ("C-x C-e" . byte-compile-file)))
+    (keymap-local-set (car binding) (cdr binding)))
 
   ;; never convert leading spaces to tabs:
   (setq indent-tabs-mode nil)
@@ -3902,11 +3900,10 @@ Does not consider word syntax tables.
   (flycheck-mode)
   (setq flycheck-emacs-lisp-load-path 'inherit) ;;flycheck should use my load path
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t)
-  ;;(advice-remove 'calculate-lisp-indent #'efi~calculate-lisp-indent)
+  (when (locate-library "elisp-fix-indent")
+    (require 'elisp-fix-indent)
+    (advice-add #'calculate-lisp-indent :override #'efi/calculate-lisp-indent))
   )
-
-(require 'elisp-fix-indent)
-(advice-add #'calculate-lisp-indent :override #'efi/calculate-lisp-indent)
 
 
 ;; add (emacs-lisp-mode . lisp-indent) to apheleia-mode-alist
@@ -4028,7 +4025,6 @@ Does not consider word syntax tables.
 
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t)
 
-
   ;; try to keep placement of flymake diags ... at the bottom, and smallish.
   (add-to-list 'display-buffer-alist
                '("\\*Flymake diagnostics.*"
@@ -4073,16 +4069,16 @@ Does not consider word syntax tables.
   ;;                ;;
   ;;                ;; due to https://github.com/python/cpython/issues/71019
   ;;                '(python-base-mode . ("rass" "python") )))
-  )
 
-;; Unfortunately it does not work on windows, I think because of
-;; https://github.com/python/cpython/issues/71019 , which is a longstanding
-;; cpython bug.  logged as  https://github.com/joaotavora/rassumfrassum/issues/5
-;; 20260120-1544 - But joao made a fix, maybe this will now work:
-;;
-;; (add-to-list 'eglot-server-programs
-;;              (cons '(python-ts-mode python-mode)
-;;                         (string-split "uvx --from git+https://github.com/joaotavora/rassumfrassum.git python -m rassumfrassum python")))
+  ;; Unfortunately it does not work on windows, I think because of
+  ;; https://github.com/python/cpython/issues/71019 , which is a longstanding
+  ;; cpython bug.  logged as  https://github.com/joaotavora/rassumfrassum/issues/5
+  ;; 20260120-1544 - But joao made a fix, maybe this will now work:
+  ;;
+  ;; (add-to-list 'eglot-server-programs
+  ;;              (cons '(python-ts-mode python-mode)
+  ;;                         (string-split "uvx --from git+https://github.com/joaotavora/rassumfrassum.git python -m rassumfrassum python")))
+  )
 
 
 
@@ -4156,7 +4152,7 @@ Does not consider word syntax tables.
           "--preview" "--enable-unstable-feature" "string_processing"
           "--stdin-filename" filepath "-"))
 
-  ;; 20260312-1044 - this is working, and should be used on work machine only.
+  ;; 20260312-1044 - this works; should be used on work machine only.
   (setf (alist-get 'pyformat apheleia-formatters)
         `("pyformat"
           ;;"-i" ;; omit -i to format stdin
@@ -4279,15 +4275,15 @@ counteracts that. "
 (use-package js
   :ensure nil
   :bind (:map js-base-mode-map
-              ("ESC C-R" . indent-region)
-              ("ESC #"   . dc-edit/indent-buffer)
-              ("C-c C-c" . comment-region)
-              ("C-c C-w" . compare-windows)
-              ("C-c C-k s" . dc-edit/camel-to-snakecase-word-at-point)
-              ("C-c C-k c" . dc-edit/snake-to-camelcase-word-at-point)
-              ("<TAB>" . js-indent-line)
-              ("C-<TAB>" . yas-expand)
-              ("SPC" . dino--maybe-space)))
+         ("ESC C-R" . indent-region)
+         ("ESC #"   . dc-edit/indent-buffer)
+         ("C-c C-c" . comment-region)
+         ("C-c C-w" . compare-windows)
+         ("C-c C-k s" . dc-edit/camel-to-snakecase-word-at-point)
+         ("C-c C-k c" . dc-edit/snake-to-camelcase-word-at-point)
+         ("<TAB>" . js-indent-line)
+         ("C-<TAB>" . yas-expand)
+         ("SPC" . dino--maybe-space)))
 
 (defun dino-js-mode-fn ()
   ;; https://stackoverflow.com/a/15239704/48082
@@ -4481,13 +4477,6 @@ counteracts that. "
         'smart-compile-compile-command-in-comments-extension-list
         ".java")))
 
-
-  ;; 20241230 With apheleia-mode, the manual google-java-format is unnecessary. Apheleia does
-  ;; the work every time the file is saved.  But it may be that Apheleia is turned off, so having
-  ;; the ability to manually invoke google-java-format is still a good idea.
-
-  ;; remove trailing whitespace in C files
-  ;; http://stackoverflow.com/questions/1931784
   (add-hook 'before-save-hook 'delete-trailing-whitespace 0 t))
 
 (add-hook 'java-mode-hook 'dino-java-mode-fn)
@@ -4567,9 +4556,7 @@ counteracts that. "
   :config
   (setq salted--salt-file-utility
         (dc-paths/find-executable-in-paths
-         (if (eq system-type 'windows-nt)
-             "salt_file.exe"
-           "salt_file")
+         (if (eq system-type 'windows-nt) "salt_file.exe" "salt_file")
          '("~/bin" "~/go/src/github.com/DinoChiesa/salted"))))
 
 
@@ -4784,7 +4771,6 @@ counteracts that. "
               (setq key (substring key 0 -5)))
           (princ (format "%2d %20s %s\n" count key
                          (make-string count ?+))))))))
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
