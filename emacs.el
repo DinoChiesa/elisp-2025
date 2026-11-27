@@ -2587,13 +2587,18 @@ more information."
   ;; To set up default model and api key. This is a little strange;
   ;; there are two different variables, one for the model and one for
   ;; the API key, but apparently this is the way it works.
-  (if-let* ((default-model (dc-gemini/get-config-property "default-model"))
-            (api-key (dc-gemini/get-config-property "apikey")))
-      (setq agent-shell-antigravity-authentication
-            (agent-shell-antigravity-make-authentication :api-key api-key)
-            agent-shell-antigravity-default-config-options
+  (if-let* ((default-model (dc-gemini/get-config-property "default-model")))
+      (setq agent-shell-antigravity-default-config-options
             `(("model" . ,default-model)))
-    (message "No settings found for Gemini")) )
+    (message "No model found for Gemini"))
+
+  (when (not (dino-is-work-system))
+    (if-let* ((api-key (dc-gemini/get-config-property "apikey")))
+        (setq agent-shell-antigravity-authentication
+              (agent-shell-antigravity-make-authentication :api-key api-key))
+      (message "No apikey found for Gemini")))
+
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; auto-insert - 20241206-0142
