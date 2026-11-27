@@ -24,7 +24,7 @@
 ;; ?⸠  ;; not high enough
 ;; ?┃  ;; too heavy
 ;; ?⍿  ;; too short and narrow
-;; ?|  ;; not high enough
+;; ?|  ;; not tall enough
 ;; see http://unicode-search.net/unicode-namesearch.pl?term=VERTICAL
 
 (defface yaml-pretty-leading-ws-face
@@ -59,17 +59,6 @@
           (put-text-property start stop 'face 'yaml-pretty-leading-ws-face)
           ))
       )))
-
-
-;; (defvar yaml-pretty--NOTUSED--leading-ws-anchor-regexp "^  ")
-;;
-;; (defvar yaml-pretty--NOTUSED--flock-keywords-first-try
-;;   `((,yaml-pretty-leading-ws-anchor-regexp ;; anchor
-;;      ("doesn't matter"                      ;; anchored-matcher
-;;       (yaml-pretty-match-leading-ws)          ;; pre-match form
-;;       (goto-char (match-end 0))             ;; post-match form
-;;       (0 yaml-pretty-leading-ws-face)
-;;       ))))
 
 
 (defvar yaml-pretty-flock-keywords
