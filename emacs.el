@@ -1362,22 +1362,18 @@ server program."
   (dc-paths/setup-shmode-for-apheleia)
   (modify-syntax-entry ?_ "w")
 
-  (setq flymake-shellcheck-allow-external-files t) ;; pass -x to shellcheck
+  (setq flymake-shellcheck-allow-external-files t)) ;; pass -x to shellcheck
 
-  (let ((local-map (current-local-map))) ;; one of {sh-mode-map, bash-ts-mode-map}
-    (when local-map
-      (mapc (lambda (binding)
-              (define-key local-map (kbd (car binding)) (cdr binding)))
-            '(("M-TAB"   . completion-at-point)
+(use-package sh-script
+  :ensure nil
+  :hook (sh-base-mode . dino-sh-mode-fn)
+  :bind (:map sh-base-mode-map
+              ("M-TAB"   . completion-at-point)
               ("C-c :"   . sh-set-shell)
               ("ESC #"   . dc-edit/indent-buffer)
               ("C-c ! l" . dino/toggle-flymake-diagnostics)
               ("C-c C-g" . dc-edit/shfmt-buffer) ;; theoretically unnecessary with apheleia
-              ("C-c C-c" . comment-region)
-              )))))
-
-(add-hook 'sh-mode-hook 'dino-sh-mode-fn)
-(add-hook 'bash-ts-mode-hook 'dino-sh-mode-fn)
+              ("C-c C-c" . comment-region)))
 
 (add-hook 'after-save-hook
           #'executable-make-buffer-file-executable-if-script-p)
@@ -1407,6 +1403,7 @@ server program."
         standard-indent 2
         indent-tabs-mode t) ;; golang prefers tabs, wow, ugh
 
+  ;; go-mode is external, so there is no shared go-base-mode-map.
   (let ((local-map (current-local-map))) ;; go-mode-map or go-ts-mode-map
     (when local-map
       (mapc (lambda (binding)
@@ -2001,6 +1998,7 @@ CitC tracks every version, so Emacs backup files just litter the workspace."
           (display-line-numbers-mode) ;; powershell-mode is not derived from prog-mode
           (apheleia-mode)
           (add-hook 'before-save-hook #'delete-trailing-whitespace nil t)
+          ;; powershell-mode is external, so there is no shared powershell-base-mode-map.
           (let ((local-map (current-local-map))) ;; powershell-mode-map / powershell-ts-mode-map
             (when local-map
               (mapc (lambda (binding)
@@ -2238,22 +2236,18 @@ more information."
 (use-package css-mode
   :defer t
   :ensure nil
+  :bind (:map css-base-mode-map
+              ("ESC C-R" . indent-region)
+              ("ESC #"   . dc-edit/indent-buffer)
+              ("C-c C-c" . comment-region)
+              ("C-c C-w" . compare-windows)
+              ("ESC ."   . completion-at-point)
+              ("ESC C-i" . completion-at-point))
   :init (defun dino-css-mode-fn ()
           "My hook for CSS mode"
           (interactive)
           (setq css-indent-offset 2
                 completion-auto-help 'always)
-          (let ((local-map (current-local-map))) ;; css-mode-map probably
-            (when local-map
-              (mapc (lambda (binding)
-                      (define-key local-map (kbd (car binding)) (cdr binding)))
-                    '(("ESC C-R" . indent-region)
-                      ("ESC #"   . dc-edit/indent-buffer)
-                      ("C-c C-c" . comment-region)
-                      ("C-c C-w" . compare-windows)
-                      ("ESC ."   . completion-at-point)
-                      ("ESC C-i" . completion-at-point)
-                      ))))
 
           (turn-on-auto-revert-mode)
           (electric-pair-mode)
@@ -4282,6 +4276,19 @@ counteracts that. "
       nil
     (self-insert-command (or arg 1))))
 
+(use-package js
+  :ensure nil
+  :bind (:map js-base-mode-map
+              ("ESC C-R" . indent-region)
+              ("ESC #"   . dc-edit/indent-buffer)
+              ("C-c C-c" . comment-region)
+              ("C-c C-w" . compare-windows)
+              ("C-c C-k s" . dc-edit/camel-to-snakecase-word-at-point)
+              ("C-c C-k c" . dc-edit/snake-to-camelcase-word-at-point)
+              ("<TAB>" . js-indent-line)
+              ("C-<TAB>" . yas-expand)
+              ("SPC" . dino--maybe-space)))
+
 (defun dino-js-mode-fn ()
   ;; https://stackoverflow.com/a/15239704/48082
   (set (make-local-variable 'font-lock-multiline) t)
@@ -4294,20 +4301,6 @@ counteracts that. "
   (modify-syntax-entry ?_ "w")
 
   (keymap-local-unset "C-c C-k")
-  (let ((local-map (current-local-map))) ;; js-mode-map or js-ts-mode-map
-    (when local-map
-      (mapc (lambda (binding)
-              (define-key local-map (kbd (car binding)) (cdr binding)))
-            '(("ESC C-R" . indent-region)
-              ("ESC #"   . dc-edit/indent-buffer)
-              ("C-c C-c" . comment-region)
-              ("C-c C-w" . compare-windows)
-              ("C-c C-k s" . dc-edit/camel-to-snakecase-word-at-point)
-              ("C-c C-k c" . dc-edit/snake-to-camelcase-word-at-point)
-              ("<TAB>" . js-indent-line)
-              ("C-<TAB>" . yas-expand)
-              ("SPC" . dino--maybe-space)
-              ))))
 
   ;; Dino 20210127-1259 - trying to diagnose flycheck checker errors
   ;;
