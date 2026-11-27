@@ -5001,6 +5001,15 @@ Enable `recentf-mode' if it isn't already."
 ;;       (message "server socket: %s" (expand-file-name server-name server-socket-dir)
 ;;                #'external-debugging-output)))
 
+;; In case I ever want to start a server:
+(setq server-name "server")
+(server-force-delete)
+;; clean stale server entries:
+(when (file-directory-p server-auth-dir)
+  (dolist (name (directory-files server-auth-dir nil "^[^.]"))
+    (unless (eq t (server-running-p name))
+      (delete-file (expand-file-name name server-auth-dir)))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; modeline things
